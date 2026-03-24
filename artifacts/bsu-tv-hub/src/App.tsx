@@ -21,7 +21,7 @@ interface TileConfig {
 }
 
 const iconClass = (focused: boolean) =>
-  `w-28 h-28 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100 drop-shadow-[0_0_12px_rgba(196,18,48,0.7)]" : "brightness-0 invert opacity-70"}`;
+  `w-28 h-28 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`;
 
 const TILES: TileConfig[] = [
   {
