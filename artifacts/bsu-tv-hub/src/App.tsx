@@ -103,8 +103,7 @@ function HubScreen() {
   });
 
   return (
-    <div className="relative min-h-screen w-full bg-background flex flex-col items-center justify-center overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vh] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
 
       <TopBar />
 

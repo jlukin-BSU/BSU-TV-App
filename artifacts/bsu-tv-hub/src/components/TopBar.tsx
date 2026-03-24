@@ -20,7 +20,7 @@ export function TopBar() {
       <img
         src={bsuLogo}
         alt="Bridgewater State University"
-        className="h-16 w-auto object-contain brightness-0 invert"
+        className="h-24 w-auto object-contain brightness-0 invert"
       />
 
       <div className="flex flex-col items-end">

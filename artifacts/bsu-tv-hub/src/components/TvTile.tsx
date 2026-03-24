@@ -14,44 +14,42 @@ interface TvTileProps {
 export function TvTile({ label, icon, isFocused, onClick, onHover, className = "" }: TvTileProps) {
   return (
     <motion.div
-      layout
       onMouseEnter={onHover}
       onClick={onClick}
       animate={{
-        scale: isFocused ? 1.05 : 1,
-        y: isFocused ? -8 : 0,
+        scale: isFocused ? 1.06 : 1,
+        y: isFocused ? -6 : 0,
       }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      transition={{ type: "spring", stiffness: 320, damping: 28 }}
+      style={{
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        boxShadow: isFocused
+          ? "0 24px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.28), 0 0 32px rgba(255,255,255,0.07)"
+          : "0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.09)",
+        background: isFocused
+          ? "rgba(255,255,255,0.14)"
+          : "rgba(255,255,255,0.07)",
+      }}
       className={`
         relative flex flex-col items-center justify-center cursor-pointer
-        rounded-3xl border-2 transition-colors duration-300
-        tv-tile-shadow h-[280px] w-full
-        ${isFocused 
-          ? 'bg-card border-primary tv-tile-focused z-10' 
-          : 'bg-card/60 border-border/40 hover:bg-card/80 hover:border-border/80 z-0'
-        }
+        rounded-2xl h-[280px] w-full transition-colors duration-200
+        ${isFocused ? "z-10" : "z-0"}
         ${className}
       `}
     >
-      <div className={`transition-transform duration-300 ${isFocused ? 'scale-110 text-primary' : 'text-foreground/80'}`}>
+      <div className={`transition-all duration-200 ${isFocused ? "opacity-100 scale-105" : "opacity-70"}`}>
         {icon}
       </div>
-      
-      {label && (
-        <h3 className={`mt-6 text-3xl font-semibold transition-colors duration-300 ${isFocused ? 'text-foreground' : 'text-foreground/80'}`}>
-          {label}
-        </h3>
-      )}
 
-      {/* Focus Glow Indicator */}
-      {isFocused && (
-        <motion.div
-          layoutId="focus-glow"
-          className="absolute -inset-1 bg-primary/20 blur-2xl rounded-3xl -z-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        />
+      {label && (
+        <p className={`
+          mt-5 text-xl font-medium tracking-wide text-center leading-snug px-4
+          transition-all duration-200
+          ${isFocused ? "text-white opacity-100" : "text-white/75"}
+        `}>
+          {label}
+        </p>
       )}
     </motion.div>
   );
