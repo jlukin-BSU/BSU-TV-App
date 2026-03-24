@@ -25,7 +25,7 @@ export function TvTile({ label, icon, isFocused, onClick, onHover, className = "
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         boxShadow: isFocused
-          ? "0 20px 48px rgba(0,0,0,0.45), 0 0 50px 10px rgba(196,18,48,0.28)"
+          ? "0 20px 48px rgba(0,0,0,0.45), 0 0 48px 12px rgba(220,40,65,0.18)"
           : "0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.09)",
         background: isFocused
           ? "rgba(255,255,255,0.12)"

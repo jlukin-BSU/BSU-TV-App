@@ -11,6 +11,7 @@ import { useTvIdle } from "./hooks/use-idle";
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
 import inputsIcon from "@assets/INPUTS_1774373576874.png";
+import bearLogo from "@assets/Athleticlog_1774375893267.png";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,21 @@ function HubScreen() {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
+
+      {/* Bear watermark */}
+      <img
+        src={bearLogo}
+        alt=""
+        aria-hidden="true"
+        className="absolute pointer-events-none select-none"
+        style={{
+          right: "-6%",
+          bottom: "-8%",
+          width: "52%",
+          opacity: 0.045,
+          filter: "grayscale(1) brightness(2)",
+        }}
+      />
 
       <TopBar />
 
