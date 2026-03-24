@@ -1,0 +1,85 @@
+Build a Google TV / Android TV hub app intended for Sony Bravia BZ commercial displays used in a university environment.
+The app is not a full launcher replacement, but it is configured via Sony Pro Mode to:
+
+Launch on Home button
+Launch on boot if configured
+
+The app acts as a clean front‑door UI that average users interact with instead of the Google TV home screen.
+Core behavior
+
+Remote / D‑pad only navigation
+No ads
+No “Free TV”
+No Google TV recommendations visible during normal use
+App stays in foreground unless a user launches another app or HDMI input
+
+Tiles / actions
+The main screen presents a small grid of large tiles:
+
+Signage
+
+Launches the OptiSigns Android app
+Users do not see the word “OptiSigns” anywhere
+
+
+Live TV
+
+Launches Xfinity Stream
+
+
+YouTube
+
+Launches YouTube
+YouTube logo only, no text label
+
+
+Wall HDMI
+
+Represents HDMI input 3
+Actual HDMI switching may be handled by Sony Pro Mode rather than app code
+
+
+Screen Off
+
+Mutes video output / turns panel black
+Panel stays powered on
+Any button press wakes the screen
+
+
+
+Idle behavior
+
+App tracks user inactivity only while the app is foreground
+After 5 minutes of no input, the app launches OptiSigns
+If the user is inside another app or HDMI input, the idle timer does nothing
+Pressing Home returns to the app and restarts the timer
+
+UI requirements
+
+Designed for 4K TVs
+Clean, institutional look
+No persistent header required
+Layout should be obvious and readable from distance
+Dark background
+Accent color: RGB 196, 18, 48
+Gradients and subtle animations allowed
+No gloss, sparkles, or skeuomorphic UI
+
+Branding
+
+Bridgewater State University branding
+Use provided BSU logo assets exactly as supplied (no modification)
+Branding should be present but not dominant
+
+Time & weather
+
+Display current time and weather for Bridgewater, Massachusetts
+Small, non‑distracting
+Icons allowed
+Subtle animation allowed
+
+UX details
+
+Clear focus states for tiles
+Optional short overlay/transition text when actions occur (e.g. “Switching to Wall HDMI”, “Opening Live TV”)
+No background services beyond what’s necessary

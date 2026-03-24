@@ -1,0 +1,10 @@
+packages:
+  "framer-motion": "Animations and transitions for smooth TV interface experience"
+  "date-fns": "Easy time and date formatting for the clock widget"
+  "lucide-react": "Icons for the tiles and weather conditions"
+  "react-use": "Helpful utility hooks for keyboard events and idle tracking"
+
+notes:
+  - App is entirely frontend, simulating a TV OS Hub
+  - Open-Meteo API is used for weather (no API key required)
+  - Navigation relies heavily on keyboard arrows to simulate a TV remote D-Pad

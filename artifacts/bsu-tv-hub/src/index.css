@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-border: hsl(var(--border));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+}
+
+:root {
+  /* Dark Institutional Theme */
+  --background: 240 10% 4%; /* Very dark navy/black */
+  --foreground: 0 0% 95%; /* Near white text */
+  
+  --card: 240 8% 8%; /* Slightly lighter for tiles */
+  --card-foreground: 0 0% 95%;
+  
+  --border: 240 6% 20%; /* Subtle card border */
+  
+  --primary: 351 83% 42%; /* BSU Crimson: rgb(196, 18, 48) */
+  --primary-foreground: 0 0% 100%;
+  
+  --muted: 240 6% 15%;
+  --muted-foreground: 240 5% 65%;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased font-sans overflow-hidden select-none;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight;
+  }
+
+  /* Focus ring customized for TV viewing - thick and distinct */
+  *:focus-visible {
+    @apply outline-none ring-4 ring-primary ring-offset-4 ring-offset-background;
+  }
+}
+
+/* Custom Utilities for TV App */
+@layer utilities {
+  .tv-tile-shadow {
+    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5), 0 0 20px 0 rgba(196,18,48,0);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .tv-tile-focused {
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,0.7), 0 0 30px 5px rgba(196,18,48,0.3);
+  }
+}
