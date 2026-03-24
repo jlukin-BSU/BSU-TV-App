@@ -57,7 +57,7 @@ const TILES: TileConfig[] = [
     label: "Screen Off",
     renderIcon: (focused) => (
       <Power
-        className={`w-28 h-28 transition-colors duration-300 ${focused ? "text-primary" : "text-foreground/70"}`}
+        className={`w-28 h-28 transition-all duration-300 ${focused ? "text-white opacity-100" : "text-white opacity-70"}`}
         strokeWidth={2}
       />
     ),
