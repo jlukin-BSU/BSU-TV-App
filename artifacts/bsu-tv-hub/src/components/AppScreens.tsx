@@ -12,7 +12,7 @@ interface AppDef {
 }
 
 export const APPS: AppDef[] = [
-  { id: "signage",   label: "Signage",    icon: Monitor,   overlayText: "Launching Signage..."     },
+  { id: "signage",   label: "News & Announcements", icon: Monitor, overlayText: "Launching News & Announcements..." },
   { id: "livetv",    label: "Live TV",    icon: Tv,        overlayText: "Opening Live TV..."       },
   { id: "youtube",   label: "YouTube",    icon: Monitor,   overlayText: "Opening YouTube..."       },
   { id: "hdmi",      label: "TV Inputs",  icon: HdmiPort,  overlayText: "Switching to TV Inputs..."  },
@@ -102,7 +102,7 @@ export function ActiveAppScreen({ appId, onExit }: ActiveAppScreenProps) {
       <Icon className="w-40 h-40 text-primary/50 mb-10" strokeWidth={1} />
 
       <h1 className="text-6xl font-bold text-foreground mb-4">
-        {app.id === "signage" ? "Signage Display Active" : app.label}
+        {app.label}
       </h1>
 
       <p className="text-2xl text-muted-foreground">

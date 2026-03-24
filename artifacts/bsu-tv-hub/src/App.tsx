@@ -1,12 +1,17 @@
 import { useState, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Monitor, Tv, HdmiPort, MonitorOff } from "lucide-react";
+import { MonitorOff } from "lucide-react";
 import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
 import { TransitionOverlay, ActiveAppScreen, AppId } from "./components/AppScreens";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
+
+import marketingIcon from "@assets/marketing_1774373576874.png";
+import tvIcon from "@assets/tv_1774373576874.png";
+import liveIcon from "@assets/live_1774373576873.png";
+import inputsIcon from "@assets/INPUTS_1774373576874.png";
 
 const queryClient = new QueryClient();
 
@@ -16,25 +21,25 @@ interface TileConfig {
   renderIcon: (focused: boolean) => React.ReactNode;
 }
 
+const iconClass = (focused: boolean) =>
+  `w-28 h-28 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100 drop-shadow-[0_0_12px_rgba(196,18,48,0.7)]" : "brightness-0 invert opacity-70"}`;
+
 const TILES: TileConfig[] = [
   {
     id: "signage",
-    label: "Signage",
+    label: "News & Announcements",
     renderIcon: (focused) => (
-      <Monitor
-        className={`w-28 h-28 transition-colors duration-300 ${focused ? "text-primary" : "text-foreground/70"}`}
-        strokeWidth={1.25}
-      />
+      <img src={marketingIcon} alt="News & Announcements" className={iconClass(focused)} />
     ),
   },
   {
     id: "livetv",
     label: "Live TV",
     renderIcon: (focused) => (
-      <Tv
-        className={`w-28 h-28 transition-colors duration-300 ${focused ? "text-primary" : "text-foreground/70"}`}
-        strokeWidth={1.25}
-      />
+      <div className="relative w-28 h-28 flex items-center justify-center">
+        <img src={tvIcon} alt="Live TV" className={`absolute inset-0 w-full h-full object-contain ${focused ? "brightness-0 invert opacity-100 drop-shadow-[0_0_12px_rgba(196,18,48,0.7)]" : "brightness-0 invert opacity-70"}`} />
+        <img src={liveIcon} alt="" className={`absolute bottom-1 right-0 w-12 h-12 object-contain ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`} />
+      </div>
     ),
   },
   {
@@ -48,10 +53,7 @@ const TILES: TileConfig[] = [
     id: "hdmi",
     label: "TV Inputs",
     renderIcon: (focused) => (
-      <HdmiPort
-        className={`w-28 h-28 transition-colors duration-300 ${focused ? "text-primary" : "text-foreground/70"}`}
-        strokeWidth={1.25}
-      />
+      <img src={inputsIcon} alt="TV Inputs" className={iconClass(focused)} />
     ),
   },
   {
