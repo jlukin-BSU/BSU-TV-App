@@ -113,11 +113,12 @@ function HubScreen() {
         aria-hidden="true"
         className="absolute pointer-events-none select-none"
         style={{
-          right: "-6%",
-          bottom: "-8%",
-          width: "52%",
-          opacity: 0.045,
-          filter: "grayscale(1) brightness(2)",
+          right: "4%",
+          bottom: "4%",
+          width: "22%",
+          opacity: 0.18,
+          filter: "grayscale(1) brightness(3)",
+          mixBlendMode: "screen",
         }}
       />
 
