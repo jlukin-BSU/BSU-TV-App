@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Monitor, Tv, Cast, MonitorOff, Loader2 } from "lucide-react";
+import { Monitor, Tv, HdmiPort, MonitorOff, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 export type AppId = "signage" | "livetv" | "youtube" | "hdmi" | "screenoff";
@@ -15,7 +15,7 @@ export const APPS: AppDef[] = [
   { id: "signage",   label: "Signage",    icon: Monitor,   overlayText: "Launching Signage..."     },
   { id: "livetv",    label: "Live TV",    icon: Tv,        overlayText: "Opening Live TV..."       },
   { id: "youtube",   label: "YouTube",    icon: Monitor,   overlayText: "Opening YouTube..."       },
-  { id: "hdmi",      label: "TV Inputs",  icon: Cast,      overlayText: "Switching to TV Inputs..."  },
+  { id: "hdmi",      label: "TV Inputs",  icon: HdmiPort,  overlayText: "Switching to TV Inputs..."  },
   { id: "screenoff", label: "Screen Off", icon: MonitorOff, overlayText: "Going to sleep..."       },
 ];
 

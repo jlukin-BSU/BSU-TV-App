@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Monitor, Tv, Cast, MonitorOff } from "lucide-react";
+import { Monitor, Tv, HdmiPort, MonitorOff } from "lucide-react";
 import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
@@ -48,7 +48,7 @@ const TILES: TileConfig[] = [
     id: "hdmi",
     label: "TV Inputs",
     renderIcon: (focused) => (
-      <Cast
+      <HdmiPort
         className={`w-28 h-28 transition-colors duration-300 ${focused ? "text-primary" : "text-foreground/70"}`}
         strokeWidth={1.25}
       />
