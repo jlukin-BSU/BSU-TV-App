@@ -38,7 +38,7 @@ const TILES: TileConfig[] = [
     renderIcon: (focused) => (
       <div className="relative w-28 h-28 flex items-center justify-center">
         <img src={tvIcon} alt="Live TV" className={`absolute inset-0 w-full h-full object-contain ${focused ? "brightness-0 invert opacity-100 drop-shadow-[0_0_12px_rgba(196,18,48,0.7)]" : "brightness-0 invert opacity-70"}`} />
-        <img src={liveIcon} alt="" className={`absolute w-10 h-10 object-contain top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`} />
+        <img src={liveIcon} alt="" className={`absolute w-9 h-9 object-contain top-[32%] left-1/2 -translate-x-1/2 -translate-y-1/2 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`} />
       </div>
     ),
   },
@@ -62,7 +62,7 @@ const TILES: TileConfig[] = [
     renderIcon: (focused) => (
       <Power
         className={`w-28 h-28 transition-colors duration-300 ${focused ? "text-primary" : "text-foreground/70"}`}
-        strokeWidth={1.25}
+        strokeWidth={2}
       />
     ),
   },
