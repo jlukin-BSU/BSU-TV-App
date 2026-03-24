@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Monitor, Tv, Youtube, Cable, Power, Loader2 } from "lucide-react";
+import { Monitor, Tv, Cast, MonitorOff, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 export type AppId = "signage" | "livetv" | "youtube" | "hdmi" | "screenoff";
@@ -7,16 +7,16 @@ export type AppId = "signage" | "livetv" | "youtube" | "hdmi" | "screenoff";
 interface AppDef {
   id: AppId;
   label: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   overlayText: string;
 }
 
 export const APPS: AppDef[] = [
-  { id: "signage", label: "Signage", icon: Monitor, overlayText: "Launching Signage..." },
-  { id: "livetv", label: "Live TV", icon: Tv, overlayText: "Opening Live TV..." },
-  { id: "youtube", label: "YouTube", icon: Youtube, overlayText: "Opening YouTube..." },
-  { id: "hdmi", label: "Wall HDMI", icon: Cable, overlayText: "Switching to Wall HDMI..." },
-  { id: "screenoff", label: "Screen Off", icon: Power, overlayText: "Going to sleep..." },
+  { id: "signage",   label: "Signage",    icon: Monitor,   overlayText: "Launching Signage..."     },
+  { id: "livetv",    label: "Live TV",    icon: Tv,        overlayText: "Opening Live TV..."       },
+  { id: "youtube",   label: "YouTube",    icon: Monitor,   overlayText: "Opening YouTube..."       },
+  { id: "hdmi",      label: "TV Inputs",  icon: Cast,      overlayText: "Switching to TV Inputs..."  },
+  { id: "screenoff", label: "Screen Off", icon: MonitorOff, overlayText: "Going to sleep..."       },
 ];
 
 interface TransitionOverlayProps {
@@ -36,7 +36,7 @@ export function TransitionOverlay({ appId }: TransitionOverlayProps) {
           className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex flex-col items-center justify-center"
         >
           <Loader2 className="w-20 h-20 text-primary animate-spin mb-8" />
-          <h2 className="text-5xl font-display font-bold text-foreground">
+          <h2 className="text-5xl font-bold text-foreground">
             {app.overlayText}
           </h2>
         </motion.div>
@@ -53,17 +53,14 @@ interface ActiveAppScreenProps {
 export function ActiveAppScreen({ appId, onExit }: ActiveAppScreenProps) {
   const app = APPS.find(a => a.id === appId);
 
-  // Global key listener to exit app screens
   useEffect(() => {
     if (!appId) return;
 
     const handleKey = (e: KeyboardEvent) => {
       if (appId === "screenoff") {
-        // Any key wakes up from screen off
         e.preventDefault();
         onExit();
       } else {
-        // Only escape/backspace exits normal apps
         if (e.key === "Escape" || e.key === "Backspace") {
           e.preventDefault();
           onExit();
@@ -88,11 +85,8 @@ export function ActiveAppScreen({ appId, onExit }: ActiveAppScreenProps) {
 
   if (!app) return null;
 
-  // Screen off is special - completely black
   if (app.id === "screenoff") {
-    return (
-      <div className="fixed inset-0 z-50 bg-black cursor-none" />
-    );
+    return <div className="fixed inset-0 z-50 bg-black cursor-none" />;
   }
 
   const Icon = app.icon;
@@ -106,11 +100,11 @@ export function ActiveAppScreen({ appId, onExit }: ActiveAppScreenProps) {
       className="fixed inset-0 z-40 bg-background flex flex-col items-center justify-center"
     >
       <Icon className="w-40 h-40 text-primary/50 mb-10" strokeWidth={1} />
-      
-      <h1 className="text-6xl font-display font-bold text-foreground mb-4">
+
+      <h1 className="text-6xl font-bold text-foreground mb-4">
         {app.id === "signage" ? "Signage Display Active" : app.label}
       </h1>
-      
+
       <p className="text-2xl text-muted-foreground">
         Placeholder view simulating launched application
       </p>
