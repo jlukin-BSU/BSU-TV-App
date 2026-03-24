@@ -105,6 +105,33 @@ function HubScreen() {
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
 
+      {/* BSU brand background — diagonal panels inspired by brand lockscreen */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        {/* Crimson red upper-left panel */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "rgb(196,18,48)",
+          clipPath: "polygon(0 0, 60% 0, 30% 100%, 0 100%)",
+        }} />
+        {/* Dark blade 1 — cuts through red, creates depth */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "#1c1c1c",
+          clipPath: "polygon(37% 0, 50% 0, 19% 100%, 7% 100%)",
+        }} />
+        {/* Dark blade 2 */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "#181818",
+          clipPath: "polygon(46% 0, 60% 0, 29% 100%, 17% 100%)",
+        }} />
+        {/* Vignette overlay — keeps lower half dark and tiles legible */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(150deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.38) 45%, rgba(0,0,0,0.68) 100%)",
+        }} />
+      </div>
+
       <TopBar />
 
       <div className="w-full max-w-7xl mx-auto px-16 mt-24 z-10">

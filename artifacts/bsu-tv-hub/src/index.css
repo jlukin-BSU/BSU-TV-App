@@ -17,6 +17,8 @@
 
 :root {
   --background: 0 0% 11%;
+  --tile-bg: rgba(12,12,12,0.58);
+  --tile-bg-focused: rgba(28,28,28,0.72);
   --foreground: 0 0% 96%;
 
   --card: 0 0% 100%;
@@ -34,7 +36,7 @@
 @layer base {
   body {
     @apply antialiased font-sans overflow-hidden select-none;
-    background: radial-gradient(ellipse at 50% 40%, hsl(0 0% 17%) 0%, hsl(0 0% 10%) 70%);
+    background: #1c1c1c;
     color: hsl(var(--foreground));
     min-height: 100vh;
   }

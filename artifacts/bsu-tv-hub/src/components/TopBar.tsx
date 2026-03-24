@@ -1,7 +1,7 @@
 import { Cloud, CloudLightning, CloudRain, Snowflake, Sun } from "lucide-react";
 import { useTime } from "@/hooks/use-time";
 import { useWeather } from "@/hooks/use-weather";
-import bsuLogo from "@assets/BSU_Logo_No_Cupola_trans_1774372116116.png";
+import bsuLogo from "@assets/bsulogotrans_1774375893268.png";
 
 export function TopBar() {
   const { timeDisplay, dateDisplay } = useTime();
