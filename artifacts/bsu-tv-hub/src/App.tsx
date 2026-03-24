@@ -9,8 +9,7 @@ import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
-import tvIcon from "@assets/tv_1774373576874.png";
-import liveIcon from "@assets/live_1774373576873.png";
+import tvIcon from "@assets/tv_1774374146860.png";
 import inputsIcon from "@assets/INPUTS_1774373576874.png";
 
 const queryClient = new QueryClient();
@@ -36,10 +35,7 @@ const TILES: TileConfig[] = [
     id: "livetv",
     label: "Live TV",
     renderIcon: (focused) => (
-      <div className="relative w-28 h-28 flex items-center justify-center">
-        <img src={tvIcon} alt="Live TV" className={`absolute inset-0 w-full h-full object-contain ${focused ? "brightness-0 invert opacity-100 drop-shadow-[0_0_12px_rgba(196,18,48,0.7)]" : "brightness-0 invert opacity-70"}`} />
-        <img src={liveIcon} alt="" className={`absolute w-9 h-9 object-contain top-[32%] left-1/2 -translate-x-1/2 -translate-y-1/2 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`} />
-      </div>
+      <img src={tvIcon} alt="Live TV" className={iconClass(focused)} />
     ),
   },
   {
