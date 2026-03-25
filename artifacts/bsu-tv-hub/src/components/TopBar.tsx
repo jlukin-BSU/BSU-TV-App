@@ -16,11 +16,11 @@ export function TopBar() {
   }[weather?.condition || "sunny"];
 
   return (
-    <div className="absolute top-0 w-full px-12 py-8 flex justify-between items-center z-10">
+    <div className="absolute top-0 w-full px-12 py-8 flex justify-between items-end z-10">
       <img
         src={bsuLogo}
         alt="Bridgewater State University"
-        className="h-28 w-auto object-contain brightness-0 invert"
+        className="h-40 w-auto object-contain brightness-0 invert"
       />
 
       <div className="flex flex-col items-end">

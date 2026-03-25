@@ -107,7 +107,7 @@ function HubScreen() {
 
       <TopBar />
 
-      <div className="w-full max-w-7xl mx-auto px-16 mt-24 z-10">
+      <div className="w-full max-w-7xl mx-auto px-16 mt-36 z-10">
         <div className="grid grid-cols-3 gap-10">
           {TILES.map((tile, idx) => (
             <TvTile
