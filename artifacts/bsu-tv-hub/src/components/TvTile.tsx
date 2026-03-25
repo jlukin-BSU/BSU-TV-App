@@ -33,7 +33,7 @@ export function TvTile({ label, icon, isFocused, onClick, onHover, className = "
       }}
       className={`
         relative flex flex-col items-center justify-center cursor-pointer
-        rounded-2xl h-[280px] w-full transition-colors duration-200
+        rounded-2xl h-[210px] w-full transition-colors duration-200
         ${isFocused ? "z-10" : "z-0"}
         ${className}
       `}
@@ -44,7 +44,7 @@ export function TvTile({ label, icon, isFocused, onClick, onHover, className = "
 
       {label && (
         <p className={`
-          mt-5 text-xl font-medium tracking-wide text-center leading-snug px-4
+          mt-3 text-xl font-medium tracking-wide text-center leading-snug px-4
           transition-all duration-200
           ${isFocused ? "text-white opacity-100" : "text-white/75"}
         `}>

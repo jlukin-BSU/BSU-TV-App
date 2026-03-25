@@ -11,7 +11,6 @@ import { useTvIdle } from "./hooks/use-idle";
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
 import inputsIcon from "@assets/INPUTS_1774373576874.png";
-import bearLogo from "@assets/Athleticlog_1774375893267.png";
 
 const queryClient = new QueryClient();
 
@@ -22,7 +21,7 @@ interface TileConfig {
 }
 
 const iconClass = (focused: boolean) =>
-  `w-28 h-28 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`;
+  `w-20 h-20 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`;
 
 const TILES: TileConfig[] = [
   {
@@ -43,7 +42,7 @@ const TILES: TileConfig[] = [
     id: "youtube",
     label: "YouTube",
     renderIcon: (focused) => (
-      <YouTubeLogo className="w-36 h-auto" focused={focused} />
+      <YouTubeLogo className="w-28 h-auto" focused={focused} />
     ),
   },
   {
@@ -58,7 +57,7 @@ const TILES: TileConfig[] = [
     label: "Screen Off",
     renderIcon: (focused) => (
       <Power
-        className={`w-28 h-28 transition-all duration-300 ${focused ? "text-white opacity-100" : "text-white opacity-70"}`}
+        className={`w-20 h-20 transition-all duration-300 ${focused ? "text-white opacity-100" : "text-white opacity-70"}`}
         strokeWidth={2}
       />
     ),
@@ -105,22 +104,6 @@ function HubScreen() {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
-
-      {/* Bear watermark */}
-      <img
-        src={bearLogo}
-        alt=""
-        aria-hidden="true"
-        className="absolute pointer-events-none select-none"
-        style={{
-          right: "4%",
-          bottom: "4%",
-          width: "22%",
-          opacity: 0.18,
-          filter: "grayscale(1) brightness(3)",
-          mixBlendMode: "screen",
-        }}
-      />
 
       <TopBar />
 

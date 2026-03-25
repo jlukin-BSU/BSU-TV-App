@@ -36,7 +36,7 @@
 @layer base {
   body {
     @apply antialiased font-sans overflow-hidden select-none;
-    background: radial-gradient(ellipse at 50% 0%, #1e1e1e 0%, #0f0f0f 60%);
+    background: radial-gradient(ellipse at 50% 0%, #282828 0%, #1a1a1a 70%);
     color: hsl(var(--foreground));
     min-height: 100vh;
   }

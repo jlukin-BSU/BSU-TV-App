@@ -1,22 +1,55 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Monitor, Tv, HdmiPort, Power, Loader2 } from "lucide-react";
+import { Power, Loader2 } from "lucide-react";
 import { useEffect } from "react";
+import { YouTubeLogo } from "./YouTubeLogo";
+import marketingIcon from "@assets/marketing_1774373576874.png";
+import tvIcon from "@assets/tv_1774374146860.png";
+import inputsIcon from "@assets/INPUTS_1774373576874.png";
 
 export type AppId = "signage" | "livetv" | "youtube" | "hdmi" | "screenoff";
 
 interface AppDef {
   id: AppId;
   label: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  renderIcon: () => React.ReactNode;
   overlayText: string;
 }
 
+const pngIcon = (src: string) => (
+  <img src={src} className="w-32 h-32 object-contain brightness-0 invert opacity-40 mb-10" alt="" />
+);
+
 export const APPS: AppDef[] = [
-  { id: "signage",   label: "News & Announcements", icon: Monitor, overlayText: "Launching News & Announcements..." },
-  { id: "livetv",    label: "Live TV",    icon: Tv,        overlayText: "Opening Live TV..."       },
-  { id: "youtube",   label: "YouTube",    icon: Monitor,   overlayText: "Opening YouTube..."       },
-  { id: "hdmi",      label: "TV Inputs",  icon: HdmiPort,  overlayText: "Switching to TV Inputs..."  },
-  { id: "screenoff", label: "Screen Off", icon: Power,     overlayText: "Going to sleep..."       },
+  {
+    id: "signage",
+    label: "News & Announcements",
+    renderIcon: () => pngIcon(marketingIcon),
+    overlayText: "Launching News & Announcements...",
+  },
+  {
+    id: "livetv",
+    label: "Live TV",
+    renderIcon: () => pngIcon(tvIcon),
+    overlayText: "Opening Live TV...",
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    renderIcon: () => <YouTubeLogo className="w-44 h-auto opacity-60 mb-10" focused={false} />,
+    overlayText: "Opening YouTube...",
+  },
+  {
+    id: "hdmi",
+    label: "TV Inputs",
+    renderIcon: () => pngIcon(inputsIcon),
+    overlayText: "Switching to TV Inputs...",
+  },
+  {
+    id: "screenoff",
+    label: "Screen Off",
+    renderIcon: () => <Power className="w-32 h-32 text-foreground/40 mb-10" strokeWidth={1.5} />,
+    overlayText: "Going to sleep...",
+  },
 ];
 
 interface TransitionOverlayProps {
@@ -89,8 +122,6 @@ export function ActiveAppScreen({ appId, onExit }: ActiveAppScreenProps) {
     return <div className="fixed inset-0 z-50 bg-black cursor-none" />;
   }
 
-  const Icon = app.icon;
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -99,7 +130,7 @@ export function ActiveAppScreen({ appId, onExit }: ActiveAppScreenProps) {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="fixed inset-0 z-40 bg-background flex flex-col items-center justify-center"
     >
-      <Icon className="w-40 h-40 text-primary/50 mb-10" strokeWidth={1} />
+      {app.renderIcon()}
 
       <h1 className="text-6xl font-bold text-foreground mb-4">
         {app.label}
