@@ -25,15 +25,15 @@ export function TvTile({ label, icon, isFocused, onClick, onHover, className = "
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         boxShadow: isFocused
-          ? "0 20px 48px rgba(0,0,0,0.45), 0 0 48px 12px rgba(220,40,65,0.18)"
-          : "0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.09)",
+          ? "0 1rem 2.5rem rgba(0,0,0,0.45), 0 0 2.5rem 0.6rem rgba(220,40,65,0.18)"
+          : "0 0.4rem 1.2rem rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.09)",
         background: isFocused
           ? "rgba(255,255,255,0.12)"
           : "rgba(255,255,255,0.07)",
       }}
       className={`
         relative flex flex-col items-center justify-center cursor-pointer
-        rounded-2xl h-[210px] w-full transition-colors duration-200
+        rounded-2xl h-[11rem] w-full transition-colors duration-200
         ${isFocused ? "z-10" : "z-0"}
         ${className}
       `}

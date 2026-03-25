@@ -34,6 +34,12 @@
 }
 
 @layer base {
+  html {
+    /* 1vw base: at 1920px → 19.2px/rem  |  at 3840px (4K) → 38.4px/rem
+       Every Tailwind rem utility scales proportionally with no other changes. */
+    font-size: 1vw;
+  }
+
   body {
     @apply antialiased font-sans overflow-hidden select-none;
     background: radial-gradient(ellipse at 50% 0%, #282828 0%, #1a1a1a 70%);
