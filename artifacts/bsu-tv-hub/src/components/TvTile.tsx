@@ -33,7 +33,7 @@ export function TvTile({ label, icon, isFocused, onClick, onHover, className = "
       }}
       className={`
         relative flex flex-col items-center justify-center cursor-pointer
-        rounded-2xl h-[11rem] w-full transition-colors duration-200
+        rounded-2xl h-[13rem] w-full transition-colors duration-200
         ${isFocused ? "z-10" : "z-0"}
         ${className}
       `}
