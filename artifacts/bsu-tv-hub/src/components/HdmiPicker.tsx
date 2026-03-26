@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import hdmiIcon from "@assets/Hdmi-Port--Streamline-Lucide_1774490467169.png";
+import hdmiIcon from "@assets/Hdmi-Port--Streamline-Lucide_1774491136778.png";
 
 const INPUTS = ["Wall HDMI 1", "Wall HDMI 2"] as const;
 type HdmiInput = typeof INPUTS[number];
