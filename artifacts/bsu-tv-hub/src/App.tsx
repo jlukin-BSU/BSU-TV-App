@@ -115,7 +115,7 @@ function HubScreen() {
         style={{
           right: "-4%",
           bottom: "-5%",
-          height: "76%",
+          height: "80%",
           width: "auto",
           opacity: 0.18,
           mixBlendMode: "screen",
