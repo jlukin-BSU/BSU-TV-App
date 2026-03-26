@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BSU TV Hub</string>
+    <string name="title_activity_main">BSU TV Hub</string>
+    <string name="package_name">edu.bridgew.tvhub</string>
+    <string name="custom_url_scheme">edu.bridgew.tvhub</string>
+</resources>
