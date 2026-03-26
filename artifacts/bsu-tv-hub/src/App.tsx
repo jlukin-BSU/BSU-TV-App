@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Power } from "lucide-react";
 import { TopBar } from "./components/TopBar";
@@ -8,6 +8,8 @@ import { TransitionOverlay, ActiveAppScreen, AppId } from "./components/AppScree
 import { HdmiPicker } from "./components/HdmiPicker";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
+import AppLauncher, { OPTISIGNS_PACKAGE } from "./plugins/app-launcher";
+import { Capacitor } from "@capacitor/core";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
@@ -66,6 +68,12 @@ const TILES: TileConfig[] = [
   },
 ];
 
+/** Apps that hand off to an external Android application rather than showing
+ *  an in-app screen. The hub stays alive underneath; pressing Home returns. */
+const EXTERNAL_APPS: Partial<Record<AppId, string>> = {
+  signage: OPTISIGNS_PACKAGE,
+};
+
 function HubScreen() {
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
@@ -74,7 +82,19 @@ function HubScreen() {
 
   const columns = 3;
 
-  const launchApp = useCallback((appId: AppId) => {
+  /** Reset hub state when we come back into focus from an external app. */
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        setTransitioningTo(null);
+        setActiveApp(null);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  const launchApp = useCallback(async (appId: AppId) => {
     if (transitioningTo || activeApp || hdmiPickerOpen) return;
 
     if (appId === "hdmi") {
@@ -87,6 +107,32 @@ function HubScreen() {
       return;
     }
 
+    const externalPackage = EXTERNAL_APPS[appId];
+
+    if (externalPackage) {
+      // Show the launching overlay for a moment, then hand off to the external app.
+      // The hub remains alive underneath; Home button brings it back.
+      setTransitioningTo(appId);
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await AppLauncher.launch({ packageName: externalPackage });
+        } catch (err) {
+          console.warn("AppLauncher failed:", err);
+        }
+        // Clear overlay — OptiSigns is now in the foreground
+        setTransitioningTo(null);
+      } else {
+        // In the browser (dev/preview), fall through to the placeholder screen
+        setTimeout(() => {
+          setActiveApp(appId);
+          setTransitioningTo(null);
+        }, 2500);
+      }
+      return;
+    }
+
+    // All other in-app screens (livetv, youtube, etc.)
     setTransitioningTo(appId);
     setTimeout(() => {
       setActiveApp(appId);
