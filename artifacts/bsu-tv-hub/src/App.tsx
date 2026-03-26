@@ -131,7 +131,7 @@ function HubScreen() {
           bottom: "-5%",
           height: "80%",
           width: "auto",
-          opacity: 0.08,
+          opacity: 0.20,
           mixBlendMode: "screen",
           filter: "url(#bsu-crimson)",
         }}
