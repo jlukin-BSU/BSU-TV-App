@@ -112,8 +112,25 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
                   })}
                 </div>
 
-                <p className="text-xl text-muted-foreground">
-                  Press <kbd className="font-sans font-semibold text-foreground bg-muted px-2 py-0.5 rounded border border-border">Esc</kbd> or Back to cancel
+                <p className="flex items-center gap-3 text-xl text-muted-foreground">
+                  Press
+                  {/* Android / TV remote back button */}
+                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-muted border border-border">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-6 h-6 text-foreground"
+                      aria-hidden="true"
+                    >
+                      <path d="M9 14L4 9l5-5" />
+                      <path d="M4 9h10.5a4.5 4.5 0 0 1 0 9H11" />
+                    </svg>
+                  </span>
+                  to cancel
                 </p>
               </>
             ) : (
