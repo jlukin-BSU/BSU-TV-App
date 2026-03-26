@@ -117,7 +117,7 @@ function HubScreen() {
           bottom: "-5%",
           height: "80%",
           width: "auto",
-          opacity: 0.50,
+          opacity: 0.35,
         }}
       />
 
