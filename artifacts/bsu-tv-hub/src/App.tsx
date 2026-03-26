@@ -5,12 +5,13 @@ import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
 import { TransitionOverlay, ActiveAppScreen, AppId } from "./components/AppScreens";
+import { HdmiPicker } from "./components/HdmiPicker";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
-import inputsIcon from "@assets/INPUTS_1774373576874.png";
+import hdmiTileIcon from "@assets/Hdmi-Port--Streamline-Lucide_1774490467169.png";
 import cupolaWatermark from "@assets/BSU_watermark_red_1774490194557.png";
 
 const queryClient = new QueryClient();
@@ -50,7 +51,7 @@ const TILES: TileConfig[] = [
     id: "hdmi",
     label: "TV Inputs",
     renderIcon: (focused) => (
-      <img src={inputsIcon} alt="TV Inputs" className={iconClass(focused)} />
+      <img src={hdmiTileIcon} alt="TV Inputs" className={iconClass(focused)} />
     ),
   },
   {
@@ -69,11 +70,17 @@ function HubScreen() {
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
+  const [hdmiPickerOpen, setHdmiPickerOpen] = useState(false);
 
   const columns = 3;
 
   const launchApp = useCallback((appId: AppId) => {
-    if (transitioningTo || activeApp) return;
+    if (transitioningTo || activeApp || hdmiPickerOpen) return;
+
+    if (appId === "hdmi") {
+      setHdmiPickerOpen(true);
+      return;
+    }
 
     if (appId === "screenoff") {
       setActiveApp("screenoff");
@@ -85,16 +92,16 @@ function HubScreen() {
       setActiveApp(appId);
       setTransitioningTo(null);
     }, 2500);
-  }, [transitioningTo, activeApp]);
+  }, [transitioningTo, activeApp, hdmiPickerOpen]);
 
   useTvIdle(
     300000,
     () => launchApp("signage"),
-    activeApp === null && transitioningTo === null
+    activeApp === null && transitioningTo === null && !hdmiPickerOpen
   );
 
   useDPad({
-    isActive: activeApp === null && transitioningTo === null,
+    isActive: activeApp === null && transitioningTo === null && !hdmiPickerOpen,
     currentIndex: focusIndex,
     maxIndex: TILES.length - 1,
     columns,
@@ -146,6 +153,7 @@ function HubScreen() {
         </div>
       </div>
 
+      <HdmiPicker open={hdmiPickerOpen} onClose={() => setHdmiPickerOpen(false)} />
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={() => setActiveApp(null)} />
     </div>
