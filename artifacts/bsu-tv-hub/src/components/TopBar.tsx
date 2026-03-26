@@ -16,14 +16,20 @@ export function TopBar() {
   }[weather?.condition || "sunny"];
 
   return (
-    <div className="absolute top-0 w-full px-12 py-8 flex justify-between items-end z-10">
+    <div className="absolute top-0 w-full z-10">
+      {/* Logo — adjust `top` and `left` to reposition independently */}
       <img
         src={bsuLogo}
         alt="Bridgewater State University"
-        className="h-36 w-auto object-contain brightness-0 invert translate-y-[2.25rem]"
+        className="absolute w-auto h-36 object-contain brightness-0 invert"
+        style={{ top: "2rem", left: "3rem" }}
       />
 
-      <div className="flex flex-col items-end">
+      {/* Clock / date / weather — adjust `top` and `right` to reposition independently */}
+      <div
+        className="absolute flex flex-col items-end"
+        style={{ top: "4.2rem", right: "3rem" }}
+      >
         <div className="text-6xl font-bold tracking-tight text-foreground">{timeDisplay}</div>
         <div className="flex items-center gap-4 mt-2">
           <span className="text-2xl text-foreground/80 font-medium">{dateDisplay}</span>
