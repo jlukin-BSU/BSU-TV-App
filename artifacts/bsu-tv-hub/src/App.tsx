@@ -41,17 +41,17 @@ const TILES: TileConfig[] = [
     ),
   },
   {
-    id: "youtube",
-    label: "YouTube",
-    renderIcon: (focused) => (
-      <YouTubeLogo className="w-28 h-auto" focused={focused} />
-    ),
-  },
-  {
     id: "hdmi",
     label: "TV Inputs",
     renderIcon: (focused) => (
       <img src={inputsIcon} alt="TV Inputs" className={iconClass(focused)} />
+    ),
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    renderIcon: (focused) => (
+      <YouTubeLogo className="w-28 h-auto" focused={focused} />
     ),
   },
   {
