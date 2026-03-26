@@ -8,7 +8,7 @@ import { TransitionOverlay, ActiveAppScreen, AppId } from "./components/AppScree
 import { HdmiPicker } from "./components/HdmiPicker";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
-import AppLauncher, { OPTISIGNS_PACKAGE } from "./plugins/app-launcher";
+import AppLauncher, { OPTISIGNS_PACKAGE, XFINITY_INTENT_URI } from "./plugins/app-launcher";
 import { Capacitor } from "@capacitor/core";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
@@ -69,9 +69,16 @@ const TILES: TileConfig[] = [
 ];
 
 /** Apps that hand off to an external Android application rather than showing
- *  an in-app screen. The hub stays alive underneath; pressing Home returns. */
-const EXTERNAL_APPS: Partial<Record<AppId, string>> = {
-  signage: OPTISIGNS_PACKAGE,
+ *  an in-app screen. The hub stays alive underneath; pressing Home returns.
+ *  Provide either packageName (default launch intent) or intentUri (Android intent URI). */
+interface ExternalApp {
+  packageName?: string;
+  intentUri?: string;
+}
+
+const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
+  signage: { packageName: OPTISIGNS_PACKAGE },
+  livetv:  { intentUri: XFINITY_INTENT_URI },
 };
 
 function HubScreen() {
@@ -116,7 +123,11 @@ function HubScreen() {
 
       if (Capacitor.isNativePlatform()) {
         try {
-          await AppLauncher.launch({ packageName: externalPackage });
+          if (externalPackage.intentUri) {
+            await AppLauncher.launchUri({ uri: externalPackage.intentUri });
+          } else if (externalPackage.packageName) {
+            await AppLauncher.launch({ packageName: externalPackage.packageName });
+          }
         } catch (err) {
           console.warn("AppLauncher failed:", err);
         }
