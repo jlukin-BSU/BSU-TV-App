@@ -11,6 +11,7 @@ import { useTvIdle } from "./hooks/use-idle";
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
 import inputsIcon from "@assets/INPUTS_1774373576874.png";
+import cupolaWatermark from "@assets/BSU_watermark_10k_1774487499448.png";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,22 @@ function HubScreen() {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
+
+      {/* Cupola watermark — mix-blend-mode:screen makes the black bg invisible */}
+      <img
+        src={cupolaWatermark}
+        alt=""
+        aria-hidden="true"
+        className="absolute pointer-events-none select-none"
+        style={{
+          right: "-4%",
+          bottom: "-5%",
+          height: "85%",
+          width: "auto",
+          opacity: 0.18,
+          mixBlendMode: "screen",
+        }}
+      />
 
       <TopBar />
 
