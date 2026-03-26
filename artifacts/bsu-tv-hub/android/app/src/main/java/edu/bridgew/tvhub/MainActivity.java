@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(android.os.Bundle savedInstanceState) {
         registerPlugin(TvInputPlugin.class);
         registerPlugin(AppLauncherPlugin.class);
+        registerPlugin(ScreenOffPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

@@ -3,7 +3,11 @@ import { useTime } from "@/hooks/use-time";
 import { useWeather } from "@/hooks/use-weather";
 import bsuLogo from "@assets/BSU_Logo_No_Cupola_trans_1774372116116.png";
 
-export function TopBar() {
+interface TopBarProps {
+  onLogoClick?: () => void;
+}
+
+export function TopBar({ onLogoClick }: TopBarProps = {}) {
   const { timeDisplay, dateDisplay } = useTime();
   const { data: weather, isLoading } = useWeather();
 
@@ -22,7 +26,8 @@ export function TopBar() {
         src={bsuLogo}
         alt="Bridgewater State University"
         className="absolute w-auto h-36 object-contain brightness-0 invert"
-        style={{ top: "2rem", left: "3rem" }}
+        style={{ top: "2rem", left: "3rem", cursor: "default" }}
+        onClick={onLogoClick}
       />
 
       {/* Clock / date / weather — adjust `top` and `right` to reposition independently */}

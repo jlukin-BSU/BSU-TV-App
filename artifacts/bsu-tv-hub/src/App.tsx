@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Power } from "lucide-react";
 import { TopBar } from "./components/TopBar";
@@ -6,9 +6,11 @@ import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
 import { TransitionOverlay, ActiveAppScreen, AppId } from "./components/AppScreens";
 import { HdmiPicker } from "./components/HdmiPicker";
+import { AdminSettings } from "./components/AdminSettings";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
 import AppLauncher, { OPTISIGNS_PACKAGE, XFINITY_INTENT_URI } from "./plugins/app-launcher";
+import ScreenOff, { loadScreenOffConfig } from "./plugins/screen-off";
 import { Capacitor } from "@capacitor/core";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
@@ -82,11 +84,18 @@ const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   youtube: { packageName: "com.google.android.youtube.tv" },
 };
 
+/** Number of logo clicks within the time window to open admin settings. */
+const ADMIN_CLICK_COUNT = 5;
+const ADMIN_CLICK_WINDOW_MS = 3000;
+
 function HubScreen() {
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
   const [hdmiPickerOpen, setHdmiPickerOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+
+  const logoClickTimes = useRef<number[]>([]);
 
   const columns = 3;
 
@@ -102,8 +111,20 @@ function HubScreen() {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
+  /** BSU logo click — counts 5 rapid clicks to open admin settings. */
+  const handleLogoClick = useCallback(() => {
+    const now = Date.now();
+    const times = logoClickTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
+    times.push(now);
+    logoClickTimes.current = times;
+    if (times.length >= ADMIN_CLICK_COUNT) {
+      logoClickTimes.current = [];
+      setAdminOpen(true);
+    }
+  }, []);
+
   const launchApp = useCallback(async (appId: AppId) => {
-    if (transitioningTo || activeApp || hdmiPickerOpen) return;
+    if (transitioningTo || activeApp || hdmiPickerOpen || adminOpen) return;
 
     if (appId === "hdmi") {
       setHdmiPickerOpen(true);
@@ -111,31 +132,40 @@ function HubScreen() {
     }
 
     if (appId === "screenoff") {
-      setActiveApp("screenoff");
+      if (Capacitor.isNativePlatform()) {
+        const { ip, psk } = loadScreenOffConfig();
+        try {
+          await ScreenOff.powerOff({ ip, psk });
+          // TV panel is now off — no need to show anything
+        } catch (err) {
+          console.warn("Screen off API failed, falling back to black screen:", err);
+          setActiveApp("screenoff");
+        }
+      } else {
+        // Browser preview: show black screen
+        setActiveApp("screenoff");
+      }
       return;
     }
 
-    const externalPackage = EXTERNAL_APPS[appId];
+    const externalApp = EXTERNAL_APPS[appId];
 
-    if (externalPackage) {
-      // Show the launching overlay for a moment, then hand off to the external app.
-      // The hub remains alive underneath; Home button brings it back.
+    if (externalApp) {
       setTransitioningTo(appId);
 
       if (Capacitor.isNativePlatform()) {
         try {
-          if (externalPackage.intentUri) {
-            await AppLauncher.launchUri({ uri: externalPackage.intentUri });
-          } else if (externalPackage.packageName) {
-            await AppLauncher.launch({ packageName: externalPackage.packageName });
+          if (externalApp.intentUri) {
+            await AppLauncher.launchUri({ uri: externalApp.intentUri });
+          } else if (externalApp.packageName) {
+            await AppLauncher.launch({ packageName: externalApp.packageName });
           }
         } catch (err) {
           console.warn("AppLauncher failed:", err);
         }
-        // Clear overlay — OptiSigns is now in the foreground
         setTransitioningTo(null);
       } else {
-        // In the browser (dev/preview), fall through to the placeholder screen
+        // Browser preview: show placeholder
         setTimeout(() => {
           setActiveApp(appId);
           setTransitioningTo(null);
@@ -144,22 +174,22 @@ function HubScreen() {
       return;
     }
 
-    // All other in-app screens (livetv, youtube, etc.)
+    // All other in-app screens
     setTransitioningTo(appId);
     setTimeout(() => {
       setActiveApp(appId);
       setTransitioningTo(null);
     }, 2500);
-  }, [transitioningTo, activeApp, hdmiPickerOpen]);
+  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen]);
 
   useTvIdle(
     300000,
     () => launchApp("signage"),
-    activeApp === null && transitioningTo === null && !hdmiPickerOpen
+    activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen
   );
 
   useDPad({
-    isActive: activeApp === null && transitioningTo === null && !hdmiPickerOpen,
+    isActive: activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen,
     currentIndex: focusIndex,
     maxIndex: TILES.length - 1,
     columns,
@@ -186,7 +216,7 @@ function HubScreen() {
         }}
       />
 
-      <TopBar />
+      <TopBar onLogoClick={handleLogoClick} />
 
       <div className="w-full max-w-7xl mx-auto px-16 mt-36 z-10">
         <div className="grid grid-cols-3 gap-10">
@@ -214,6 +244,7 @@ function HubScreen() {
       <HdmiPicker open={hdmiPickerOpen} onClose={() => setHdmiPickerOpen(false)} />
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={() => setActiveApp(null)} />
+      <AdminSettings open={adminOpen} onClose={() => setAdminOpen(false)} />
     </div>
   );
 }
