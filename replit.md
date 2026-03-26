@@ -21,7 +21,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ```text
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+│   ├── api-server/         # Express API server
+│   └── bsu-tv-hub/         # BSU Google TV / Android TV kiosk hub UI
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
@@ -49,6 +50,21 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
 
 ## Packages
+
+### `artifacts/bsu-tv-hub` (`@workspace/bsu-tv-hub`)
+
+React + Vite kiosk hub UI for Bridgewater State University Sony Bravia 4K commercial displays (Google TV / Android TV). Designed for D-pad navigation with no mouse/touch required.
+
+- **Font scaling**: `html { font-size: 1.25vw }` — doubles automatically at 4K
+- **Background**: charcoal radial gradient `#303030 → #222222`
+- **Accent color**: BSU red `rgb(196, 18, 48)` — tile glows and branding
+- **Cupola watermark**: pre-colored red PNG at 35% opacity, bottom-right anchored
+- **Tile layout**: 3-column grid (row 1: News & Announcements, Live TV, TV Inputs; row 2: YouTube, Screen Off)
+- **TopBar**: absolute-positioned logo (top-left) + clock/date/weather column (top-right) using Open-Meteo API
+- **Inactivity**: 5 min idle → auto-launches News & Announcements signage
+- **Screen Off**: black overlay, any key wakes
+- **HDMI Picker**: TV Inputs tile opens a D-pad-navigable modal with "Wall HDMI 1" / "Wall HDMI 2" options
+- Key files: `src/App.tsx`, `src/components/TopBar.tsx`, `src/components/TvTile.tsx`, `src/components/HdmiPicker.tsx`, `src/components/AppScreens.tsx`, `src/hooks/use-dpad.ts`, `src/hooks/use-idle.ts`
 
 ### `artifacts/api-server` (`@workspace/api-server`)
 
