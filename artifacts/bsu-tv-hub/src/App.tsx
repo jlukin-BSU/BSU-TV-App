@@ -111,9 +111,9 @@ function HubScreen() {
         <defs>
           <filter id="bsu-crimson">
             <feColorMatrix type="matrix" values="
-              1.0  0 0 0 0
-              0.04 0 0 0 0
-              0.04 0 0 0 0
+              0.77 0 0 0 0
+              0.07 0 0 0 0
+              0.19 0 0 0 0
               0    0 0 1 0
             " />
           </filter>
