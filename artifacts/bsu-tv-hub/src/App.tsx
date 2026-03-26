@@ -11,7 +11,7 @@ import { useTvIdle } from "./hooks/use-idle";
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
 import inputsIcon from "@assets/INPUTS_1774373576874.png";
-import cupolaWatermark from "@assets/BSU_watermark_10k_1774487499448.png";
+import cupolaWatermark from "@assets/BSU_watermark_red_1774490194557.png";
 
 const queryClient = new QueryClient();
 
@@ -106,20 +106,6 @@ function HubScreen() {
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
 
-      {/* SVG filter: maps each pixel's brightness to BSU crimson rgb(196,18,48) */}
-      <svg width="0" height="0" className="absolute" aria-hidden="true">
-        <defs>
-          <filter id="bsu-crimson">
-            <feColorMatrix type="matrix" values="
-              0.863 0 0 0 0
-              0.157 0 0 0 0
-              0.255 0 0 0 0
-              0     0 0 1 0
-            " />
-          </filter>
-        </defs>
-      </svg>
-
       {/* Cupola watermark */}
       <img
         src={cupolaWatermark}
@@ -132,7 +118,6 @@ function HubScreen() {
           height: "80%",
           width: "auto",
           opacity: 0.50,
-          filter: "url(#bsu-crimson)",
         }}
       />
 
