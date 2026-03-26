@@ -1,40 +1,77 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import hdmiIcon from "@assets/Hdmi-Port--Streamline-Lucide_1774491136778.png";
+import TvInput from "../plugins/tv-input";
+import { Capacitor } from "@capacitor/core";
 
-const INPUTS = ["Wall HDMI 1", "Wall HDMI 2"] as const;
-type HdmiInput = typeof INPUTS[number];
+const INPUTS = [
+  { label: "Wall HDMI 1", port: 3 },
+  { label: "Wall HDMI 2", port: 4 },
+] as const;
+
+type InputEntry = (typeof INPUTS)[number];
 
 interface HdmiPickerProps {
   open: boolean;
   onClose: () => void;
 }
 
+type State = "idle" | "switching" | "error";
+
 export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
   const [focusIndex, setFocusIndex] = useState(0);
-  const [selected, setSelected] = useState<HdmiInput | null>(null);
+  const [state, setState] = useState<State>("idle");
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
   useEffect(() => {
     if (!open) {
-      setSelected(null);
+      setState("idle");
+      setSelectedLabel(null);
+      setErrorMsg("");
       setFocusIndex(0);
+    }
+  }, [open]);
+
+  async function handleSelect(entry: InputEntry) {
+    setSelectedLabel(entry.label);
+    setState("switching");
+
+    if (!Capacitor.isNativePlatform()) {
+      setTimeout(() => onClose(), 2000);
       return;
     }
 
-    const handleKey = (e: KeyboardEvent) => {
-      if (selected) return;
+    try {
+      await TvInput.switchInput({ port: entry.port });
+      setTimeout(() => onClose(), 1500);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+      setState("error");
+      setTimeout(() => onClose(), 4000);
+    }
+  }
 
+  useEffect(() => {
+    if (!open || state !== "idle") return;
+
+    const handleKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();
-        setFocusIndex(i => Math.max(0, i - 1));
+        setFocusIndex((i) => Math.max(0, i - 1));
       } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
-        setFocusIndex(i => Math.min(INPUTS.length - 1, i + 1));
+        setFocusIndex((i) => Math.min(INPUTS.length - 1, i + 1));
       } else if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        setSelected(INPUTS[focusIndex]);
-      } else if (e.key === "Escape" || e.key === "Backspace" || e.key === "GoBack") {
+        handleSelect(INPUTS[focusIndex]);
+      } else if (
+        e.key === "Escape" ||
+        e.key === "Backspace" ||
+        e.key === "GoBack"
+      ) {
         e.preventDefault();
         onClose();
       }
@@ -42,13 +79,7 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [open, focusIndex, selected, onClose]);
-
-  useEffect(() => {
-    if (!selected) return;
-    const t = setTimeout(() => onClose(), 2000);
-    return () => clearTimeout(t);
-  }, [selected, onClose]);
+  }, [open, focusIndex, state, onClose]);
 
   return (
     <AnimatePresence>
@@ -60,7 +91,7 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: "rgba(20,20,20,0.85)", backdropFilter: "blur(12px)" }}
-          onClick={onClose}
+          onClick={state === "idle" ? onClose : undefined}
         >
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
@@ -68,21 +99,21 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
             exit={{ scale: 0.92, opacity: 0 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
             className="flex flex-col items-center gap-12"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
-            {!selected ? (
+            {state === "idle" && (
               <>
                 <h2 className="text-5xl font-bold text-foreground tracking-tight">
                   Select TV Input
                 </h2>
 
                 <div className="flex gap-10">
-                  {INPUTS.map((input, idx) => {
+                  {INPUTS.map((entry, idx) => {
                     const focused = focusIndex === idx;
                     return (
                       <button
-                        key={input}
-                        onClick={() => setSelected(input)}
+                        key={entry.label}
+                        onClick={() => handleSelect(entry)}
                         onMouseEnter={() => setFocusIndex(idx)}
                         className="flex flex-col items-center justify-center gap-6 rounded-2xl px-16 py-10 transition-all duration-200 outline-none cursor-pointer"
                         style={{
@@ -103,9 +134,11 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
                         />
                         <span
                           className="text-3xl font-semibold tracking-wide"
-                          style={{ color: focused ? "white" : "rgba(255,255,255,0.65)" }}
+                          style={{
+                            color: focused ? "white" : "rgba(255,255,255,0.65)",
+                          }}
                         >
-                          {input}
+                          {entry.label}
                         </span>
                       </button>
                     );
@@ -114,7 +147,6 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
 
                 <p className="flex items-center gap-3 text-xl text-muted-foreground">
                   Press
-                  {/* Android / TV remote back button */}
                   <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-muted border border-border">
                     <svg
                       viewBox="0 0 24 24"
@@ -133,7 +165,9 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
                   to cancel
                 </p>
               </>
-            ) : (
+            )}
+
+            {state === "switching" && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -141,8 +175,22 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
               >
                 <Loader2 className="w-20 h-20 text-primary animate-spin" />
                 <h2 className="text-5xl font-bold text-foreground">
-                  Switching to {selected}...
+                  Switching to {selectedLabel}…
                 </h2>
+              </motion.div>
+            )}
+
+            {state === "error" && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center gap-6 max-w-3xl text-center"
+              >
+                <AlertCircle className="w-20 h-20 text-destructive" />
+                <h2 className="text-4xl font-bold text-foreground">
+                  Could not switch input
+                </h2>
+                <p className="text-xl text-muted-foreground">{errorMsg}</p>
               </motion.div>
             )}
           </motion.div>
