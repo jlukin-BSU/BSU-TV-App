@@ -11,7 +11,7 @@ import { useTvIdle } from "./hooks/use-idle";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
-import hdmiTileIcon from "@assets/Hdmi-Port--Streamline-Lucide_1774490467169.png";
+import inputsIcon from "@assets/INPUTS_1774373576874.png";
 import cupolaWatermark from "@assets/BSU_watermark_red_1774490194557.png";
 
 const queryClient = new QueryClient();
@@ -51,7 +51,7 @@ const TILES: TileConfig[] = [
     id: "hdmi",
     label: "TV Inputs",
     renderIcon: (focused) => (
-      <img src={hdmiTileIcon} alt="TV Inputs" className={iconClass(focused)} />
+      <img src={inputsIcon} alt="TV Inputs" className={iconClass(focused)} />
     ),
   },
   {
