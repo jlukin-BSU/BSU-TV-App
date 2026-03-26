@@ -78,7 +78,7 @@ interface ExternalApp {
 
 const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   signage: { packageName: OPTISIGNS_PACKAGE },
-  livetv:  { intentUri: XFINITY_INTENT_URI },
+  livetv:  { packageName: "com.xfinity.cloudtvr" },
   youtube: { packageName: "com.google.android.youtube.tv" },
 };
 
