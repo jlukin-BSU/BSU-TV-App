@@ -106,7 +106,21 @@ function HubScreen() {
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
 
-      {/* Cupola watermark — mix-blend-mode:screen makes the black bg invisible */}
+      {/* SVG filter: maps each pixel's brightness to BSU crimson rgb(196,18,48) */}
+      <svg width="0" height="0" className="absolute" aria-hidden="true">
+        <defs>
+          <filter id="bsu-crimson">
+            <feColorMatrix type="matrix" values="
+              0.77 0    0    0 0
+              0.07 0    0    0 0
+              0.19 0    0    0 0
+              0    0    0    1 0
+            " />
+          </filter>
+        </defs>
+      </svg>
+
+      {/* Cupola watermark */}
       <img
         src={cupolaWatermark}
         alt=""
@@ -117,8 +131,9 @@ function HubScreen() {
           bottom: "-5%",
           height: "80%",
           width: "auto",
-          opacity: 0.18,
+          opacity: 0.35,
           mixBlendMode: "screen",
+          filter: "url(#bsu-crimson)",
         }}
       />
 
