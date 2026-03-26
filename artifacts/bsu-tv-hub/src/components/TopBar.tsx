@@ -30,7 +30,7 @@ export function TopBar() {
         className="absolute flex flex-col items-end"
         style={{ top: "4.2rem", right: "3rem" }}
       >
-        <div className="text-6xl font-bold tracking-tight text-foreground">{timeDisplay}</div>
+        <div className="text-[2.5rem] leading-none font-bold tracking-tight text-foreground">{timeDisplay}</div>
         <div className="flex items-center gap-4 mt-2">
           <span className="text-2xl text-foreground/80 font-medium">{dateDisplay}</span>
 
