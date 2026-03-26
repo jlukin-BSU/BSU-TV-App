@@ -111,10 +111,10 @@ function HubScreen() {
         <defs>
           <filter id="bsu-crimson">
             <feColorMatrix type="matrix" values="
-              0.863 0 0 0 0
-              0.157 0 0 0 0
-              0.255 0 0 0 0
-              0     0 0 1 0
+              1.0  0 0 0 0
+              0.04 0 0 0 0
+              0.04 0 0 0 0
+              0    0 0 1 0
             " />
           </filter>
         </defs>
@@ -131,7 +131,7 @@ function HubScreen() {
           bottom: "-5%",
           height: "80%",
           width: "auto",
-          opacity: 0.2,
+          opacity: 0.13,
           mixBlendMode: "screen",
           filter: "url(#bsu-crimson)",
         }}
