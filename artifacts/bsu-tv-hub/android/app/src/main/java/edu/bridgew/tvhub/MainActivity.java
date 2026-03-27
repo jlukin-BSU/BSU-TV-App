@@ -1,5 +1,6 @@
 package edu.bridgew.tvhub;
 
+import android.view.KeyEvent;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -13,14 +14,35 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Suppress the default Android back-button behavior (which would close or
-     * background the activity).  The WebView still receives the KEYCODE_BACK as
-     * a keydown "Escape" / "GoBack" event, so our JavaScript handlers manage
-     * all navigation — dismissing popups, opening admin settings, etc.
-     * This keeps the kiosk alive even if a user mashes the back button.
+     * Intercept KEYCODE_BACK at the earliest point in the event pipeline.
+     *
+     * Android swallows KEYCODE_BACK before it can reach the WebView as a
+     * JavaScript keydown event, so we manually inject a synthetic Escape
+     * keydown into the page on the ACTION_UP stroke and then consume the
+     * native event entirely (returning true prevents onBackPressed from
+     * firing and keeps the kiosk alive).
+     *
+     * All back/escape handling — dismiss overlays, admin 5-press trigger —
+     * lives in JavaScript and is driven by the synthetic event.
      */
     @Override
-    public void onBackPressed() {
-        // Intentionally do nothing — all back-button logic is handled in JS.
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                getBridge().getWebView().evaluateJavascript(
+                    "(function(){" +
+                    "  var e=new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true});" +
+                    "  window.dispatchEvent(e);" +
+                    "  document.dispatchEvent(e);" +
+                    "})()", null
+                );
+            }
+            return true; // consume both ACTION_DOWN and ACTION_UP
+        }
+        return super.dispatchKeyEvent(event);
     }
+
+    /** Safety net — should never be reached now that dispatchKeyEvent returns true for BACK. */
+    @Override
+    public void onBackPressed() {}
 }
