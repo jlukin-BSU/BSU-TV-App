@@ -141,10 +141,15 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
             onClick={e => e.stopPropagation()}
           >
             {/* Fixed header */}
-            <div className="flex items-center justify-between px-16 pt-12 pb-8 shrink-0">
-              <div className="flex items-center gap-5">
-                <Settings className="w-10 h-10 text-primary" />
-                <h2 className="text-4xl font-bold text-foreground">Admin Settings</h2>
+            <div className="flex items-center justify-between px-16 pt-12 pb-6 shrink-0">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-5">
+                  <Settings className="w-10 h-10 text-primary" />
+                  <h2 className="text-4xl font-bold text-foreground">Admin Settings</h2>
+                </div>
+                <p className="text-base text-muted-foreground pl-[60px]">
+                  To open: press the <span className="text-primary font-semibold">RED</span> button 5× on the remote &nbsp;·&nbsp; or press <kbd className="px-2 py-0.5 rounded bg-white/10 text-sm font-mono">Esc</kbd> 5× on a keyboard
+                </p>
               </div>
               <button
                 onClick={onClose}

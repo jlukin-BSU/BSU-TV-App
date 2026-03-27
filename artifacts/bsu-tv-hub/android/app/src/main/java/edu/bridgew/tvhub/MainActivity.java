@@ -1,6 +1,5 @@
 package edu.bridgew.tvhub;
 
-import android.os.Build;
 import android.util.Log;
 import android.view.KeyEvent;
 import com.getcapacitor.BridgeActivity;
@@ -18,32 +17,24 @@ public class MainActivity extends BridgeActivity {
     }
 
     // -------------------------------------------------------------------------
-    // Back-button handling
-    //
-    // Android TV remotes send KEYCODE_BACK.  The emulator D-pad may send it
-    // via dispatchKeyEvent OR onKeyDown/onKeyUp depending on the AVD config.
-    // We intercept at all three hooks to be safe, and synthesize an Escape
-    // keydown in the WebView so existing JS handlers fire unchanged.
+    // Back-button: intercept at every hook so the app never exits.
+    // Injects a synthetic Escape into the WebView so JS overlay-dismiss works.
     // -------------------------------------------------------------------------
 
     private void injectEscapeToWebView() {
         try {
             android.webkit.WebView wv = getBridge().getWebView();
             if (wv != null) {
-                Log.d(TAG, "injectEscapeToWebView: dispatching synthetic Escape");
                 wv.post(() -> wv.evaluateJavascript(
                     "(function(){" +
-                    "  var e=new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true,composed:true});" +
+                    "  var e=new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true});" +
                     "  document.dispatchEvent(e);" +
                     "  window.dispatchEvent(e);" +
-                    "  console.log('[BSU] Escape injected');" +
                     "})()", null
                 ));
-            } else {
-                Log.w(TAG, "injectEscapeToWebView: WebView is null");
             }
         } catch (Exception e) {
-            Log.e(TAG, "injectEscapeToWebView: exception", e);
+            Log.e(TAG, "injectEscapeToWebView failed", e);
         }
     }
 
@@ -51,44 +42,94 @@ public class MainActivity extends BridgeActivity {
         return keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE;
     }
 
-    /** Hook 1 — earliest point; works on most physical remotes. */
+    // -------------------------------------------------------------------------
+    // Color buttons: intercept KEYCODE_PROG_RED/GREEN/YELLOW/BLUE and fire a
+    // custom "tv:color" CustomEvent into the WebView.  No standard JS mapping
+    // exists for these keys so we must bridge them manually.
+    // -------------------------------------------------------------------------
+
+    private static final int KEYCODE_PROG_RED    = 183;
+    private static final int KEYCODE_PROG_GREEN  = 184;
+    private static final int KEYCODE_PROG_YELLOW = 185;
+    private static final int KEYCODE_PROG_BLUE   = 186;
+
+    private String colorName(int keyCode) {
+        switch (keyCode) {
+            case KEYCODE_PROG_RED:    return "red";
+            case KEYCODE_PROG_GREEN:  return "green";
+            case KEYCODE_PROG_YELLOW: return "yellow";
+            case KEYCODE_PROG_BLUE:   return "blue";
+            default:                  return null;
+        }
+    }
+
+    private void injectColorEventToWebView(String color) {
+        try {
+            android.webkit.WebView wv = getBridge().getWebView();
+            if (wv != null) {
+                Log.d(TAG, "injectColorEvent: " + color);
+                final String js =
+                    "window.dispatchEvent(new CustomEvent('tv:color',{detail:{color:'" + color + "'}}));";
+                wv.post(() -> wv.evaluateJavascript(js, null));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "injectColorEvent failed", e);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // dispatchKeyEvent — first in the chain; handles all cases
+    // -------------------------------------------------------------------------
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (isBackKey(event.getKeyCode())) {
-            Log.d(TAG, "dispatchKeyEvent BACK/ESC action=" + event.getAction());
+        int keyCode = event.getKeyCode();
+
+        if (isBackKey(keyCode)) {
+            Log.d(TAG, "dispatchKeyEvent BACK action=" + event.getAction());
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 injectEscapeToWebView();
             }
-            return true; // consume; prevents onBackPressed / system back nav
+            return true;
         }
+
+        String color = colorName(keyCode);
+        if (color != null) {
+            Log.d(TAG, "dispatchKeyEvent COLOR=" + color + " action=" + event.getAction());
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                injectColorEventToWebView(color);
+            }
+            return true; // consume so the system doesn't try to handle it
+        }
+
         return super.dispatchKeyEvent(event);
     }
 
-    /** Hook 2 — fallback for emulators that route through onKeyDown/Up. */
+    /** Fallback for emulator routing. */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (isBackKey(keyCode)) {
-            Log.d(TAG, "onKeyDown BACK/ESC");
-            return true;
-        }
+        if (isBackKey(keyCode) || colorName(keyCode) != null) return true;
         return super.onKeyDown(keyCode, event);
     }
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         if (isBackKey(keyCode)) {
-            Log.d(TAG, "onKeyUp BACK/ESC -> injecting Escape");
             injectEscapeToWebView();
+            return true;
+        }
+        String color = colorName(keyCode);
+        if (color != null) {
+            injectColorEventToWebView(color);
             return true;
         }
         return super.onKeyUp(keyCode, event);
     }
 
-    /** Hook 3 — final safety net so the app never exits via system back. */
+    /** Final safety net — never exit the kiosk. */
     @Override
     public void onBackPressed() {
-        Log.d(TAG, "onBackPressed -> injecting Escape");
+        Log.d(TAG, "onBackPressed");
         injectEscapeToWebView();
-        // do NOT call super — that would pop the activity stack / exit the app
     }
 }

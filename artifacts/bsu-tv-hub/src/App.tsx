@@ -159,22 +159,20 @@ function HubScreen() {
   }, [focusIndex]);
 
   /**
-   * Admin trigger: press the Back / Return button 5 times rapidly while the
-   * main hub screen is showing (no overlays open).
+   * Admin trigger — two paths, same 5-press / 3-second gate:
    *
-   * On Android TV the remote Back button goes through MainActivity.dispatchKeyEvent
-   * which fires via two independent channels:
-   *   1. A native Capacitor "backbutton" event on window
-   *   2. A synthetic KeyboardEvent("keydown", {key:"Escape"}) on document → bubbles to window
-   * In the browser, Escape key fires channel 2 directly.
-   * Either channel independently increments the same counter.
+   *   Physical TV remote  →  Press the RED color button 5 times rapidly.
+   *     MainActivity intercepts KEYCODE_PROG_RED and fires a CustomEvent
+   *     "tv:color" with detail.color === "red" on window.
+   *
+   *   Browser / keyboard  →  Press Escape 5 times rapidly (dev convenience).
    */
   useEffect(() => {
     const recordPress = () => {
       if (activeApp !== null || transitioningTo !== null || hdmiPickerOpen || adminOpen) return;
       const now = Date.now();
-      // Deduplicate: both Java channels may fire within ~50ms of the same physical
-      // button press — only count the first one.
+      // 100ms dedup window — prevents double-counting if multiple channels
+      // happen to fire for the same physical key press.
       if (now - adminLastPress.current < 100) return;
       adminLastPress.current = now;
       const times = adminKeyTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
@@ -186,15 +184,22 @@ function HubScreen() {
       }
     };
 
+    // Browser/keyboard path: Escape × 5
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") recordPress();
     };
 
+    // Android TV path: Red color button × 5 (CustomEvent fired by MainActivity)
+    const handleColorBtn = (e: Event) => {
+      const detail = (e as CustomEvent<{ color: string }>).detail;
+      if (detail?.color === "red") recordPress();
+    };
+
     window.addEventListener("keydown", handleKey);
-    window.addEventListener("backbutton", recordPress);
+    window.addEventListener("tv:color", handleColorBtn);
     return () => {
       window.removeEventListener("keydown", handleKey);
-      window.removeEventListener("backbutton", recordPress);
+      window.removeEventListener("tv:color", handleColorBtn);
     };
   }, [activeApp, transitioningTo, hdmiPickerOpen, adminOpen]);
 
