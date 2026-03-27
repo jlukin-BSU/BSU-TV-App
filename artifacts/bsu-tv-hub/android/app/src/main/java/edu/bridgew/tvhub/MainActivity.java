@@ -1,5 +1,6 @@
 package edu.bridgew.tvhub;
 
+import android.util.Log;
 import android.view.KeyEvent;
 import com.getcapacitor.BridgeActivity;
 
