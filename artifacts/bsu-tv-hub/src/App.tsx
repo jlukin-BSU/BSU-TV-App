@@ -292,8 +292,8 @@ function HubScreen() {
         style={{
           paddingTop: "14rem",
           paddingBottom: "2rem",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, transparent 8rem, black 11rem)",
-          maskImage: "linear-gradient(to bottom, transparent 0, transparent 8rem, black 11rem)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, transparent 10rem, black 13.5rem)",
+          maskImage: "linear-gradient(to bottom, transparent 0, transparent 10rem, black 13.5rem)",
         }}
       >
         <div className="w-full max-w-7xl mx-auto px-16">
