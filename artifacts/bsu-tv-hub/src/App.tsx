@@ -286,15 +286,19 @@ function HubScreen() {
 
       <TopBar onLogoClick={handleLogoClick} />
 
-      {/* Scrollable tile area — mask fades content behind the header, pt keeps tiles fully visible at rest */}
+      {/* Gradient shield — sits between tiles (z-10) and TopBar (z-30), hides tiles scrolling under header */}
+      <div
+        className="absolute inset-x-0 top-0 pointer-events-none z-20"
+        style={{
+          height: "15rem",
+          background: "linear-gradient(to bottom, hsl(0,0%,14%) 0%, hsl(0,0%,14%) 68%, transparent 100%)",
+        }}
+      />
+
+      {/* Scrollable tile area — no mask so backdrop-filter works correctly */}
       <div
         className="flex-1 overflow-y-auto z-10"
-        style={{
-          paddingTop: "14rem",
-          paddingBottom: "2rem",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, transparent 10rem, black 13.5rem)",
-          maskImage: "linear-gradient(to bottom, transparent 0, transparent 10rem, black 13.5rem)",
-        }}
+        style={{ paddingTop: "14rem", paddingBottom: "2rem" }}
       >
         <div className="w-full max-w-7xl mx-auto px-16">
           <div className="grid grid-cols-3 gap-8">

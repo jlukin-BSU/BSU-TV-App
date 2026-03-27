@@ -22,14 +22,14 @@ export function TvTile({ label, icon, isFocused, onClick, onHover, className = "
       }}
       transition={{ type: "spring", stiffness: 320, damping: 28 }}
       style={{
-        backdropFilter: "blur(20px) brightness(0.9)",
-        WebkitBackdropFilter: "blur(20px) brightness(0.9)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
         boxShadow: isFocused
-          ? "0 1rem 2.5rem rgba(0,0,0,0.5), 0 0 2.5rem 0.6rem rgba(220,40,65,0.22)"
-          : "0 0.4rem 1.2rem rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.13)",
+          ? "0 1rem 2.5rem rgba(0,0,0,0.45), 0 0 2.5rem 0.6rem rgba(220,40,65,0.18)"
+          : "0 0.4rem 1.2rem rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.09)",
         background: isFocused
-          ? "rgba(80,82,86,0.82)"
-          : "rgba(58,60,63,0.76)",
+          ? "rgba(255,255,255,0.12)"
+          : "rgba(255,255,255,0.07)",
       }}
       className={`
         relative flex flex-col items-center justify-center cursor-pointer
