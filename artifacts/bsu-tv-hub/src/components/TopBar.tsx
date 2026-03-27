@@ -21,14 +21,6 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
 
   return (
     <div className="absolute top-0 w-full z-30">
-      {/* Gradient shield — fully opaque across the header, short fade at the bottom */}
-      <div
-        className="absolute inset-x-0 top-0 pointer-events-none"
-        style={{
-          background: "linear-gradient(to bottom, #252525 0%, #252525 78%, transparent 100%)",
-          height: "16rem",
-        }}
-      />
       {/* Logo — adjust `top` and `left` to reposition independently */}
       <img
         src={bsuLogo}

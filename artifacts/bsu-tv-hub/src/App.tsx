@@ -286,8 +286,16 @@ function HubScreen() {
 
       <TopBar onLogoClick={handleLogoClick} />
 
-      {/* Scrollable tile area — pt clears the absolute TopBar (~11rem logo + 1rem gap) */}
-      <div className="flex-1 overflow-y-auto z-10" style={{ paddingTop: "12rem", paddingBottom: "2rem" }}>
+      {/* Scrollable tile area — mask fades content behind the header, pt keeps tiles fully visible at rest */}
+      <div
+        className="flex-1 overflow-y-auto z-10"
+        style={{
+          paddingTop: "14rem",
+          paddingBottom: "2rem",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, transparent 10rem, black 13.5rem)",
+          maskImage: "linear-gradient(to bottom, transparent 0, transparent 10rem, black 13.5rem)",
+        }}
+      >
         <div className="w-full max-w-7xl mx-auto px-16">
           <div className="grid grid-cols-3 gap-8">
             {visibleTiles.map((tile, idx) => (
