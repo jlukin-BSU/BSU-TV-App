@@ -286,12 +286,15 @@ function HubScreen() {
 
       <TopBar onLogoClick={handleLogoClick} />
 
-      {/* Header fade overlay — sits above tiles, below TopBar; paints background over tiles that scroll up */}
+      {/* Header fade overlay — mirrors the app background exactly so it's invisible at rest;
+          mask fades out tiles that scroll up behind the header without affecting tile blur */}
       <div
         className="absolute top-0 left-0 w-full pointer-events-none z-20"
         style={{
-          height: "13.5rem",
-          background: "linear-gradient(to bottom, #2e2e2e 0%, #2e2e2e 70%, transparent 100%)",
+          height: "15rem",
+          background: "radial-gradient(ellipse at 50% 0%, #303030 0%, #222222 70%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 65%, transparent 100%)",
+          maskImage: "linear-gradient(to bottom, black 0%, black 65%, transparent 100%)",
         }}
       />
 
