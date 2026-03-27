@@ -2,4 +2,9 @@ include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
 
-apply from: 'capacitor.settings.gradle'
+// capacitor-android is bundled locally at android/capacitor-android/ so the
+// project builds on any machine after downloading the ZIP from Replit.
+// We do NOT apply capacitor.settings.gradle here — cap sync regenerates that
+// file with an absolute Replit pnpm path that won't exist on a local computer.
+include ':capacitor-android'
+project(':capacitor-android').projectDir = new File('./capacitor-android')
