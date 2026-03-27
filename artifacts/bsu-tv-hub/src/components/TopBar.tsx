@@ -1,4 +1,4 @@
-import { Cloud, CloudLightning, CloudRain, Snowflake, Sun } from "lucide-react";
+import { Cloud, CloudLightning, CloudRain, Moon, Snowflake, Sun } from "lucide-react";
 import { useTime } from "@/hooks/use-time";
 import { useWeather } from "@/hooks/use-weather";
 import bsuLogo from "@assets/BSU_Logo_No_Cupola_trans_1774372116116.png";
@@ -13,11 +13,12 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
 
   const WeatherIcon = {
     sunny: Sun,
+    "clear-night": Moon,
     cloudy: Cloud,
     rainy: CloudRain,
     snowy: Snowflake,
     thunderstorm: CloudLightning,
-  }[weather?.condition || "sunny"];
+  }[weather?.condition || (new Date().getHours() >= 20 || new Date().getHours() < 6 ? "clear-night" : "sunny")];
 
   return (
     <div className="absolute top-0 w-full z-30">
