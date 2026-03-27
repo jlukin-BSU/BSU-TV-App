@@ -278,7 +278,7 @@ function HubScreen() {
         style={{
           right: "-4%",
           bottom: "-5%",
-          height: "78%",
+          height: "80%",
           width: "auto",
           opacity: 0.35,
         }}
@@ -286,29 +286,8 @@ function HubScreen() {
 
       <TopBar onLogoClick={handleLogoClick} />
 
-      {/* Header fade overlay — mirrors the app background exactly so it's invisible at rest;
-          mask fades out tiles that scroll up behind the header without affecting tile blur */}
-      <div
-        className="absolute top-0 left-0 w-full pointer-events-none z-20"
-        style={{
-          height: "15rem",
-          background: "radial-gradient(ellipse at 50% 0%, #303030 0%, #222222 70%)",
-          backgroundSize: "100% 100vh",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "0 0",
-          WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 75%, transparent 90%)",
-          maskImage: "linear-gradient(to bottom, black 0%, black 75%, transparent 90%)",
-        }}
-      />
-
-      {/* Scrollable tile area — no mask so backdrop-filter blur works on tiles */}
-      <div
-        className="flex-1 overflow-y-auto z-10"
-        style={{
-          paddingTop: "13.5rem",
-          paddingBottom: "2rem",
-        }}
-      >
+      {/* Scrollable tile area — pt clears the absolute TopBar (~11rem logo + 1rem gap) */}
+      <div className="flex-1 overflow-y-auto z-10" style={{ paddingTop: "12rem", paddingBottom: "2rem" }}>
         <div className="w-full max-w-7xl mx-auto px-16">
           <div className="grid grid-cols-3 gap-8">
             {visibleTiles.map((tile, idx) => (

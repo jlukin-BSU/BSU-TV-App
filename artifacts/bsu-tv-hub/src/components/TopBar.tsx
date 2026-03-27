@@ -1,4 +1,4 @@
-import { Cloud, CloudLightning, CloudRain, Moon, Snowflake, Sun } from "lucide-react";
+import { Cloud, CloudLightning, CloudRain, Snowflake, Sun } from "lucide-react";
 import { useTime } from "@/hooks/use-time";
 import { useWeather } from "@/hooks/use-weather";
 import bsuLogo from "@assets/BSU_Logo_No_Cupola_trans_1774372116116.png";
@@ -13,16 +13,15 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
 
   const WeatherIcon = {
     sunny: Sun,
-    "clear-night": Moon,
     cloudy: Cloud,
     rainy: CloudRain,
     snowy: Snowflake,
     thunderstorm: CloudLightning,
-  }[weather?.condition || (new Date().getHours() >= 20 || new Date().getHours() < 6 ? "clear-night" : "sunny")];
+  }[weather?.condition || "sunny"];
 
   return (
-    <div className="absolute top-0 w-full z-30">
-      {/* Logo */}
+    <div className="absolute top-0 w-full z-10">
+      {/* Logo — adjust `top` and `left` to reposition independently */}
       <img
         src={bsuLogo}
         alt="Bridgewater State University"
@@ -31,7 +30,7 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
         onClick={onLogoClick}
       />
 
-      {/* Clock / date / weather */}
+      {/* Clock / date / weather — adjust `top` and `right` to reposition independently */}
       <div
         className="absolute flex flex-col items-end"
         style={{ top: "4.2rem", right: "3rem" }}
@@ -39,7 +38,9 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
         <div className="text-[2.5rem] leading-none font-bold tracking-tight text-foreground">{timeDisplay}</div>
         <div className="flex items-center gap-4 mt-2">
           <span className="text-2xl text-foreground/80 font-medium">{dateDisplay}</span>
+
           <div className="h-6 w-[2px] bg-border rounded-full" />
+
           <div className="flex items-center gap-2 text-2xl font-medium text-foreground/90">
             {!isLoading && weather && (
               <>
