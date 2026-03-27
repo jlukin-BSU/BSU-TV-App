@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Power } from "lucide-react";
 import { TopBar } from "./components/TopBar";
@@ -115,9 +115,12 @@ function HubScreen() {
 
   const adminKeyTimes = useRef<number[]>([]);
 
-  const visibleTiles = ALL_TILES.filter(
-    t => settings.tileVisibility[t.id] !== false
+  const visibleTiles = useMemo(
+    () => ALL_TILES.filter(t => settings.tileVisibility[t.id] !== false),
+    [settings.tileVisibility]
   );
+
+  const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const columns = 3;
 
@@ -139,6 +142,12 @@ function HubScreen() {
       setFocusIndex(Math.max(0, visibleTiles.length - 1));
     }
   }, [visibleTiles.length, focusIndex]);
+
+  /** Scroll focused tile into view when navigating with D-pad. */
+  useEffect(() => {
+    const el = tileRefs.current[focusIndex];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [focusIndex]);
 
   /**
    * Admin trigger: press the Back / Return button 5 times rapidly while the
@@ -251,7 +260,7 @@ function HubScreen() {
   });
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
+    <div className="relative h-screen w-full flex flex-col overflow-hidden">
 
       {/* Cupola watermark */}
       <img
@@ -270,26 +279,30 @@ function HubScreen() {
 
       <TopBar onLogoClick={handleLogoClick} />
 
-      <div className="w-full max-w-7xl mx-auto px-16 mt-36 z-10">
-        <div className="grid grid-cols-3 gap-10">
-          {visibleTiles.map((tile, idx) => (
-            <TvTile
-              key={tile.id}
-              id={tile.id}
-              label={tile.label}
-              icon={tile.renderIcon(focusIndex === idx)}
-              isFocused={focusIndex === idx}
-              onClick={() => {
-                setFocusIndex(idx);
-                launchApp(tile.id);
-              }}
-              onHover={() => {
-                if (activeApp === null && transitioningTo === null) {
-                  setFocusIndex(idx);
-                }
-              }}
-            />
-          ))}
+      {/* Scrollable tile area — pt clears the absolute TopBar (~11rem logo + 1rem gap) */}
+      <div className="flex-1 overflow-y-auto z-10" style={{ paddingTop: "12rem", paddingBottom: "2rem" }}>
+        <div className="w-full max-w-7xl mx-auto px-16">
+          <div className="grid grid-cols-3 gap-8">
+            {visibleTiles.map((tile, idx) => (
+              <div key={tile.id} ref={el => { tileRefs.current[idx] = el; }}>
+                <TvTile
+                  id={tile.id}
+                  label={tile.label}
+                  icon={tile.renderIcon(focusIndex === idx)}
+                  isFocused={focusIndex === idx}
+                  onClick={() => {
+                    setFocusIndex(idx);
+                    launchApp(tile.id);
+                  }}
+                  onHover={() => {
+                    if (activeApp === null && transitioningTo === null) {
+                      setFocusIndex(idx);
+                    }
+                  }}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
