@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 interface WeatherData {
   temperature: number;
   condition: "sunny" | "cloudy" | "rainy" | "snowy" | "thunderstorm";
+  isDay: boolean;
 }
 
 function getWeatherCondition(code: number): WeatherData["condition"] {
@@ -21,7 +22,7 @@ export function useWeather() {
     queryFn: async (): Promise<WeatherData> => {
       // Bridgewater, MA coordinates
       const res = await fetch(
-        "https://api.open-meteo.com/v1/forecast?latitude=41.9901&longitude=-70.9748&current=temperature_2m,weathercode&temperature_unit=fahrenheit"
+        "https://api.open-meteo.com/v1/forecast?latitude=41.9901&longitude=-70.9748&current=temperature_2m,weathercode,is_day&temperature_unit=fahrenheit"
       );
       
       if (!res.ok) throw new Error("Failed to fetch weather");
@@ -31,6 +32,7 @@ export function useWeather() {
       return {
         temperature: Math.round(data.current.temperature_2m),
         condition: getWeatherCondition(data.current.weathercode),
+        isDay: data.current.is_day === 1,
       };
     },
     // Refetch every 15 minutes
