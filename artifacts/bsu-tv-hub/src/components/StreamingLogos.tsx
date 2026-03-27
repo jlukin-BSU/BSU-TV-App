@@ -1,5 +1,5 @@
-import netflixImg from "@assets/netflix_1774584663957.jpg";
-import huluImg    from "@assets/Hulu-logo_1774584663957.avif";
+import netflixImg from "@assets/netflix-wordmark.svg";
+import huluImg    from "@assets/Hulu-Logo.wine_1774624522900.png";
 import tubiImg    from "@assets/tubi_1774584663957.png";
 
 interface LogoProps {
@@ -11,7 +11,7 @@ export function NetflixLogo({ focused }: LogoProps) {
     <img
       src={netflixImg}
       alt="Netflix"
-      className="w-56 h-auto object-contain rounded-lg"
+      className="w-52 h-auto object-contain"
       style={{ opacity: focused ? 1 : 0.8 }}
       draggable={false}
     />
