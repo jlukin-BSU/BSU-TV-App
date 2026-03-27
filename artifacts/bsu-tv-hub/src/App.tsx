@@ -293,6 +293,9 @@ function HubScreen() {
         style={{
           height: "15rem",
           background: "radial-gradient(ellipse at 50% 0%, #303030 0%, #222222 70%)",
+          backgroundSize: "100% 100vh",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "0 0",
           WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 65%, transparent 100%)",
           maskImage: "linear-gradient(to bottom, black 0%, black 65%, transparent 100%)",
         }}
