@@ -25,6 +25,8 @@ const queryClient = new QueryClient();
 interface TileConfig {
   id: AppId;
   label: string;
+  /** When true the text label is omitted on the home screen tile (logo is the wordmark). */
+  logoOnly?: boolean;
   renderIcon: (focused: boolean) => React.ReactNode;
 }
 
@@ -73,16 +75,19 @@ const ALL_TILES: TileConfig[] = [
   {
     id: "hulu",
     label: "Hulu",
+    logoOnly: true,
     renderIcon: (focused) => <HuluLogo focused={focused} />,
   },
   {
     id: "netflix",
     label: "Netflix",
+    logoOnly: true,
     renderIcon: (focused) => <NetflixLogo focused={focused} />,
   },
   {
     id: "tubi",
     label: "Tubi",
+    logoOnly: true,
     renderIcon: (focused) => <TubiLogo focused={focused} />,
   },
 ];
@@ -289,7 +294,7 @@ function HubScreen() {
               <div key={tile.id} ref={el => { tileRefs.current[idx] = el; }}>
                 <TvTile
                   id={tile.id}
-                  label={tile.label}
+                  label={tile.logoOnly ? undefined : tile.label}
                   icon={tile.renderIcon(focusIndex === idx)}
                   isFocused={focusIndex === idx}
                   onClick={() => {

@@ -1,69 +1,43 @@
+import netflixImg from "@assets/netflix_1774584663957.jpg";
+import huluImg    from "@assets/Hulu-logo_1774584663957.avif";
+import tubiImg    from "@assets/tubi_1774584663957.png";
+
 interface LogoProps {
   focused: boolean;
 }
 
-/** Netflix — the iconic red "N" mark */
 export function NetflixLogo({ focused }: LogoProps) {
   return (
-    <svg
-      viewBox="0 0 40 60"
-      className="w-14 h-auto"
-      aria-hidden="true"
-      style={{ opacity: focused ? 1 : 0.7 }}
-    >
-      {/* Bold N shape — left bar, diagonal, right bar */}
-      <path
-        d="M 0 0 L 0 60 L 10 60 L 10 15 L 30 60 L 40 60 L 40 0 L 30 0 L 30 45 L 10 0 Z"
-        fill="#E50914"
-      />
-    </svg>
+    <img
+      src={netflixImg}
+      alt="Netflix"
+      className="w-56 h-auto object-contain rounded-lg"
+      style={{ opacity: focused ? 1 : 0.8 }}
+      draggable={false}
+    />
   );
 }
 
-/** Hulu — lowercase green wordmark */
 export function HuluLogo({ focused }: LogoProps) {
   return (
-    <svg
-      viewBox="0 0 108 40"
-      className="w-32 h-auto"
-      aria-hidden="true"
-      style={{ opacity: focused ? 1 : 0.7 }}
-    >
-      <text
-        x="2"
-        y="33"
-        fontFamily="'Helvetica Neue', 'Arial', sans-serif"
-        fontWeight="700"
-        fontSize="34"
-        fill="#1CE783"
-        letterSpacing="-0.5"
-      >
-        hulu
-      </text>
-    </svg>
+    <img
+      src={huluImg}
+      alt="Hulu"
+      className="w-40 h-auto object-contain"
+      style={{ opacity: focused ? 1 : 0.8 }}
+      draggable={false}
+    />
   );
 }
 
-/** Tubi — orange-red bold wordmark */
 export function TubiLogo({ focused }: LogoProps) {
   return (
-    <svg
-      viewBox="0 0 90 40"
-      className="w-28 h-auto"
-      aria-hidden="true"
-      style={{ opacity: focused ? 1 : 0.7 }}
-    >
-      <text
-        x="2"
-        y="33"
-        fontFamily="'Helvetica Neue', 'Arial Black', sans-serif"
-        fontWeight="900"
-        fontSize="34"
-        fill="#FA2D2D"
-        letterSpacing="-0.5"
-      >
-        tubi
-      </text>
-    </svg>
+    <img
+      src={tubiImg}
+      alt="Tubi"
+      className="w-36 h-auto object-contain rounded-xl"
+      style={{ opacity: focused ? 1 : 0.8 }}
+      draggable={false}
+    />
   );
 }
