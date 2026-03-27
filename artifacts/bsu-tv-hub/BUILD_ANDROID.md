@@ -8,6 +8,17 @@
 
 ---
 
+## Important: The JS bundle is pre-built in Replit
+
+The app UI (all the JavaScript) is compiled and bundled **inside Replit** before you download.
+You do **not** need to run `npm`, `pnpm`, or any build commands on your computer.
+Android Studio only compiles the Android/Java wrapper — the UI files are already included in the ZIP.
+
+**Whenever the UI changes in Replit, the agent will rebuild the bundle before telling you to download.**
+If you are not sure whether the bundle is current, ask the agent to run `cap:build` + `cap sync` first.
+
+---
+
 ## Step 1 — Download the project from Replit
 
 1. In Replit, click the **three-dot menu (⋯)** near the top of the left panel.
@@ -75,22 +86,49 @@ On Sony Bravia commercial displays you can also lock this via:
 
 ---
 
+## Step 6 — Configure Admin Settings (required first run)
+
+The Sony REST API (used for Screen Off and HDMI switching) requires the TV's IP address
+and Pre-Shared Key (PSK). These are stored locally on the TV and never leave it.
+
+**To open Admin Settings:**
+- Navigate to **any tile in the top row** with the D-pad
+- Press the **D-pad Up arrow 5 times quickly** → Admin panel opens
+- *(Alternatively: press Escape 5 times in a browser/dev environment)*
+
+**In Admin Settings, set:**
+- **Sony TV IP address** — find it at Settings → Network → Wi-Fi → Status
+- **Sony Pre-Shared Key (PSK)** — set this in Settings → Professional Settings → Remote Control → Pre-Shared Key on the TV
+
+---
+
 ## What happens at boot
 
 Once set as the home app, the hub will:
-- Launch automatically every time the TV powers on
+- Launch automatically every time the TV powers on (via boot receiver)
 - Come to the front whenever the Home button is pressed on the remote
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| Screen Off / HDMI switching silently does nothing | TV IP or PSK not set | Open Admin Settings and enter IP + PSK |
+| App tiles show a red error toast | The target app is not installed on the TV | Install the app from the Play Store / Google TV Store |
+| Admin panel won't open | Old APK without D-pad trigger | Rebuild with latest code from Replit |
+| App does not auto-start on boot | Not set as default home app | Settings → Apps → BSU TV Hub → Set as default |
 
 ---
 
 ## Updating the app after UI changes
 
-Whenever the UI is updated in Replit:
+Whenever the UI is updated in Replit, ask the agent to rebuild. Then:
 
 1. Download the project as a ZIP again (same steps as above).
 2. Open Android Studio — Gradle will sync the new files automatically.
 3. Build a new signed APK using the **same keystore file** as before.
-4. Reinstall via USB or ADB.
+4. Reinstall via USB or ADB (`adb install -r` upgrades without losing settings).
 
 ---
 
