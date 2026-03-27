@@ -296,8 +296,8 @@ function HubScreen() {
           backgroundSize: "100% 100vh",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "0 0",
-          WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 65%, transparent 100%)",
-          maskImage: "linear-gradient(to bottom, black 0%, black 65%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 75%, transparent 90%)",
+          maskImage: "linear-gradient(to bottom, black 0%, black 75%, transparent 90%)",
         }}
       />
 
