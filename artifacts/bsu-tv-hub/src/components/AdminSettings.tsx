@@ -26,7 +26,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       role="switch"
       aria-checked={value}
       onClick={() => onChange(!value)}
-      className="relative shrink-0 w-16 h-9 rounded-full transition-colors duration-200 outline-none focus:ring-2 focus:ring-primary"
+      className="relative shrink-0 w-16 h-9 rounded-full overflow-hidden transition-colors duration-200 outline-none focus:ring-2 focus:ring-primary"
       style={{ background: value ? "rgb(196,18,48)" : "rgba(255,255,255,0.15)" }}
     >
       <span
