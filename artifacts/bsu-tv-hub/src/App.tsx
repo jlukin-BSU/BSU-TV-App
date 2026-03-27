@@ -84,7 +84,7 @@ const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   youtube: { packageName: "com.google.android.youtube.tv" },
 };
 
-/** Number of logo clicks within the time window to open admin settings. */
+/** Number of Back/Return key presses within the time window to open admin settings. */
 const ADMIN_CLICK_COUNT = 5;
 const ADMIN_CLICK_WINDOW_MS = 3000;
 
@@ -95,7 +95,7 @@ function HubScreen() {
   const [hdmiPickerOpen, setHdmiPickerOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
 
-  const logoClickTimes = useRef<number[]>([]);
+  const adminKeyTimes = useRef<number[]>([]);
 
   const columns = 3;
 
@@ -111,14 +111,39 @@ function HubScreen() {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
-  /** BSU logo click — counts 5 rapid clicks to open admin settings. */
+  /**
+   * Admin trigger: press the Back / Return button 5 times rapidly while the
+   * main hub screen is showing (no overlays open).  On Android TV the back
+   * button arrives as an Escape keydown event inside the WebView.
+   */
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (activeApp !== null || transitioningTo !== null || hdmiPickerOpen || adminOpen) return;
+
+      const now = Date.now();
+      const times = adminKeyTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
+      times.push(now);
+      adminKeyTimes.current = times;
+
+      if (times.length >= ADMIN_CLICK_COUNT) {
+        adminKeyTimes.current = [];
+        setAdminOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [activeApp, transitioningTo, hdmiPickerOpen, adminOpen]);
+
+  /** Logo click still works for mouse/touch access during development. */
   const handleLogoClick = useCallback(() => {
     const now = Date.now();
-    const times = logoClickTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
+    const times = adminKeyTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
     times.push(now);
-    logoClickTimes.current = times;
+    adminKeyTimes.current = times;
     if (times.length >= ADMIN_CLICK_COUNT) {
-      logoClickTimes.current = [];
+      adminKeyTimes.current = [];
       setAdminOpen(true);
     }
   }, []);

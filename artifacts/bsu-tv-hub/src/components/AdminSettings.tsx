@@ -190,7 +190,7 @@ export function AdminSettings({ open, onClose }: AdminSettingsProps) {
             <div className="h-px bg-border" />
 
             <p className="text-lg text-muted-foreground text-center">
-              Access this panel by clicking the BSU logo 5 times.
+              Access this panel by pressing the Back / Return button 5 times rapidly on the main screen.
             </p>
           </motion.div>
         </motion.div>
