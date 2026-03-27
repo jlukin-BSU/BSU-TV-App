@@ -26,13 +26,10 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
       role="switch"
       aria-checked={value}
       onClick={() => onChange(!value)}
-      className="relative shrink-0 w-16 h-9 rounded-full overflow-hidden transition-colors duration-200 outline-none focus:ring-2 focus:ring-primary"
+      className={`flex shrink-0 items-center w-16 h-9 rounded-full p-1 transition-colors duration-200 outline-none focus:ring-2 focus:ring-primary ${value ? "justify-end" : "justify-start"}`}
       style={{ background: value ? "rgb(196,18,48)" : "rgba(255,255,255,0.15)" }}
     >
-      <span
-        className="absolute top-1.5 w-6 h-6 rounded-full bg-white shadow transition-all duration-200"
-        style={{ left: value ? "calc(100% - 34px)" : "6px" }}
-      />
+      <span className="w-7 h-7 rounded-full bg-white shadow-md block transition-none" />
     </button>
   );
 }
