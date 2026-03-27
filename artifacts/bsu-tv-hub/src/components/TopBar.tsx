@@ -20,24 +20,22 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
   }[weather?.condition || "sunny"];
 
   return (
-    <div
-      className="relative w-full flex items-center justify-between shrink-0 z-30"
-      style={{ padding: "2rem 3rem 1.5rem 3rem" }}
-    >
-      {/* BSU Logo */}
+    <div className="absolute top-0 w-full z-30">
+      {/* Logo */}
       <img
         src={bsuLogo}
         alt="Bridgewater State University"
-        className="w-auto h-36 object-contain brightness-0 invert"
-        style={{ cursor: "default" }}
+        className="absolute w-auto h-36 object-contain brightness-0 invert"
+        style={{ top: "2rem", left: "3rem", cursor: "default" }}
         onClick={onLogoClick}
       />
 
       {/* Clock / date / weather */}
-      <div className="flex flex-col items-end">
-        <div className="text-[2.5rem] leading-none font-bold tracking-tight text-foreground">
-          {timeDisplay}
-        </div>
+      <div
+        className="absolute flex flex-col items-end"
+        style={{ top: "4.2rem", right: "3rem" }}
+      >
+        <div className="text-[2.5rem] leading-none font-bold tracking-tight text-foreground">{timeDisplay}</div>
         <div className="flex items-center gap-4 mt-2">
           <span className="text-2xl text-foreground/80 font-medium">{dateDisplay}</span>
           <div className="h-6 w-[2px] bg-border rounded-full" />

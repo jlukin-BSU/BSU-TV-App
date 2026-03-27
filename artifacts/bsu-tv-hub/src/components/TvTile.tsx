@@ -28,8 +28,8 @@ export function TvTile({ label, icon, isFocused, onClick, onHover, className = "
           ? "0 1rem 2.5rem rgba(0,0,0,0.45), 0 0 2.5rem 0.6rem rgba(220,40,65,0.18)"
           : "0 0.4rem 1.2rem rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.09)",
         background: isFocused
-          ? "rgba(255,255,255,0.12)"
-          : "rgba(255,255,255,0.07)",
+          ? "rgba(255,255,255,0.14)"
+          : "rgba(255,255,255,0.09)",
       }}
       className={`
         relative flex flex-col items-center justify-center cursor-pointer

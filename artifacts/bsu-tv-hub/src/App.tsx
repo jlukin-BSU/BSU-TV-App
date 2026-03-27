@@ -286,10 +286,15 @@ function HubScreen() {
 
       <TopBar onLogoClick={handleLogoClick} />
 
-      {/* Scrollable tile area — TopBar is in flow so tiles can never scroll under the header */}
+      {/* Scrollable tile area — mask only activates for tiles that scroll into the header zone */}
       <div
         className="flex-1 overflow-y-auto z-10"
-        style={{ paddingTop: "1.5rem", paddingBottom: "2rem" }}
+        style={{
+          paddingTop: "12rem",
+          paddingBottom: "2rem",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, transparent 9rem, black 12rem)",
+          maskImage: "linear-gradient(to bottom, transparent 0, transparent 9rem, black 12rem)",
+        }}
       >
         <div className="w-full max-w-7xl mx-auto px-16">
           <div className="grid grid-cols-3 gap-8">
