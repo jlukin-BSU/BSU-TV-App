@@ -278,7 +278,7 @@ function HubScreen() {
         style={{
           right: "-4%",
           bottom: "-5%",
-          height: "72%",
+          height: "82%",
           width: "auto",
           opacity: 0.35,
         }}
