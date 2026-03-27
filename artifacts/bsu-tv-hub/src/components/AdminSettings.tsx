@@ -31,7 +31,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
     >
       <span
         className="absolute top-1.5 w-6 h-6 rounded-full bg-white shadow transition-all duration-200"
-        style={{ left: value ? "calc(100% - 30px)" : "6px" }}
+        style={{ left: value ? "calc(100% - 34px)" : "4px" }}
       />
     </button>
   );

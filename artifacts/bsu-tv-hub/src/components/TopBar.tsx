@@ -21,7 +21,7 @@ export function TopBar({ onLogoClick, opacity = 1 }: TopBarProps = {}) {
   }[weather?.condition || "sunny"];
 
   return (
-    <div className="absolute top-0 w-full z-10">
+    <div className="absolute top-0 w-full z-20">
       {/* Logo — adjust `top` and `left` to reposition independently */}
       <img
         src={bsuLogo}
