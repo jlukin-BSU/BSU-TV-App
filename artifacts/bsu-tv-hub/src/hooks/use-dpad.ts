@@ -10,9 +10,11 @@ interface DPadConfig {
   onNavigate: (newIndex: number) => void;
   onEnter: () => void;
   onBack: () => void;
+  /** Called when ArrowUp is pressed but focus is already on the top row (no movement possible). */
+  onBounceUp?: () => void;
 }
 
-export function useDPad({ isActive, currentIndex, maxIndex, columns, onNavigate, onEnter, onBack }: DPadConfig) {
+export function useDPad({ isActive, currentIndex, maxIndex, columns, onNavigate, onEnter, onBack, onBounceUp }: DPadConfig) {
   useEffect(() => {
     if (!isActive) return;
 
@@ -38,6 +40,9 @@ export function useDPad({ isActive, currentIndex, maxIndex, columns, onNavigate,
         case "ArrowUp":
           if (currentIndex - columns >= 0) {
             newIndex = currentIndex - columns;
+          } else {
+            // Already at top row — no movement, but fire the bounce callback.
+            onBounceUp?.();
           }
           handled = true;
           break;
@@ -72,5 +77,5 @@ export function useDPad({ isActive, currentIndex, maxIndex, columns, onNavigate,
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isActive, currentIndex, maxIndex, columns, onNavigate, onEnter, onBack]);
+  }, [isActive, currentIndex, maxIndex, columns, onNavigate, onEnter, onBack, onBounceUp]);
 }

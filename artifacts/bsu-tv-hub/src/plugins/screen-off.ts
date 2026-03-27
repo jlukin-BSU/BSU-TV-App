@@ -5,6 +5,11 @@ export interface ScreenOffPlugin {
     success: boolean;
     statusCode: number;
   }>;
+  /** Switch the active HDMI input via the Sony REST API (avContent/setPlayContent). */
+  switchHdmi(options: { ip: string; psk: string; port: number }): Promise<{
+    success: boolean;
+    statusCode: number;
+  }>;
   testConnection(options: { ip: string; psk: string }): Promise<{
     success: boolean;
     statusCode: number;

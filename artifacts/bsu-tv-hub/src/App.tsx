@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Power } from "lucide-react";
+import { Power, AlertCircle } from "lucide-react";
 import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
@@ -118,6 +118,7 @@ function HubScreen() {
   const [hdmiPickerOpen, setHdmiPickerOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [topBarOpacity, setTopBarOpacity] = useState(1);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   const adminKeyTimes = useRef<number[]>([]);
   const adminLastPress = useRef<number>(0);
@@ -159,49 +160,46 @@ function HubScreen() {
   }, [focusIndex]);
 
   /**
-   * Admin trigger — two paths, same 5-press / 3-second gate:
+   * Shared admin-trigger counter.
    *
-   *   Physical TV remote  →  Press the RED color button 5 times rapidly.
-   *     MainActivity intercepts KEYCODE_PROG_RED and fires a CustomEvent
-   *     "tv:color" with detail.color === "red" on window.
+   * Three independent paths all call this — whichever fires first wins:
+   *   1. D-pad Up × 5 while focus is on the top row (pure JS, works on TV immediately)
+   *   2. Red color button × 5 (requires latest APK with Java intercept)
+   *   3. Escape × 5 (browser / keyboard, dev convenience)
    *
-   *   Browser / keyboard  →  Press Escape 5 times rapidly (dev convenience).
+   * A 100 ms dedup window prevents double-counting when multiple channels
+   * fire for the same physical button press.
    */
+  const recordAdminPress = useCallback(() => {
+    if (activeApp !== null || transitioningTo !== null || hdmiPickerOpen || adminOpen) return;
+    const now = Date.now();
+    if (now - adminLastPress.current < 100) return;
+    adminLastPress.current = now;
+    const times = adminKeyTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
+    times.push(now);
+    adminKeyTimes.current = times;
+    if (times.length >= ADMIN_CLICK_COUNT) {
+      adminKeyTimes.current = [];
+      setAdminOpen(true);
+    }
+  }, [activeApp, transitioningTo, hdmiPickerOpen, adminOpen]);
+
+  // Keyboard / color-button listeners that share the same counter.
   useEffect(() => {
-    const recordPress = () => {
-      if (activeApp !== null || transitioningTo !== null || hdmiPickerOpen || adminOpen) return;
-      const now = Date.now();
-      // 100ms dedup window — prevents double-counting if multiple channels
-      // happen to fire for the same physical key press.
-      if (now - adminLastPress.current < 100) return;
-      adminLastPress.current = now;
-      const times = adminKeyTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
-      times.push(now);
-      adminKeyTimes.current = times;
-      if (times.length >= ADMIN_CLICK_COUNT) {
-        adminKeyTimes.current = [];
-        setAdminOpen(true);
-      }
-    };
-
-    // Browser/keyboard path: Escape × 5
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") recordPress();
+      if (e.key === "Escape") recordAdminPress();
     };
-
-    // Android TV path: Red color button × 5 (CustomEvent fired by MainActivity)
     const handleColorBtn = (e: Event) => {
       const detail = (e as CustomEvent<{ color: string }>).detail;
-      if (detail?.color === "red") recordPress();
+      if (detail?.color === "red") recordAdminPress();
     };
-
     window.addEventListener("keydown", handleKey);
     window.addEventListener("tv:color", handleColorBtn);
     return () => {
       window.removeEventListener("keydown", handleKey);
       window.removeEventListener("tv:color", handleColorBtn);
     };
-  }, [activeApp, transitioningTo, hdmiPickerOpen, adminOpen]);
+  }, [recordAdminPress]);
 
   /** Logo click still works for mouse/touch access during development. */
   const handleLogoClick = useCallback(() => {
@@ -242,6 +240,7 @@ function HubScreen() {
 
     if (externalApp) {
       setTransitioningTo(appId);
+      setLaunchError(null);
 
       if (Capacitor.isNativePlatform()) {
         try {
@@ -250,10 +249,16 @@ function HubScreen() {
           } else if (externalApp.packageName) {
             await AppLauncher.launch({ packageName: externalApp.packageName });
           }
+          // If we reach here, the launch intent was accepted — the other app
+          // is taking over, so we just reset the transition UI.
+          setTransitioningTo(null);
         } catch (err) {
-          console.warn("AppLauncher failed:", err);
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn("AppLauncher failed:", msg);
+          setTransitioningTo(null);
+          setLaunchError(msg);
+          setTimeout(() => setLaunchError(null), 5000);
         }
-        setTransitioningTo(null);
       } else {
         setTimeout(() => {
           setActiveApp(appId);
@@ -286,6 +291,7 @@ function HubScreen() {
     onNavigate: (idx) => setFocusIndex(idx),
     onEnter: () => launchApp(visibleTiles[focusIndex].id),
     onBack: () => {},
+    onBounceUp: recordAdminPress,
   });
 
   return (
@@ -342,6 +348,17 @@ function HubScreen() {
           </div>
         </div>
       </div>
+
+      {/* App-launch error toast — shown when a native app launch fails */}
+      {launchError && (
+        <div
+          className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-8 py-5 rounded-2xl text-white text-xl font-medium shadow-2xl"
+          style={{ background: "rgba(196,18,48,0.92)", backdropFilter: "blur(8px)", maxWidth: "72rem" }}
+        >
+          <AlertCircle className="shrink-0 w-8 h-8" />
+          <span>{launchError}</span>
+        </div>
+      )}
 
       <HdmiPicker open={hdmiPickerOpen} onClose={() => setHdmiPickerOpen(false)} />
       <TransitionOverlay appId={transitioningTo} />

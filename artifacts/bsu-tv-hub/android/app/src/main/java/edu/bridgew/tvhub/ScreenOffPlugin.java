@@ -71,6 +71,62 @@ public class ScreenOffPlugin extends Plugin {
         }).start();
     }
 
+    /**
+     * Switch the active HDMI input via the Sony BRAVIA REST API.
+     *
+     * Endpoint:  POST http://<ip>/sony/avContent
+     * Body:      {"method":"setPlayContent","id":101,"version":"1.0",
+     *             "params":[{"uri":"extInput:hdmi?port=<port>"}]}
+     *
+     * The port number matches the physical label on the TV (1 = HDMI 1, etc.).
+     */
+    @PluginMethod
+    public void switchHdmi(PluginCall call) {
+        String ip   = call.getString("ip",  "127.0.0.1");
+        String psk  = call.getString("psk", "");
+        Integer port = call.getInt("port");
+        if (port == null) {
+            call.reject("Missing required parameter: port");
+            return;
+        }
+
+        String body = "{\"method\":\"setPlayContent\",\"id\":101,\"version\":\"1.0\","
+                + "\"params\":[{\"uri\":\"extInput:hdmi?port=" + port + "\"}]}";
+
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL("http://" + ip + "/sony/avContent");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("X-Auth-PSK", psk);
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+
+                byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(bodyBytes);
+                }
+
+                int status = conn.getResponseCode();
+                Log.d(TAG, "switchHdmi port=" + port + " HTTP status: " + status);
+
+                JSObject result = new JSObject();
+                result.put("success", status >= 200 && status < 300);
+                result.put("statusCode", status);
+                call.resolve(result);
+
+            } catch (Exception e) {
+                Log.e(TAG, "switchHdmi failed", e);
+                call.reject("Network error: " + e.getMessage());
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }).start();
+    }
+
     /** Quick connectivity check — calls getSystemInformation to verify PSK is correct. */
     @PluginMethod
     public void testConnection(PluginCall call) {

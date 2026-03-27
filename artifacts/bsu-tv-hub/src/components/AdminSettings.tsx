@@ -148,7 +148,7 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
                   <h2 className="text-4xl font-bold text-foreground">Admin Settings</h2>
                 </div>
                 <p className="text-base text-muted-foreground pl-[60px]">
-                  To open: press the <span className="text-primary font-semibold">RED</span> button 5× on the remote &nbsp;·&nbsp; or press <kbd className="px-2 py-0.5 rounded bg-white/10 text-sm font-mono">Esc</kbd> 5× on a keyboard
+                  To open: navigate to the top row, then press <kbd className="px-2 py-0.5 rounded bg-white/10 text-sm font-mono">↑</kbd> 5× on the D-pad &nbsp;·&nbsp; or <kbd className="px-2 py-0.5 rounded bg-white/10 text-sm font-mono">Esc</kbd> 5× on a keyboard
                 </p>
               </div>
               <button
