@@ -115,10 +115,12 @@ function HubScreen() {
 
   const adminKeyTimes = useRef<number[]>([]);
 
-  const visibleTiles = useMemo(
-    () => ALL_TILES.filter(t => settings.tileVisibility[t.id] !== false),
-    [settings.tileVisibility]
-  );
+  const visibleTiles = useMemo(() => {
+    const order = settings.tileOrder ?? ALL_TILES.map(t => t.id);
+    return order
+      .map(id => ALL_TILES.find(t => t.id === id))
+      .filter((t): t is TileConfig => !!t && settings.tileVisibility[t.id] !== false);
+  }, [settings.tileVisibility, settings.tileOrder]);
 
   const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
 

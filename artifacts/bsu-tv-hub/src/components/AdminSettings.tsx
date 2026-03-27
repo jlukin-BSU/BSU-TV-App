@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, XCircle, Loader2, Settings, X } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Settings, X, ChevronUp, ChevronDown } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import ScreenOff, { loadScreenOffConfig, saveScreenOffConfig } from "../plugins/screen-off";
-import { HubSettings } from "../hooks/use-hub-settings";
+import { HubSettings, ALL_TILE_IDS } from "../hooks/use-hub-settings";
 
 interface TileInfo {
   id: string;
@@ -103,9 +103,24 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
     });
   }
 
+  function moveTile(id: string, direction: "up" | "down") {
+    const order = [...(settings.tileOrder ?? [...ALL_TILE_IDS])];
+    const idx = order.indexOf(id);
+    if (idx < 0) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= order.length) return;
+    [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
+    onSettingsChange({ ...settings, tileOrder: order });
+  }
+
   function setAutoSignage(enabled: boolean) {
     onSettingsChange({ ...settings, autoSignageEnabled: enabled });
   }
+
+  // Build ordered tile list using tileOrder, falling back to ALL_TILE_IDS
+  const orderedTiles = (settings.tileOrder ?? [...ALL_TILE_IDS])
+    .map(id => tiles.find(t => t.id === id))
+    .filter((t): t is TileInfo => !!t);
 
   return (
     <AnimatePresence>
@@ -166,20 +181,41 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
 
               <div className="h-px bg-border" />
 
-              {/* ── Tile Visibility ── */}
+              {/* ── Tile Visibility & Order ── */}
               <div className="flex flex-col gap-4">
                 <h3 className="text-2xl font-semibold text-foreground/80">Visible Tiles</h3>
                 <p className="text-lg text-muted-foreground">
-                  Choose which tiles appear on the home screen. Changes take effect immediately.
+                  Toggle tiles on/off and use the arrows to reorder them on the home screen.
                 </p>
                 <div className="flex flex-col gap-3">
-                  {tiles.map(tile => (
+                  {orderedTiles.map((tile, idx) => (
                     <div
                       key={tile.id}
-                      className="flex items-center justify-between gap-6 py-4 px-6 rounded-2xl"
+                      className="flex items-center gap-4 py-4 px-6 rounded-2xl"
                       style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                     >
-                      <span className="text-xl font-medium text-foreground">{tile.label}</span>
+                      {/* Reorder arrows */}
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          onClick={() => moveTile(tile.id, "up")}
+                          disabled={idx === 0}
+                          className="p-1 rounded-lg hover:bg-white/10 disabled:opacity-20 transition-colors"
+                          aria-label="Move up"
+                        >
+                          <ChevronUp className="w-5 h-5 text-foreground/70" />
+                        </button>
+                        <button
+                          onClick={() => moveTile(tile.id, "down")}
+                          disabled={idx === orderedTiles.length - 1}
+                          className="p-1 rounded-lg hover:bg-white/10 disabled:opacity-20 transition-colors"
+                          aria-label="Move down"
+                        >
+                          <ChevronDown className="w-5 h-5 text-foreground/70" />
+                        </button>
+                      </div>
+
+                      <span className="flex-1 text-xl font-medium text-foreground">{tile.label}</span>
+
                       <Toggle
                         value={settings.tileVisibility[tile.id] ?? true}
                         onChange={v => setTileVisible(tile.id, v)}
