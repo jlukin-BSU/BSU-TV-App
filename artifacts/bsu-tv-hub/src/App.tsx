@@ -120,6 +120,7 @@ function HubScreen() {
   const [topBarOpacity, setTopBarOpacity] = useState(1);
 
   const adminKeyTimes = useRef<number[]>([]);
+  const adminLastPress = useRef<number>(0);
 
   const visibleTiles = useMemo(() => {
     const order = settings.tileOrder ?? ALL_TILES.map(t => t.id);
@@ -159,27 +160,42 @@ function HubScreen() {
 
   /**
    * Admin trigger: press the Back / Return button 5 times rapidly while the
-   * main hub screen is showing (no overlays open).  On Android TV the back
-   * button arrives as an Escape keydown event inside the WebView.
+   * main hub screen is showing (no overlays open).
+   *
+   * On Android TV the remote Back button goes through MainActivity.dispatchKeyEvent
+   * which fires via two independent channels:
+   *   1. A native Capacitor "backbutton" event on window
+   *   2. A synthetic KeyboardEvent("keydown", {key:"Escape"}) on document → bubbles to window
+   * In the browser, Escape key fires channel 2 directly.
+   * Either channel independently increments the same counter.
    */
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+    const recordPress = () => {
       if (activeApp !== null || transitioningTo !== null || hdmiPickerOpen || adminOpen) return;
-
       const now = Date.now();
+      // Deduplicate: both Java channels may fire within ~50ms of the same physical
+      // button press — only count the first one.
+      if (now - adminLastPress.current < 100) return;
+      adminLastPress.current = now;
       const times = adminKeyTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
       times.push(now);
       adminKeyTimes.current = times;
-
       if (times.length >= ADMIN_CLICK_COUNT) {
         adminKeyTimes.current = [];
         setAdminOpen(true);
       }
     };
 
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") recordPress();
+    };
+
     window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
+    window.addEventListener("backbutton", recordPress);
+    return () => {
+      window.removeEventListener("keydown", handleKey);
+      window.removeEventListener("backbutton", recordPress);
+    };
   }, [activeApp, transitioningTo, hdmiPickerOpen, adminOpen]);
 
   /** Logo click still works for mouse/touch access during development. */

@@ -29,13 +29,25 @@ public class MainActivity extends BridgeActivity {
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
-                getBridge().getWebView().evaluateJavascript(
-                    "(function(){" +
-                    "  var e=new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true});" +
-                    "  window.dispatchEvent(e);" +
-                    "  document.dispatchEvent(e);" +
-                    "})()", null
-                );
+                // Create a fresh event object each time — a dispatched event cannot be reused.
+                // Dispatch to document so it bubbles up through document → window,
+                // reaching all window.addEventListener("keydown") handlers in the page.
+                try {
+                    // Channel 1: Capacitor's native bridge event — fires a "backbutton" event
+                    // on the window so JS can listen for it directly.
+                    getBridge().triggerJSEvent("backbutton", "window");
+
+                    // Channel 2: Synthetic keydown Escape injected into the document so that
+                    // all existing window.addEventListener("keydown") handlers also fire.
+                    android.webkit.WebView wv = getBridge().getWebView();
+                    if (wv != null) {
+                        wv.evaluateJavascript(
+                            "document.dispatchEvent(" +
+                            "  new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true})" +
+                            ");", null
+                        );
+                    }
+                } catch (Exception ignored) {}
             }
             return true; // consume both ACTION_DOWN and ACTION_UP
         }
