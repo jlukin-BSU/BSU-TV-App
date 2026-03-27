@@ -2,11 +2,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Power, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { YouTubeLogo } from "./YouTubeLogo";
+import { HuluLogo, NetflixLogo, TubiLogo } from "./StreamingLogos";
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
 import inputsIcon from "@assets/INPUTS_1774373576874.png";
 
-export type AppId = "signage" | "livetv" | "youtube" | "hdmi" | "screenoff";
+export type AppId = "signage" | "livetv" | "youtube" | "hdmi" | "screenoff" | "hulu" | "netflix" | "tubi";
 
 interface AppDef {
   id: AppId;
@@ -49,6 +50,24 @@ export const APPS: AppDef[] = [
     label: "Screen Off",
     renderIcon: () => <Power className="w-32 h-32 text-foreground/40 mb-10" strokeWidth={1.5} />,
     overlayText: "Going to sleep...",
+  },
+  {
+    id: "hulu",
+    label: "Hulu",
+    renderIcon: () => <HuluLogo focused={false} />,
+    overlayText: "Opening Hulu...",
+  },
+  {
+    id: "netflix",
+    label: "Netflix",
+    renderIcon: () => <NetflixLogo focused={false} />,
+    overlayText: "Opening Netflix...",
+  },
+  {
+    id: "tubi",
+    label: "Tubi",
+    renderIcon: () => <TubiLogo focused={false} />,
+    overlayText: "Opening Tubi...",
   },
 ];
 

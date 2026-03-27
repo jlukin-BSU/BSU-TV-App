@@ -4,12 +4,14 @@ import { Power } from "lucide-react";
 import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
+import { NetflixLogo, HuluLogo, TubiLogo } from "./components/StreamingLogos";
 import { TransitionOverlay, ActiveAppScreen, AppId } from "./components/AppScreens";
 import { HdmiPicker } from "./components/HdmiPicker";
 import { AdminSettings } from "./components/AdminSettings";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
-import AppLauncher, { OPTISIGNS_PACKAGE, XFINITY_INTENT_URI } from "./plugins/app-launcher";
+import { useHubSettings } from "./hooks/use-hub-settings";
+import AppLauncher, { OPTISIGNS_PACKAGE } from "./plugins/app-launcher";
 import ScreenOff, { loadScreenOffConfig } from "./plugins/screen-off";
 import { Capacitor } from "@capacitor/core";
 
@@ -29,7 +31,7 @@ interface TileConfig {
 const iconClass = (focused: boolean) =>
   `w-20 h-20 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`;
 
-const TILES: TileConfig[] = [
+const ALL_TILES: TileConfig[] = [
   {
     id: "signage",
     label: "News & Announcements",
@@ -68,20 +70,35 @@ const TILES: TileConfig[] = [
       />
     ),
   },
+  {
+    id: "hulu",
+    label: "Hulu",
+    renderIcon: (focused) => <HuluLogo focused={focused} />,
+  },
+  {
+    id: "netflix",
+    label: "Netflix",
+    renderIcon: (focused) => <NetflixLogo focused={focused} />,
+  },
+  {
+    id: "tubi",
+    label: "Tubi",
+    renderIcon: (focused) => <TubiLogo focused={focused} />,
+  },
 ];
 
-/** Apps that hand off to an external Android application rather than showing
- *  an in-app screen. The hub stays alive underneath; pressing Home returns.
- *  Provide either packageName (default launch intent) or intentUri (Android intent URI). */
 interface ExternalApp {
   packageName?: string;
   intentUri?: string;
 }
 
 const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
-  signage: { packageName: OPTISIGNS_PACKAGE },
-  livetv:  { packageName: "com.xfinity.cloudtvr" },
-  youtube: { packageName: "com.google.android.youtube.tv" },
+  signage:  { packageName: OPTISIGNS_PACKAGE },
+  livetv:   { packageName: "com.xfinity.cloudtvr" },
+  youtube:  { packageName: "com.google.android.youtube.tv" },
+  hulu:     { packageName: "com.hulu.plus" },
+  netflix:  { packageName: "com.netflix.ninja" },
+  tubi:     { packageName: "com.tubitv" },
 };
 
 /** Number of Back/Return key presses within the time window to open admin settings. */
@@ -89,6 +106,7 @@ const ADMIN_CLICK_COUNT = 5;
 const ADMIN_CLICK_WINDOW_MS = 3000;
 
 function HubScreen() {
+  const [settings, updateSettings] = useHubSettings();
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
@@ -96,6 +114,10 @@ function HubScreen() {
   const [adminOpen, setAdminOpen] = useState(false);
 
   const adminKeyTimes = useRef<number[]>([]);
+
+  const visibleTiles = ALL_TILES.filter(
+    t => settings.tileVisibility[t.id] !== false
+  );
 
   const columns = 3;
 
@@ -110,6 +132,13 @@ function HubScreen() {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
+
+  /** Keep focusIndex in bounds when tile list changes. */
+  useEffect(() => {
+    if (focusIndex >= visibleTiles.length) {
+      setFocusIndex(Math.max(0, visibleTiles.length - 1));
+    }
+  }, [visibleTiles.length, focusIndex]);
 
   /**
    * Admin trigger: press the Back / Return button 5 times rapidly while the
@@ -161,13 +190,11 @@ function HubScreen() {
         const { ip, psk } = loadScreenOffConfig();
         try {
           await ScreenOff.powerOff({ ip, psk });
-          // TV panel is now off — no need to show anything
         } catch (err) {
           console.warn("Screen off API failed, falling back to black screen:", err);
           setActiveApp("screenoff");
         }
       } else {
-        // Browser preview: show black screen
         setActiveApp("screenoff");
       }
       return;
@@ -190,7 +217,6 @@ function HubScreen() {
         }
         setTransitioningTo(null);
       } else {
-        // Browser preview: show placeholder
         setTimeout(() => {
           setActiveApp(appId);
           setTransitioningTo(null);
@@ -199,7 +225,6 @@ function HubScreen() {
       return;
     }
 
-    // All other in-app screens
     setTransitioningTo(appId);
     setTimeout(() => {
       setActiveApp(appId);
@@ -207,19 +232,21 @@ function HubScreen() {
     }, 2500);
   }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen]);
 
+  const hubIsIdle = activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen;
+
   useTvIdle(
     300000,
     () => launchApp("signage"),
-    activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen
+    hubIsIdle && settings.autoSignageEnabled
   );
 
   useDPad({
-    isActive: activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen,
+    isActive: hubIsIdle,
     currentIndex: focusIndex,
-    maxIndex: TILES.length - 1,
+    maxIndex: visibleTiles.length - 1,
     columns,
     onNavigate: (idx) => setFocusIndex(idx),
-    onEnter: () => launchApp(TILES[focusIndex].id),
+    onEnter: () => launchApp(visibleTiles[focusIndex].id),
     onBack: () => {},
   });
 
@@ -245,7 +272,7 @@ function HubScreen() {
 
       <div className="w-full max-w-7xl mx-auto px-16 mt-36 z-10">
         <div className="grid grid-cols-3 gap-10">
-          {TILES.map((tile, idx) => (
+          {visibleTiles.map((tile, idx) => (
             <TvTile
               key={tile.id}
               id={tile.id}
@@ -269,7 +296,13 @@ function HubScreen() {
       <HdmiPicker open={hdmiPickerOpen} onClose={() => setHdmiPickerOpen(false)} />
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={() => setActiveApp(null)} />
-      <AdminSettings open={adminOpen} onClose={() => setAdminOpen(false)} />
+      <AdminSettings
+        open={adminOpen}
+        onClose={() => setAdminOpen(false)}
+        settings={settings}
+        onSettingsChange={updateSettings}
+        tiles={ALL_TILES.map(t => ({ id: t.id, label: t.label }))}
+      />
     </div>
   );
 }
