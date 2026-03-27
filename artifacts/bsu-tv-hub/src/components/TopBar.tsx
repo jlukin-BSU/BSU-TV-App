@@ -20,7 +20,15 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
   }[weather?.condition || "sunny"];
 
   return (
-    <div className="absolute top-0 w-full z-10">
+    <div className="absolute top-0 w-full z-30">
+      {/* Gradient shield — tiles fade out before reaching the header zone */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "linear-gradient(to bottom, rgba(34,34,34,0.96) 0%, rgba(34,34,34,0.85) 55%, transparent 100%)",
+          height: "14rem",
+        }}
+      />
       {/* Logo — adjust `top` and `left` to reposition independently */}
       <img
         src={bsuLogo}

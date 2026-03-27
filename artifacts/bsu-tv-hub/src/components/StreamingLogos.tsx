@@ -11,8 +11,11 @@ export function NetflixLogo({ focused }: LogoProps) {
     <img
       src={netflixImg}
       alt="Netflix"
-      className="w-56 h-auto object-contain rounded-lg"
-      style={{ opacity: focused ? 1 : 0.8 }}
+      className="w-64 h-auto object-contain"
+      style={{
+        opacity: focused ? 1 : 0.85,
+        mixBlendMode: "screen",
+      }}
       draggable={false}
     />
   );
