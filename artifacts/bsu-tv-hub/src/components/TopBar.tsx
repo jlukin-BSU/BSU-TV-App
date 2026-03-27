@@ -21,12 +21,12 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
 
   return (
     <div className="absolute top-0 w-full z-30">
-      {/* Gradient shield — tiles fade out before reaching the header zone */}
+      {/* Gradient shield — fully opaque across the header, short fade at the bottom */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-x-0 top-0 pointer-events-none"
         style={{
-          background: "linear-gradient(to bottom, rgba(34,34,34,0.96) 0%, rgba(34,34,34,0.85) 55%, transparent 100%)",
-          height: "14rem",
+          background: "linear-gradient(to bottom, #252525 0%, #252525 78%, transparent 100%)",
+          height: "16rem",
         }}
       />
       {/* Logo — adjust `top` and `left` to reposition independently */}
