@@ -5,9 +5,10 @@ import bsuLogo from "@assets/BSU_Logo_No_Cupola_trans_1774372116116.png";
 
 interface TopBarProps {
   onLogoClick?: () => void;
+  opacity?: number;
 }
 
-export function TopBar({ onLogoClick }: TopBarProps = {}) {
+export function TopBar({ onLogoClick, opacity = 1 }: TopBarProps = {}) {
   const { timeDisplay, dateDisplay } = useTime();
   const { data: weather, isLoading } = useWeather();
 
@@ -26,14 +27,14 @@ export function TopBar({ onLogoClick }: TopBarProps = {}) {
         src={bsuLogo}
         alt="Bridgewater State University"
         className="absolute w-auto h-36 object-contain brightness-0 invert"
-        style={{ top: "2rem", left: "3rem", cursor: "default" }}
+        style={{ top: "2rem", left: "3rem", cursor: "default", opacity, transition: "opacity 150ms ease" }}
         onClick={onLogoClick}
       />
 
       {/* Clock / date / weather — adjust `top` and `right` to reposition independently */}
       <div
         className="absolute flex flex-col items-end"
-        style={{ top: "4.2rem", right: "3rem" }}
+        style={{ top: "4.2rem", right: "3rem", opacity, transition: "opacity 150ms ease" }}
       >
         <div className="text-[2.5rem] leading-none font-bold tracking-tight text-foreground">{timeDisplay}</div>
         <div className="flex items-center gap-4 mt-2">

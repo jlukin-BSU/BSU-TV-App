@@ -117,6 +117,7 @@ function HubScreen() {
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
   const [hdmiPickerOpen, setHdmiPickerOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [topBarOpacity, setTopBarOpacity] = useState(1);
 
   const adminKeyTimes = useRef<number[]>([]);
 
@@ -284,10 +285,18 @@ function HubScreen() {
         }}
       />
 
-      <TopBar onLogoClick={handleLogoClick} />
+      <TopBar onLogoClick={handleLogoClick} opacity={topBarOpacity} />
 
       {/* Scrollable tile area — pt clears the absolute TopBar (~11rem logo + 1rem gap) */}
-      <div className="flex-1 overflow-y-auto z-10" style={{ paddingTop: "12rem", paddingBottom: "2rem" }}>
+      <div
+        className="flex-1 overflow-y-auto z-10"
+        style={{ paddingTop: "12rem", paddingBottom: "2rem" }}
+        onScroll={(e) => {
+          const scrollY = (e.currentTarget as HTMLDivElement).scrollTop;
+          const opacity = Math.max(0, 1 - scrollY / 80);
+          setTopBarOpacity(opacity);
+        }}
+      >
         <div className="w-full max-w-7xl mx-auto px-16">
           <div className="grid grid-cols-3 gap-8">
             {visibleTiles.map((tile, idx) => (
