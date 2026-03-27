@@ -1,10 +1,13 @@
 package edu.bridgew.tvhub;
 
+import android.os.Build;
 import android.util.Log;
 import android.view.KeyEvent;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+
+    private static final String TAG = "BSUTVHub";
 
     @Override
     public void onCreate(android.os.Bundle savedInstanceState) {
@@ -14,48 +17,78 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
     }
 
-    /**
-     * Intercept KEYCODE_BACK at the earliest point in the event pipeline.
-     *
-     * Android swallows KEYCODE_BACK before it can reach the WebView as a
-     * JavaScript keydown event, so we manually inject a synthetic Escape
-     * keydown into the page on the ACTION_UP stroke and then consume the
-     * native event entirely (returning true prevents onBackPressed from
-     * firing and keeps the kiosk alive).
-     *
-     * All back/escape handling — dismiss overlays, admin 5-press trigger —
-     * lives in JavaScript and is driven by the synthetic event.
-     */
+    // -------------------------------------------------------------------------
+    // Back-button handling
+    //
+    // Android TV remotes send KEYCODE_BACK.  The emulator D-pad may send it
+    // via dispatchKeyEvent OR onKeyDown/onKeyUp depending on the AVD config.
+    // We intercept at all three hooks to be safe, and synthesize an Escape
+    // keydown in the WebView so existing JS handlers fire unchanged.
+    // -------------------------------------------------------------------------
+
+    private void injectEscapeToWebView() {
+        try {
+            android.webkit.WebView wv = getBridge().getWebView();
+            if (wv != null) {
+                Log.d(TAG, "injectEscapeToWebView: dispatching synthetic Escape");
+                wv.post(() -> wv.evaluateJavascript(
+                    "(function(){" +
+                    "  var e=new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true,composed:true});" +
+                    "  document.dispatchEvent(e);" +
+                    "  window.dispatchEvent(e);" +
+                    "  console.log('[BSU] Escape injected');" +
+                    "})()", null
+                ));
+            } else {
+                Log.w(TAG, "injectEscapeToWebView: WebView is null");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "injectEscapeToWebView: exception", e);
+        }
+    }
+
+    private boolean isBackKey(int keyCode) {
+        return keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE;
+    }
+
+    /** Hook 1 — earliest point; works on most physical remotes. */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+        if (isBackKey(event.getKeyCode())) {
+            Log.d(TAG, "dispatchKeyEvent BACK/ESC action=" + event.getAction());
             if (event.getAction() == KeyEvent.ACTION_UP) {
-                // Create a fresh event object each time — a dispatched event cannot be reused.
-                // Dispatch to document so it bubbles up through document → window,
-                // reaching all window.addEventListener("keydown") handlers in the page.
-                try {
-                    // Channel 1: Capacitor's native bridge event — fires a "backbutton" event
-                    // on the window so JS can listen for it directly.
-                    getBridge().triggerJSEvent("backbutton", "window");
-
-                    // Channel 2: Synthetic keydown Escape injected into the document so that
-                    // all existing window.addEventListener("keydown") handlers also fire.
-                    android.webkit.WebView wv = getBridge().getWebView();
-                    if (wv != null) {
-                        wv.evaluateJavascript(
-                            "document.dispatchEvent(" +
-                            "  new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true})" +
-                            ");", null
-                        );
-                    }
-                } catch (Exception ignored) {}
+                injectEscapeToWebView();
             }
-            return true; // consume both ACTION_DOWN and ACTION_UP
+            return true; // consume; prevents onBackPressed / system back nav
         }
         return super.dispatchKeyEvent(event);
     }
 
-    /** Safety net — should never be reached now that dispatchKeyEvent returns true for BACK. */
+    /** Hook 2 — fallback for emulators that route through onKeyDown/Up. */
     @Override
-    public void onBackPressed() {}
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (isBackKey(keyCode)) {
+            Log.d(TAG, "onKeyDown BACK/ESC");
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (isBackKey(keyCode)) {
+            Log.d(TAG, "onKeyUp BACK/ESC -> injecting Escape");
+            injectEscapeToWebView();
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    /** Hook 3 — final safety net so the app never exits via system back. */
+    @Override
+    public void onBackPressed() {
+        Log.d(TAG, "onBackPressed -> injecting Escape");
+        injectEscapeToWebView();
+        // do NOT call super — that would pop the activity stack / exit the app
+    }
 }
