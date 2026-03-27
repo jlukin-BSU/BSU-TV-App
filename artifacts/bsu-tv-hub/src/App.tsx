@@ -278,7 +278,7 @@ function HubScreen() {
         style={{
           right: "-4%",
           bottom: "-5%",
-          height: "80%",
+          height: "72%",
           width: "auto",
           opacity: 0.35,
         }}
@@ -290,10 +290,10 @@ function HubScreen() {
       <div
         className="flex-1 overflow-y-auto z-10"
         style={{
-          paddingTop: "12rem",
+          paddingTop: "13.5rem",
           paddingBottom: "2rem",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, transparent 9rem, black 12rem)",
-          maskImage: "linear-gradient(to bottom, transparent 0, transparent 9rem, black 12rem)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, transparent 10.5rem, black 13.5rem)",
+          maskImage: "linear-gradient(to bottom, transparent 0, transparent 10.5rem, black 13.5rem)",
         }}
       >
         <div className="w-full max-w-7xl mx-auto px-16">
