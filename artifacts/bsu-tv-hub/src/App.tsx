@@ -7,6 +7,7 @@ import { YouTubeLogo } from "./components/YouTubeLogo";
 import { NetflixLogo, HuluLogo, TubiLogo } from "./components/StreamingLogos";
 import { TransitionOverlay, ActiveAppScreen, AppId } from "./components/AppScreens";
 import { AdminSettings } from "./components/AdminSettings";
+import { HdmiPicker } from "./components/HdmiPicker";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
 import { useHubSettings } from "./hooks/use-hub-settings";
@@ -99,7 +100,6 @@ interface ExternalApp {
 const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   signage:  { packageName: OPTISIGNS_PACKAGE },
   livetv:   { packageName: "com.plexapp.android" },
-  hdmi:     { packageName: "com.sony.dtv.tvxcan" },
   youtube:  { packageName: "com.google.android.youtube.tv" },
   hulu:     { packageName: "com.hulu.plus" },
   netflix:  { packageName: "com.netflix.ninja" },
@@ -115,6 +115,7 @@ function HubScreen() {
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
+  const [hdmiPickerOpen, setHdmiPickerOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [topBarOpacity, setTopBarOpacity] = useState(1);
   const [launchError, setLaunchError] = useState<string | null>(null);
@@ -182,7 +183,7 @@ function HubScreen() {
    * fire for the same physical button press.
    */
   const recordAdminPress = useCallback(() => {
-    if (activeApp !== null || transitioningTo !== null || adminOpen) return;
+    if (activeApp !== null || transitioningTo !== null || hdmiPickerOpen || adminOpen) return;
     const now = Date.now();
     if (now - adminLastPress.current < 100) return;
     adminLastPress.current = now;
@@ -193,7 +194,7 @@ function HubScreen() {
       adminKeyTimes.current = [];
       setAdminOpen(true);
     }
-  }, [activeApp, transitioningTo, adminOpen]);
+  }, [activeApp, transitioningTo, hdmiPickerOpen, adminOpen]);
 
   // Keyboard / color-button listeners that share the same counter.
   useEffect(() => {
@@ -225,7 +226,12 @@ function HubScreen() {
   }, []);
 
   const launchApp = useCallback(async (appId: AppId) => {
-    if (transitioningTo || activeApp || adminOpen) return;
+    if (transitioningTo || activeApp || hdmiPickerOpen || adminOpen) return;
+
+    if (appId === "hdmi") {
+      setHdmiPickerOpen(true);
+      return;
+    }
 
     if (appId === "screenoff") {
       // Show black-screen overlay immediately, then background the app.
@@ -280,9 +286,9 @@ function HubScreen() {
       setActiveApp(appId);
       setTransitioningTo(null);
     }, 2500);
-  }, [transitioningTo, activeApp, adminOpen]);
+  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen]);
 
-  const hubIsIdle = activeApp === null && transitioningTo === null && !adminOpen;
+  const hubIsIdle = activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen;
 
   useTvIdle(
     300000,
@@ -368,6 +374,7 @@ function HubScreen() {
         </div>
       )}
 
+      <HdmiPicker open={hdmiPickerOpen} onClose={() => setHdmiPickerOpen(false)} />
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={() => setActiveApp(null)} />
       <AdminSettings
