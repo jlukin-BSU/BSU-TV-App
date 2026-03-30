@@ -12,7 +12,7 @@ import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
 import { useHubSettings } from "./hooks/use-hub-settings";
 import AppLauncher, { OPTISIGNS_PACKAGE } from "./plugins/app-launcher";
-import ScreenOff, { loadScreenOffConfig } from "./plugins/screen-off";
+import ScreenOff from "./plugins/screen-off";
 import { Capacitor } from "@capacitor/core";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
@@ -234,16 +234,17 @@ function HubScreen() {
     }
 
     if (appId === "screenoff") {
+      // Show black-screen overlay immediately, then background the app.
+      // Sony Pro Mode maps this exit path to "display off".
+      setActiveApp("screenoff");
       if (Capacitor.isNativePlatform()) {
-        const { ip, psk } = loadScreenOffConfig();
-        try {
-          await ScreenOff.powerOff({ ip, psk });
-        } catch (err) {
-          console.warn("Screen off API failed, falling back to black screen:", err);
-          setActiveApp("screenoff");
-        }
-      } else {
-        setActiveApp("screenoff");
+        setTimeout(async () => {
+          try {
+            await ScreenOff.exitToScreenOff();
+          } catch (err) {
+            console.warn("exitToScreenOff failed:", err);
+          }
+        }, 800);
       }
       return;
     }

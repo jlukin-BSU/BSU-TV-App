@@ -1,70 +1,53 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, AlertCircle } from "lucide-react";
 import hdmiIcon from "@assets/Hdmi-Port--Streamline-Lucide_1774491136778.png";
-import ScreenOff, { loadScreenOffConfig } from "../plugins/screen-off";
+import ScreenOff from "../plugins/screen-off";
 import { Capacitor } from "@capacitor/core";
 
-// Port numbers match the physical HDMI labels printed on the Sony BZ30L panel.
-// The Sony REST API (avContent/setPlayContent) uses 1-indexed port numbers
-// that map directly to those labels — no HW0/HW1 translation needed.
 const INPUTS = [
-  { label: "Wall HDMI 1", port: 3 },
-  { label: "Wall HDMI 2", port: 4 },
+  { label: "Wall HDMI 1", exitFn: () => ScreenOff.exitToHdmi1() },
+  { label: "Wall HDMI 2", exitFn: () => ScreenOff.exitToHdmi2() },
 ] as const;
-
-type InputEntry = (typeof INPUTS)[number];
 
 interface HdmiPickerProps {
   open: boolean;
   onClose: () => void;
 }
 
-type State = "idle" | "switching" | "error";
+type State = "idle" | "switching";
 
 export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
   const [focusIndex, setFocusIndex] = useState(0);
   const [state, setState] = useState<State>("idle");
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string>("");
 
   useEffect(() => {
     if (!open) {
       setState("idle");
       setSelectedLabel(null);
-      setErrorMsg("");
       setFocusIndex(0);
     }
   }, [open]);
 
-  async function handleSelect(entry: InputEntry) {
+  async function handleSelect(entry: (typeof INPUTS)[number]) {
     setSelectedLabel(entry.label);
     setState("switching");
 
-    if (!Capacitor.isNativePlatform()) {
-      // In browser: just close after a moment (no real switching)
+    if (Capacitor.isNativePlatform()) {
+      // Small delay so the user sees the "Switching…" overlay before the app
+      // moves to the background. Sony Pro Mode then handles the actual
+      // HDMI switch based on which exit path was taken.
+      setTimeout(async () => {
+        try {
+          await entry.exitFn();
+        } catch (err) {
+          console.warn("exitFn failed:", err);
+        }
+        onClose();
+      }, 1200);
+    } else {
+      // Browser / dev preview — just close after showing the overlay.
       setTimeout(() => onClose(), 2000);
-      return;
-    }
-
-    // Use the Sony BRAVIA REST API (avContent/setPlayContent).
-    // This is the same REST API used by Screen Off and is reliable on all
-    // Sony Bravia displays — no TvContract channel setup required.
-    const { ip, psk } = loadScreenOffConfig();
-    try {
-      const result = await ScreenOff.switchHdmi({ ip, psk, port: entry.port });
-      if (result.success) {
-        setTimeout(() => onClose(), 1500);
-      } else {
-        setErrorMsg(`API returned HTTP ${result.statusCode}. Check that the TV IP and PSK are set in Admin Settings.`);
-        setState("error");
-        setTimeout(() => onClose(), 5000);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(`Could not reach Sony API: ${msg}. Set the TV IP and PSK in Admin Settings.`);
-      setState("error");
-      setTimeout(() => onClose(), 5000);
     }
   }
 
@@ -93,6 +76,7 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, focusIndex, state, onClose]);
 
   return (
@@ -148,9 +132,7 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
                         />
                         <span
                           className="text-3xl font-semibold tracking-wide"
-                          style={{
-                            color: focused ? "white" : "rgba(255,255,255,0.65)",
-                          }}
+                          style={{ color: focused ? "white" : "rgba(255,255,255,0.65)" }}
                         >
                           {entry.label}
                         </span>
@@ -187,24 +169,14 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center gap-6"
               >
-                <Loader2 className="w-20 h-20 text-primary animate-spin" />
+                <img
+                  src={hdmiIcon}
+                  alt=""
+                  className="w-28 h-28 object-contain brightness-0 invert opacity-60"
+                />
                 <h2 className="text-5xl font-bold text-foreground">
                   Switching to {selectedLabel}…
                 </h2>
-              </motion.div>
-            )}
-
-            {state === "error" && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center gap-6 max-w-3xl text-center"
-              >
-                <AlertCircle className="w-20 h-20 text-destructive" />
-                <h2 className="text-4xl font-bold text-foreground">
-                  Could not switch input
-                </h2>
-                <p className="text-xl text-muted-foreground">{errorMsg}</p>
               </motion.div>
             )}
           </motion.div>
