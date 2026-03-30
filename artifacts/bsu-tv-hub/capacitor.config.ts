@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
     backgroundColor: "#222222",
   },
   server: {
-    androidScheme: "file",
+    androidScheme: "https",
   },
 };
 
