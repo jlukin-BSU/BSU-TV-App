@@ -130,7 +130,8 @@ function HubScreen() {
       .filter((t): t is TileConfig => !!t && settings.tileVisibility[t.id] !== false);
   }, [settings.tileVisibility, settings.tileOrder]);
 
-  const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const tileRefs    = useRef<(HTMLDivElement | null)[]>([]);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const columns = 3;
 
@@ -153,11 +154,22 @@ function HubScreen() {
     }
   }, [visibleTiles.length, focusIndex]);
 
-  /** Scroll focused tile into view when navigating with D-pad. */
+  /** Scroll focused tile into view when navigating with D-pad.
+   *  Top row → scroll all the way to top so the banner is fully visible.
+   *  Other rows → just bring the tile into view. */
   useEffect(() => {
-    const el = tileRefs.current[focusIndex];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [focusIndex]);
+    if (focusIndex < columns) {
+      // Top row: restore the banner
+      const scroller = scrollerRef.current;
+      if (scroller) {
+        scroller.scrollTo({ top: 0, behavior: "smooth" });
+        setTopBarOpacity(1);
+      }
+    } else {
+      const el = tileRefs.current[focusIndex];
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [focusIndex, columns]);
 
   /**
    * Shared admin-trigger counter.
@@ -316,6 +328,7 @@ function HubScreen() {
 
       {/* Scrollable tile area — pt clears the absolute TopBar (~11rem logo + 1rem gap) */}
       <div
+        ref={scrollerRef}
         className="flex-1 overflow-y-auto z-10"
         style={{ paddingTop: "12rem", paddingBottom: "2rem" }}
         onScroll={(e) => {
