@@ -14,6 +14,7 @@
     <queries>
         <package android:name="com.optisigns.playe1" />
         <package android:name="com.google.android.googletv.freeplay" />
+        <package android:name="com.sony.dtv.tvxcan" />
         <package android:name="com.google.android.youtube.tv" />
         <package android:name="com.google.android.youtube" />
         <package android:name="com.hulu.plus" />

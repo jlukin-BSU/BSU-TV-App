@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android TV launcher banner (320×180dp).
+    White background with the BSU logo centered and a subtle drop-shadow
+    simulated via a semi-transparent grey layer slightly below/behind the logo.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- White background -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFF" />
+        </shape>
+    </item>
+
+    <!-- Subtle bottom-edge vignette for depth -->
+    <item android:top="120dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#12000000"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+
+    <!-- BSU red left accent stripe -->
+    <item
+        android:top="20dp"
+        android:bottom="20dp"
+        android:left="20dp"
+        android:right="276dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#C41230" />
+            <corners android:radius="2dp" />
+        </shape>
+    </item>
+
+    <!-- Shadow layer behind the logo (offset slightly down-right) -->
+    <item
+        android:top="38dp"
+        android:bottom="28dp"
+        android:left="42dp"
+        android:right="42dp"
+        android:gravity="center">
+        <shape android:shape="rectangle">
+            <solid android:color="#14000000" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+
+    <!-- BSU logo — centered in the white area -->
+    <item
+        android:top="24dp"
+        android:bottom="24dp"
+        android:left="48dp"
+        android:right="48dp"
+        android:gravity="center">
+        <bitmap
+            android:src="@drawable/bsu_logo"
+            android:gravity="center"
+            android:tileMode="disabled" />
+    </item>
+
+</layer-list>
