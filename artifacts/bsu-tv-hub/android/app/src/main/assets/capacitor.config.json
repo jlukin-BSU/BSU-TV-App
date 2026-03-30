@@ -1,0 +1,11 @@
+{
+	"appId": "edu.bridgew.tvhub",
+	"appName": "BSU TV Hub",
+	"webDir": "dist/public",
+	"android": {
+		"backgroundColor": "#222222"
+	},
+	"server": {
+		"androidScheme": "https"
+	}
+}
