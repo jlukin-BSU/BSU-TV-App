@@ -99,7 +99,7 @@ interface ExternalApp {
 
 const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   signage:  { packageName: OPTISIGNS_PACKAGE },
-  livetv:   { packageName: "com.xfinity.cloudtvr" },
+  livetv:   { packageName: "com.google.android.googletv.freeplay" },
   youtube:  { packageName: "com.google.android.youtube.tv" },
   hulu:     { packageName: "com.hulu.plus" },
   netflix:  { packageName: "com.netflix.ninja" },
