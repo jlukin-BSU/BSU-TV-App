@@ -46,15 +46,20 @@ export function useDPad({ isActive, currentIndex, maxIndex, columns, onNavigate,
           }
           handled = true;
           break;
-        case "ArrowDown":
+        case "ArrowDown": {
+          const currentRow = Math.floor(currentIndex / columns);
+          const lastRow    = Math.floor(maxIndex / columns);
           if (currentIndex + columns <= maxIndex) {
+            // Tile exists directly below — go there.
             newIndex = currentIndex + columns;
-          } else if (currentIndex + columns > maxIndex && currentIndex < columns && maxIndex >= columns) {
-            // Fall to the last item if pushing down from top row into a partial bottom row
+          } else if (currentRow < lastRow) {
+            // Next row exists but no tile directly below (partial last row).
+            // Land on the last tile so the user isn't stuck.
             newIndex = maxIndex;
           }
           handled = true;
           break;
+        }
         case "Enter":
         case " ":
           onEnter();
