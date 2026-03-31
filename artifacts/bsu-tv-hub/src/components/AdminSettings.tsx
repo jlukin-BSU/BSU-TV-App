@@ -104,10 +104,9 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
   const [draft, setDraft]       = useState(initValue);
   const [showPass, setShowPass] = useState(false);
 
-  // Virtual focus drives highlighting. Starts on "cancel" so the user can
-  // immediately confirm or cancel without touching the keyboard.
-  // "field" = the text input row (selecting it opens the keyboard).
-  const [vFocus, setVFocus] = useState<"field" | "cancel" | "ok">("cancel");
+  // Virtual focus drives highlighting. Starts on "field" (top of overlay).
+  // D-pad Down moves to buttons; D-pad Up returns to field.
+  const [vFocus, setVFocus] = useState<"field" | "cancel" | "ok">("field");
 
   const inputRef  = useRef<HTMLInputElement>(null);
   const draftRef  = useRef(draft);
@@ -122,23 +121,23 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
     const handler = (e: KeyboardEvent) => {
       const vf = vFocusRef.current;
 
-      if (e.key === "ArrowUp") {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
         e.stopPropagation();
         if (vf === "field") {
+          // Move down from field → highlight Cancel button; dismiss keyboard
           setVFocus("cancel");
-          inputRef.current?.blur(); // dismiss keyboard when leaving field
-        } else if (vf === "cancel" || vf === "ok") {
-          // already at top — wrap or stay
-          setVFocus("cancel");
+          inputRef.current?.blur();
         }
-      } else if (e.key === "ArrowDown") {
+        // Already on a button — stay (bottom of overlay)
+      } else if (e.key === "ArrowUp") {
         e.preventDefault();
         e.stopPropagation();
         if (vf === "cancel" || vf === "ok") {
+          // Move up from buttons → back to field
           setVFocus("field");
         }
-        // already at "field" — let ArrowDown fall through to keyboard
+        // Already on field — stay (top of overlay)
       } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         if (vf === "cancel" || vf === "ok") {
           e.preventDefault();
