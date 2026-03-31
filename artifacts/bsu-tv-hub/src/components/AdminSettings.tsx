@@ -181,14 +181,28 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
           )}
         </div>
 
-        {/* Hint bar */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Type to edit</span>
-          <span>
-            <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono">Enter</kbd> save
-            &nbsp;·&nbsp;
-            <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono">Esc</kbd> cancel
-          </span>
+        {/* Action buttons */}
+        <div className="flex gap-4 justify-end pt-1">
+          <button
+            tabIndex={-1}
+            onClick={() => onCancel()}
+            className="px-10 py-4 rounded-2xl text-xl font-semibold text-foreground transition-colors"
+            style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
+          >
+            Cancel
+          </button>
+          <button
+            tabIndex={-1}
+            onClick={() => onConfirm(draft)}
+            className="px-10 py-4 rounded-2xl text-xl font-semibold text-white transition-colors"
+            style={{ background: "rgb(196,18,48)", border: "1px solid rgb(196,18,48)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgb(160,14,38)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgb(196,18,48)")}
+          >
+            OK
+          </button>
         </div>
       </div>
     </motion.div>
