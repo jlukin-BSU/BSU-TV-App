@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 
 const SETTINGS_KEY = "bsu_hub_settings";
+const IPCP_KEY     = "bsu_ipcp_settings";
 
 export const ALL_TILE_IDS = [
   "signage", "livetv", "hdmi", "youtube", "screenoff",
+  "cast", "airplay",
   "hulu", "netflix", "tubi",
 ] as const;
 
@@ -13,12 +15,32 @@ export interface HubSettings {
   tileOrder: string[];
 }
 
+export interface IpcpSettings {
+  ipcpHost:     string;
+  ipcpPort:     number;
+  ipcpUsername: string;
+  ipcpPassword: string;
+  ipcpUseHttps: boolean;
+  ipcpTvId:     string;
+}
+
+export const DEFAULT_IPCP: IpcpSettings = {
+  ipcpHost:     "",
+  ipcpPort:     80,
+  ipcpUsername: "admin",
+  ipcpPassword: "",
+  ipcpUseHttps: false,
+  ipcpTvId:     "",
+};
+
 export const DEFAULT_TILE_VISIBILITY: Record<string, boolean> = {
   signage:   true,
   livetv:    true,
   hdmi:      true,
   youtube:   true,
   screenoff: true,
+  cast:      true,
+  airplay:   true,
   hulu:      false,
   netflix:   false,
   tubi:      false,
@@ -30,7 +52,6 @@ function loadSettings(): HubSettings {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<HubSettings>;
       const savedOrder: string[] = Array.isArray(parsed.tileOrder) ? parsed.tileOrder : [];
-      // Merge: keep saved order, append any new tile IDs not yet in it
       const mergedOrder = [
         ...savedOrder.filter(id => (ALL_TILE_IDS as readonly string[]).includes(id)),
         ...(ALL_TILE_IDS as readonly string[]).filter(id => !savedOrder.includes(id)),
@@ -49,6 +70,17 @@ function loadSettings(): HubSettings {
   };
 }
 
+function loadIpcp(): IpcpSettings {
+  try {
+    const raw = localStorage.getItem(IPCP_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<IpcpSettings>;
+      return { ...DEFAULT_IPCP, ...parsed };
+    }
+  } catch {}
+  return { ...DEFAULT_IPCP };
+}
+
 export function useHubSettings() {
   const [settings, setSettings] = useState<HubSettings>(loadSettings);
 
@@ -60,4 +92,17 @@ export function useHubSettings() {
   }, []);
 
   return [settings, updateSettings] as const;
+}
+
+export function useIpcpSettings() {
+  const [ipcp, setIpcp] = useState<IpcpSettings>(loadIpcp);
+
+  const updateIpcp = useCallback((updated: IpcpSettings) => {
+    setIpcp(updated);
+    try {
+      localStorage.setItem(IPCP_KEY, JSON.stringify(updated));
+    } catch {}
+  }, []);
+
+  return [ipcp, updateIpcp] as const;
 }

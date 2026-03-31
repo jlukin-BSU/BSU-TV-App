@@ -7,7 +7,7 @@ import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
 import inputsIcon from "@assets/INPUTS_1774373576874.png";
 
-export type AppId = "signage" | "livetv" | "youtube" | "hdmi" | "screenoff" | "hulu" | "netflix" | "tubi";
+export type AppId = "signage" | "livetv" | "youtube" | "hdmi" | "screenoff" | "hulu" | "netflix" | "tubi" | "cast" | "airplay";
 
 interface AppDef {
   id: AppId;

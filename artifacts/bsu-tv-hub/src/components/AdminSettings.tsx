@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, X, ChevronUp, ChevronDown } from "lucide-react";
-import { HubSettings, ALL_TILE_IDS } from "../hooks/use-hub-settings";
+import { Settings, X, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { HubSettings, IpcpSettings, ALL_TILE_IDS } from "../hooks/use-hub-settings";
 
 interface TileInfo {
   id: string;
@@ -9,17 +9,25 @@ interface TileInfo {
 }
 
 interface AdminSettingsProps {
-  open: boolean;
-  onClose: () => void;
-  settings: HubSettings;
+  open:             boolean;
+  onClose:          () => void;
+  settings:         HubSettings;
   onSettingsChange: (s: HubSettings) => void;
-  tiles: TileInfo[];
+  tiles:            TileInfo[];
+  ipcp:             IpcpSettings;
+  onIpcpChange:     (s: IpcpSettings) => void;
 }
 
 // ─── focusable item descriptors ──────────────────────────────────────────────
 type FocusItem =
   | { kind: "signage" }
-  | { kind: "tile"; id: string; idx: number };
+  | { kind: "tile";       id: string; idx: number }
+  | { kind: "ipcp-host" }
+  | { kind: "ipcp-port" }
+  | { kind: "ipcp-user" }
+  | { kind: "ipcp-pass" }
+  | { kind: "ipcp-https" }
+  | { kind: "ipcp-tvid" };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function rowClass(focused: boolean) {
@@ -31,7 +39,7 @@ function rowClass(focused: boolean) {
   ].join(" ");
 }
 
-// ─── Toggle (visual only – activated externally) ─────────────────────────────
+// ─── Toggle ──────────────────────────────────────────────────────────────────
 function Toggle({ value }: { value: boolean }) {
   return (
     <div
@@ -48,32 +56,90 @@ function Toggle({ value }: { value: boolean }) {
   );
 }
 
+// ─── Text input row ───────────────────────────────────────────────────────────
+interface TextInputRowProps {
+  label:     string;
+  value:     string;
+  onChange:  (v: string) => void;
+  focused:   boolean;
+  type?:     "text" | "password" | "number";
+  hint?:     string;
+}
+function TextInputRow({ label, value, onChange, focused, type = "text", hint }: TextInputRowProps) {
+  const [showPass, setShowPass] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (focused) inputRef.current?.focus();
+  }, [focused]);
+
+  const inputType = type === "password" ? (showPass ? "text" : "password") : type;
+
+  return (
+    <div
+      className={rowClass(focused)}
+      style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+        <span className="text-base font-medium text-foreground/70">{label}</span>
+        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <input
+          ref={inputRef}
+          type={inputType}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="rounded-xl px-4 py-2 text-lg bg-white/10 text-foreground border border-white/20 outline-none focus:border-primary w-56 text-right"
+          style={{ fontFamily: "monospace" }}
+          tabIndex={-1}
+        />
+        {type === "password" && (
+          <button
+            tabIndex={-1}
+            onClick={() => setShowPass(s => !s)}
+            className="p-1 text-muted-foreground hover:text-foreground"
+          >
+            {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
-export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles }: AdminSettingsProps) {
+export function AdminSettings({
+  open, onClose, settings, onSettingsChange, tiles, ipcp, onIpcpChange,
+}: AdminSettingsProps) {
   const [focusIdx, setFocusIdx] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs  = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Build ordered tile list
   const orderedTiles = (settings.tileOrder ?? [...ALL_TILE_IDS])
     .map(id => tiles.find(t => t.id === id))
     .filter((t): t is TileInfo => !!t);
 
-  // Build flat focusable list every render
+  const IPCP_ITEMS: FocusItem[] = [
+    { kind: "ipcp-host" },
+    { kind: "ipcp-port" },
+    { kind: "ipcp-user" },
+    { kind: "ipcp-pass" },
+    { kind: "ipcp-https" },
+    { kind: "ipcp-tvid" },
+  ];
+
   const items: FocusItem[] = [
     { kind: "signage" },
     ...orderedTiles.map((t, idx): FocusItem => ({ kind: "tile", id: t.id, idx })),
+    ...IPCP_ITEMS,
   ];
 
-  // Reset state when panel opens
   useEffect(() => {
-    if (open) {
-      setFocusIdx(0);
-    }
+    if (open) setFocusIdx(0);
   }, [open]);
 
-  // Scroll focused item into view
   useEffect(() => {
     const el = itemRefs.current[focusIdx];
     if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -83,14 +149,9 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
   function setAutoSignage(enabled: boolean) {
     onSettingsChange({ ...settings, autoSignageEnabled: enabled });
   }
-
   function setTileVisible(id: string, visible: boolean) {
-    onSettingsChange({
-      ...settings,
-      tileVisibility: { ...settings.tileVisibility, [id]: visible },
-    });
+    onSettingsChange({ ...settings, tileVisibility: { ...settings.tileVisibility, [id]: visible } });
   }
-
   function moveTile(id: string, direction: "up" | "down") {
     const order = [...(settings.tileOrder ?? [...ALL_TILE_IDS])];
     const idx = order.indexOf(id);
@@ -99,13 +160,10 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
     if (swapIdx < 0 || swapIdx >= order.length) return;
     [order[idx], order[swapIdx]] = [order[swapIdx], order[idx]];
     onSettingsChange({ ...settings, tileOrder: order });
-    setFocusIdx(() => {
-      const tileStart = 1;
-      return tileStart + swapIdx;
-    });
+    setFocusIdx(1 + swapIdx);
   }
 
-  // ── activate the currently focused item ───────────────────────────────────
+  // ── activate focused item ─────────────────────────────────────────────────
   const activateFocused = useCallback(() => {
     const item = items[focusIdx];
     if (!item) return;
@@ -116,14 +174,18 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
       case "tile":
         setTileVisible(item.id, !(settings.tileVisibility[item.id] ?? true));
         break;
+      case "ipcp-https":
+        onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
+        break;
+      default:
+        break;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusIdx, items, settings]);
+  }, [focusIdx, items, settings, ipcp]);
 
-  // ── D-pad keyboard handler ─────────────────────────────────────────────────
+  // ── D-pad handler ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
-
     const handler = (e: KeyboardEvent) => {
       switch (e.key) {
         case "ArrowUp":
@@ -140,6 +202,7 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
           if (cur?.kind === "tile") moveTile(cur.id, "up");
           if (cur?.kind === "signage") setAutoSignage(!settings.autoSignageEnabled);
           if (cur?.kind === "tile") setTileVisible(cur.id, !(settings.tileVisibility[cur.id] ?? true));
+          if (cur?.kind === "ipcp-https") onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
           break;
         }
         case "ArrowRight": {
@@ -147,6 +210,7 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
           const cur = items[focusIdx];
           if (cur?.kind === "tile") moveTile(cur.id, "down");
           if (cur?.kind === "signage") setAutoSignage(!settings.autoSignageEnabled);
+          if (cur?.kind === "ipcp-https") onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
           break;
         }
         case "Enter":
@@ -161,18 +225,18 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
           break;
       }
     };
-
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, focusIdx, items, settings, activateFocused]);
+  }, [open, focusIdx, items, settings, ipcp, activateFocused]);
 
-  // ── ref setter helper ──────────────────────────────────────────────────────
   function setRef(idx: number) {
     return (el: HTMLDivElement | null) => { itemRefs.current[idx] = el; };
   }
 
-  // ── render ─────────────────────────────────────────────────────────────────
+  const tileStart = 1;
+  const ipcpStart = 1 + orderedTiles.length;
+
   return (
     <AnimatePresence>
       {open && (
@@ -192,7 +256,7 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
             className="relative rounded-3xl flex flex-col w-[64rem] max-h-[85vh]"
             style={{ background: "rgba(30,30,30,0.98)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
-            {/* ── Fixed header ── */}
+            {/* Fixed header */}
             <div className="flex items-center justify-between px-16 pt-10 pb-5 shrink-0">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-5">
@@ -206,21 +270,17 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
                   <kbd className="px-2 py-0.5 rounded bg-white/10 text-sm font-mono">Back</kbd> close
                 </p>
               </div>
-              <button
-                tabIndex={-1}
-                onClick={onClose}
-                className="p-3 rounded-xl hover:bg-muted transition-colors"
-              >
+              <button tabIndex={-1} onClick={onClose} className="p-3 rounded-xl hover:bg-muted transition-colors">
                 <X className="w-8 h-8 text-muted-foreground" />
               </button>
             </div>
 
             <div className="h-px bg-border mx-16 shrink-0" />
 
-            {/* ── Scrollable content ── */}
+            {/* Scrollable content */}
             <div ref={scrollRef} className="overflow-y-auto flex flex-col gap-8 px-16 py-8">
 
-              {/* Auto Signage Takeover */}
+              {/* ── Auto Signage ── */}
               <div className="flex flex-col gap-3">
                 <h3 className="text-2xl font-semibold text-foreground/80">Auto Signage Takeover</h3>
                 <div
@@ -240,7 +300,7 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
 
               <div className="h-px bg-border" />
 
-              {/* Tile Visibility & Order */}
+              {/* ── Tile Visibility & Order ── */}
               <div className="flex flex-col gap-3">
                 <h3 className="text-2xl font-semibold text-foreground/80">Visible Tiles</h3>
                 <p className="text-base text-muted-foreground">
@@ -249,7 +309,7 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
                 </p>
                 <div className="flex flex-col gap-2">
                   {orderedTiles.map((tile, idx) => {
-                    const fi = 1 + idx;
+                    const fi = tileStart + idx;
                     const isFocused = focusIdx === fi;
                     const isVisible = settings.tileVisibility[tile.id] ?? true;
                     return (
@@ -273,6 +333,91 @@ export function AdminSettings({ open, onClose, settings, onSettingsChange, tiles
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              {/* ── IPCP Configuration ── */}
+              <div className="flex flex-col gap-3">
+                <h3 className="text-2xl font-semibold text-foreground/80">IPCP Configuration</h3>
+                <p className="text-base text-muted-foreground">
+                  Connection settings for sending control commands (HDMI switch, Cast, AirPlay, Screen Off).
+                  Navigate to a field and press OK/Enter to edit.
+                </p>
+
+                {/* Host */}
+                <div ref={setRef(ipcpStart + 0)} onClick={() => setFocusIdx(ipcpStart + 0)}>
+                  <TextInputRow
+                    label="IPCP Host"
+                    hint="IP address or hostname of the IPCP server"
+                    value={ipcp.ipcpHost}
+                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpHost: v })}
+                    focused={focusIdx === ipcpStart + 0}
+                  />
+                </div>
+
+                {/* Port */}
+                <div ref={setRef(ipcpStart + 1)} onClick={() => setFocusIdx(ipcpStart + 1)}>
+                  <TextInputRow
+                    label="Port"
+                    hint="Default: 80 (HTTP) or 443 (HTTPS)"
+                    value={String(ipcp.ipcpPort)}
+                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpPort: Number(v) || 80 })}
+                    focused={focusIdx === ipcpStart + 1}
+                    type="number"
+                  />
+                </div>
+
+                {/* Username */}
+                <div ref={setRef(ipcpStart + 2)} onClick={() => setFocusIdx(ipcpStart + 2)}>
+                  <TextInputRow
+                    label="Username"
+                    value={ipcp.ipcpUsername}
+                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpUsername: v })}
+                    focused={focusIdx === ipcpStart + 2}
+                  />
+                </div>
+
+                {/* Password */}
+                <div ref={setRef(ipcpStart + 3)} onClick={() => setFocusIdx(ipcpStart + 3)}>
+                  <TextInputRow
+                    label="Password"
+                    value={ipcp.ipcpPassword}
+                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpPassword: v })}
+                    focused={focusIdx === ipcpStart + 3}
+                    type="password"
+                  />
+                </div>
+
+                {/* Use HTTPS toggle */}
+                <div
+                  ref={setRef(ipcpStart + 4)}
+                  onClick={() => {
+                    setFocusIdx(ipcpStart + 4);
+                    onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
+                  }}
+                  className={rowClass(focusIdx === ipcpStart + 4)}
+                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    <span className="text-xl font-medium text-foreground">Use HTTPS</span>
+                    <span className="text-base text-muted-foreground">
+                      Enable for TLS-secured connections (port 443 recommended)
+                    </span>
+                  </div>
+                  <Toggle value={ipcp.ipcpUseHttps} />
+                </div>
+
+                {/* TV Identifier */}
+                <div ref={setRef(ipcpStart + 5)} onClick={() => setFocusIdx(ipcpStart + 5)}>
+                  <TextInputRow
+                    label="TV Identifier"
+                    hint={`Sent as "tv" in every command. Leave blank to use device hostname.`}
+                    value={ipcp.ipcpTvId}
+                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpTvId: v })}
+                    focused={focusIdx === ipcpStart + 5}
+                  />
                 </div>
               </div>
 

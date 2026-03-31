@@ -10,9 +10,9 @@ import { AdminSettings } from "./components/AdminSettings";
 import { HdmiPicker } from "./components/HdmiPicker";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
-import { useHubSettings } from "./hooks/use-hub-settings";
+import { useHubSettings, useIpcpSettings } from "./hooks/use-hub-settings";
 import AppLauncher, { OPTISIGNS_PACKAGE } from "./plugins/app-launcher";
-import ScreenOff from "./plugins/screen-off";
+import { sendIpcpCommand, IpcpAction } from "./ipcp";
 import { Capacitor } from "@capacitor/core";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
@@ -32,6 +32,25 @@ interface TileConfig {
 
 const iconClass = (focused: boolean) =>
   `w-20 h-20 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`;
+
+/** Material Symbols icon — cast or airplay */
+function MaterialIcon({ name, focused }: { name: string; focused: boolean }) {
+  return (
+    <span
+      className="material-symbols-outlined select-none"
+      style={{
+        fontSize: "80px",
+        lineHeight: 1,
+        color: "white",
+        opacity: focused ? 1 : 0.7,
+        transition: "opacity 0.3s",
+        fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48",
+      }}
+    >
+      {name}
+    </span>
+  );
+}
 
 const ALL_TILES: TileConfig[] = [
   {
@@ -73,6 +92,16 @@ const ALL_TILES: TileConfig[] = [
     ),
   },
   {
+    id: "cast",
+    label: "Cast",
+    renderIcon: (focused) => <MaterialIcon name="cast" focused={focused} />,
+  },
+  {
+    id: "airplay",
+    label: "AirPlay",
+    renderIcon: (focused) => <MaterialIcon name="airplay" focused={focused} />,
+  },
+  {
     id: "hulu",
     label: "Hulu",
     logoOnly: true,
@@ -106,12 +135,20 @@ const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   tubi:     { packageName: "com.tubitv" },
 };
 
+/** AppIds that dispatch an IPCP command instead of launching an Android app. */
+const IPCP_TILE_ACTIONS: Partial<Record<AppId, IpcpAction>> = {
+  screenoff: IpcpAction.PWROFF,
+  cast:      IpcpAction.CAST,
+  airplay:   IpcpAction.AIRPLAY,
+};
+
 /** Number of Back/Return key presses within the time window to open admin settings. */
 const ADMIN_CLICK_COUNT = 5;
 const ADMIN_CLICK_WINDOW_MS = 3000;
 
 function HubScreen() {
   const [settings, updateSettings] = useHubSettings();
+  const [ipcp, updateIpcp]         = useIpcpSettings();
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
@@ -154,12 +191,9 @@ function HubScreen() {
     }
   }, [visibleTiles.length, focusIndex]);
 
-  /** Scroll focused tile into view when navigating with D-pad.
-   *  Top row → scroll all the way to top so the banner is fully visible.
-   *  Other rows → just bring the tile into view. */
+  /** Scroll focused tile into view. Top row → scroll to top so banner is fully visible. */
   useEffect(() => {
     if (focusIndex < columns) {
-      // Top row: restore the banner
       const scroller = scrollerRef.current;
       if (scroller) {
         scroller.scrollTo({ top: 0, behavior: "smooth" });
@@ -173,14 +207,8 @@ function HubScreen() {
 
   /**
    * Shared admin-trigger counter.
-   *
-   * Three independent paths all call this — whichever fires first wins:
-   *   1. D-pad Up × 5 while focus is on the top row (pure JS, works on TV immediately)
-   *   2. Red color button × 5 (requires latest APK with Java intercept)
-   *   3. Escape × 5 (browser / keyboard, dev convenience)
-   *
-   * A 100 ms dedup window prevents double-counting when multiple channels
-   * fire for the same physical button press.
+   * Three channels: D-pad Up ×5 (top row), RED button ×5 (Java), Escape ×5 (browser).
+   * 100 ms dedup prevents double-counting a single physical press.
    */
   const recordAdminPress = useCallback(() => {
     if (activeApp !== null || transitioningTo !== null || hdmiPickerOpen || adminOpen) return;
@@ -196,7 +224,6 @@ function HubScreen() {
     }
   }, [activeApp, transitioningTo, hdmiPickerOpen, adminOpen]);
 
-  // Keyboard / color-button listeners that share the same counter.
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") recordAdminPress();
@@ -213,7 +240,6 @@ function HubScreen() {
     };
   }, [recordAdminPress]);
 
-  /** Logo click still works for mouse/touch access during development. */
   const handleLogoClick = useCallback(() => {
     const now = Date.now();
     const times = adminKeyTimes.current.filter(t => now - t < ADMIN_CLICK_WINDOW_MS);
@@ -233,18 +259,17 @@ function HubScreen() {
       return;
     }
 
-    if (appId === "screenoff") {
-      // Show black-screen overlay immediately, then background the app.
-      // Sony Pro Mode maps this exit path to "display off".
-      setActiveApp("screenoff");
-      if (Capacitor.isNativePlatform()) {
-        setTimeout(async () => {
-          try {
-            await ScreenOff.exitToScreenOff();
-          } catch (err) {
-            console.warn("exitToScreenOff failed:", err);
-          }
-        }, 800);
+    // IPCP tiles: screenoff, cast, airplay
+    const ipcpAction = IPCP_TILE_ACTIONS[appId];
+    if (ipcpAction) {
+      setLaunchError(null);
+      try {
+        await sendIpcpCommand(ipcpAction, ipcp);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`IPCP ${ipcpAction} failed:`, msg);
+        setLaunchError(msg);
+        setTimeout(() => setLaunchError(null), 5000);
       }
       return;
     }
@@ -262,8 +287,6 @@ function HubScreen() {
           } else if (externalApp.packageName) {
             await AppLauncher.launch({ packageName: externalApp.packageName });
           }
-          // If we reach here, the launch intent was accepted — the other app
-          // is taking over, so we just reset the transition UI.
           setTransitioningTo(null);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -286,7 +309,7 @@ function HubScreen() {
       setActiveApp(appId);
       setTransitioningTo(null);
     }, 2500);
-  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen]);
+  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen, ipcp]);
 
   const hubIsIdle = activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen;
 
@@ -327,7 +350,7 @@ function HubScreen() {
 
       <TopBar onLogoClick={handleLogoClick} opacity={topBarOpacity} />
 
-      {/* Scrollable tile area — pt clears the absolute TopBar (~11rem logo + 1rem gap) */}
+      {/* Scrollable tile area */}
       <div
         ref={scrollerRef}
         className="flex-1 overflow-y-auto z-10"
@@ -363,7 +386,7 @@ function HubScreen() {
         </div>
       </div>
 
-      {/* App-launch error toast — shown when a native app launch fails */}
+      {/* App-launch error toast */}
       {launchError && (
         <div
           className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-8 py-5 rounded-2xl text-white text-xl font-medium shadow-2xl"
@@ -374,7 +397,11 @@ function HubScreen() {
         </div>
       )}
 
-      <HdmiPicker open={hdmiPickerOpen} onClose={() => setHdmiPickerOpen(false)} />
+      <HdmiPicker
+        open={hdmiPickerOpen}
+        onClose={() => setHdmiPickerOpen(false)}
+        ipcpCfg={ipcp}
+      />
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={() => setActiveApp(null)} />
       <AdminSettings
@@ -383,6 +410,8 @@ function HubScreen() {
         settings={settings}
         onSettingsChange={updateSettings}
         tiles={ALL_TILES.map(t => ({ id: t.id, label: t.label }))}
+        ipcp={ipcp}
+        onIpcpChange={updateIpcp}
       />
     </div>
   );

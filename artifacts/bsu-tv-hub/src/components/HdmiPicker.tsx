@@ -1,30 +1,33 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdmiIcon from "@assets/Hdmi-Port--Streamline-Lucide_1774491136778.png";
-import ScreenOff from "../plugins/screen-off";
-import { Capacitor } from "@capacitor/core";
+import { sendIpcpCommand, IpcpAction } from "../ipcp";
+import type { IpcpSettings } from "../hooks/use-hub-settings";
 
 const INPUTS = [
-  { label: "Wall HDMI 1", exitFn: () => ScreenOff.exitToHdmi1() },
-  { label: "Wall HDMI 2", exitFn: () => ScreenOff.exitToHdmi2() },
+  { label: "Wall HDMI 1", action: IpcpAction.HDMI1 },
+  { label: "Wall HDMI 2", action: IpcpAction.HDMI2 },
 ] as const;
 
 interface HdmiPickerProps {
-  open: boolean;
-  onClose: () => void;
+  open:     boolean;
+  onClose:  () => void;
+  ipcpCfg:  IpcpSettings;
 }
 
-type State = "idle" | "switching";
+type State = "idle" | "switching" | "error";
 
-export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
-  const [focusIndex, setFocusIndex] = useState(0);
-  const [state, setState] = useState<State>("idle");
+export function HdmiPicker({ open, onClose, ipcpCfg }: HdmiPickerProps) {
+  const [focusIndex, setFocusIndex]     = useState(0);
+  const [state, setState]               = useState<State>("idle");
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg]         = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       setState("idle");
       setSelectedLabel(null);
+      setErrorMsg(null);
       setFocusIndex(0);
     }
   }, [open]);
@@ -32,22 +35,20 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
   async function handleSelect(entry: (typeof INPUTS)[number]) {
     setSelectedLabel(entry.label);
     setState("switching");
+    setErrorMsg(null);
 
-    if (Capacitor.isNativePlatform()) {
-      // Small delay so the user sees the "Switching…" overlay before the app
-      // moves to the background. Sony Pro Mode then handles the actual
-      // HDMI switch based on which exit path was taken.
-      setTimeout(async () => {
-        try {
-          await entry.exitFn();
-        } catch (err) {
-          console.warn("exitFn failed:", err);
-        }
-        onClose();
-      }, 1200);
-    } else {
-      // Browser / dev preview — just close after showing the overlay.
-      setTimeout(() => onClose(), 2000);
+    try {
+      await sendIpcpCommand(entry.action, ipcpCfg);
+      setTimeout(() => onClose(), 1200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("IPCP command failed:", msg);
+      setErrorMsg(msg);
+      setState("error");
+      setTimeout(() => {
+        setState("idle");
+        setErrorMsg(null);
+      }, 3000);
     }
   }
 
@@ -177,6 +178,19 @@ export function HdmiPicker({ open, onClose }: HdmiPickerProps) {
                 <h2 className="text-5xl font-bold text-foreground">
                   Switching to {selectedLabel}…
                 </h2>
+              </motion.div>
+            )}
+
+            {state === "error" && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center gap-6 text-center"
+              >
+                <h2 className="text-4xl font-bold" style={{ color: "rgb(220,40,65)" }}>
+                  Could not switch input
+                </h2>
+                <p className="text-xl text-muted-foreground max-w-xl">{errorMsg}</p>
               </motion.div>
             )}
           </motion.div>
