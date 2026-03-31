@@ -138,6 +138,12 @@ export function AdminSettings({
 }: AdminSettingsProps) {
   const [focusIdx, setFocusIdx] = useState(0);
 
+  // Track the visual viewport height so we can shrink the modal when the
+  // soft keyboard opens (keyboard shrinks visualViewport, not window).
+  const [vpHeight, setVpHeight] = useState(
+    () => window.visualViewport?.height ?? window.innerHeight
+  );
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs  = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -162,6 +168,31 @@ export function AdminSettings({
 
   useEffect(() => {
     if (open) setFocusIdx(0);
+  }, [open]);
+
+  // Shrink modal when soft keyboard appears by tracking visual viewport height.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      setVpHeight(vv.height);
+      // After the viewport shrinks, scroll the focused row into view inside
+      // the modal's own scroll container so it stays above the keyboard.
+      setTimeout(() => {
+        const el = itemRefs.current[focusIdx];
+        if (el && scrollRef.current) {
+          el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+      }, 80);
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  // focusIdx intentionally omitted — we capture it via closure at handler time
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -269,16 +300,24 @@ export function AdminSettings({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center"
-          style={{ background: "rgba(10,10,10,0.92)", backdropFilter: "blur(16px)" }}
+          className="fixed inset-x-0 top-0 z-[100] flex items-center justify-center"
+          style={{
+            height: `${vpHeight}px`,
+            background: "rgba(10,10,10,0.92)",
+            backdropFilter: "blur(16px)",
+          }}
         >
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.92, opacity: 0 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="relative rounded-3xl flex flex-col w-[64rem] max-h-[85vh]"
-            style={{ background: "rgba(30,30,30,0.98)", border: "1px solid rgba(255,255,255,0.1)" }}
+            className="relative rounded-3xl flex flex-col w-[64rem]"
+            style={{
+              maxHeight: `${vpHeight * 0.92}px`,
+              background: "rgba(30,30,30,0.98)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
           >
             {/* Fixed header */}
             <div className="flex items-center justify-between px-16 pt-10 pb-5 shrink-0">
