@@ -118,7 +118,7 @@ const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   signage:  { packageName: OPTISIGNS_PACKAGE },
   livetv:   { packageName: "com.plexapp.android" },
   youtube:  { packageName: "com.google.android.youtube.tv" },
-  hulu:     { packageName: "com.hulu.plus" },
+  hulu:     { packageName: "com.hulu.livingroomplus" },
   netflix:  { packageName: "com.netflix.ninja" },
   tubi:     { packageName: "com.tubitv" },
 };
