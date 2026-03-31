@@ -103,77 +103,91 @@ interface FloatingEditOverlayProps {
 function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm, onCancel }: FloatingEditOverlayProps) {
   const [draft, setDraft] = useState(initValue);
   const [showPass, setShowPass] = useState(false);
-  // Track which element has virtual D-pad focus so we can style it.
-  const [btnFocus, setBtnFocus] = useState<"input" | "cancel" | "ok">("input");
 
-  const inputRef    = useRef<HTMLInputElement>(null);
-  const cancelRef   = useRef<HTMLButtonElement>(null);
-  const okRef       = useRef<HTMLButtonElement>(null);
+  // Virtual focus — the <input> always holds real DOM focus so the keyboard
+  // stays visible. We only track which area is visually highlighted.
+  const [vFocus, setVFocus] = useState<"input" | "cancel" | "ok">("input");
 
-  // Auto-focus the input after the animation settles so the keyboard appears.
+  const inputRef  = useRef<HTMLInputElement>(null);
+  // Keep a ref so the global handler always sees the current value.
+  const draftRef  = useRef(draft);
+  const vFocusRef = useRef(vFocus);
+  useEffect(() => { draftRef.current  = draft;  }, [draft]);
+  useEffect(() => { vFocusRef.current = vFocus; }, [vFocus]);
+
+  // Focus the input so the keyboard appears. Input keeps real focus forever.
   useEffect(() => {
-    const t = setTimeout(() => { inputRef.current?.focus(); setBtnFocus("input"); }, 120);
+    const t = setTimeout(() => inputRef.current?.focus(), 120);
     return () => clearTimeout(t);
   }, []);
 
-  // Keep our virtual-focus tracker in sync with real DOM focus.
-  function handleInputFocus()  { setBtnFocus("input"); }
-  function handleCancelFocus() { setBtnFocus("cancel"); }
-  function handleOkFocus()     { setBtnFocus("ok"); }
+  // Global D-pad handler (capture phase, highest priority).
+  // The input keeps real DOM focus the whole time — keyboard stays visible.
+  // Only OK/Cancel activation blurs the input to dismiss the keyboard.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const vf = vFocusRef.current;
 
-  // D-pad handler for the text input.
-  // ArrowDown → move DOM focus to Cancel (dismisses keyboard automatically).
-  // Enter     → confirm (handles the remote's center button / keyboard Done key).
-  // Escape    → cancel.
-  function onInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      e.stopPropagation();
-      cancelRef.current?.focus();
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      e.stopPropagation();
-      onConfirm(draft);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      onCancel();
-    }
-  }
-
-  // D-pad handler shared by Cancel and OK buttons.
-  function onBtnKeyDown(which: "cancel" | "ok") {
-    return (e: React.KeyboardEvent<HTMLButtonElement>) => {
-      e.stopPropagation(); // don't let parent modal see these
       if (e.key === "ArrowUp") {
+        if (vf === "input") {
+          // Navigate up from input area → highlight Cancel button.
+          e.preventDefault();
+          e.stopPropagation();
+          setVFocus("cancel");
+        } else {
+          // Already on a button — return to input (keyboard was never hidden).
+          e.preventDefault();
+          e.stopPropagation();
+          setVFocus("input");
+          inputRef.current?.focus();
+        }
+      } else if (e.key === "ArrowDown") {
+        if (vf === "cancel" || vf === "ok") {
+          // Navigate back down to keyboard.
+          e.preventDefault();
+          e.stopPropagation();
+          setVFocus("input");
+          inputRef.current?.focus();
+        }
+        // If vf === "input", let the key fall through to the keyboard.
+      } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && (vf === "cancel" || vf === "ok")) {
         e.preventDefault();
-        inputRef.current?.focus();
-      } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.stopPropagation();
+        setVFocus(vf === "cancel" ? "ok" : "cancel");
+      } else if (e.key === "Enter") {
         e.preventDefault();
-        if (which === "cancel") okRef.current?.focus();
-        else cancelRef.current?.focus();
-      } else if (e.key === "Enter" || e.key === " ") {
+        e.stopPropagation();
+        // Blur first so the keyboard dismisses before we close the overlay.
+        inputRef.current?.blur();
+        if (vf === "cancel") {
+          onCancel();
+        } else {
+          // "ok" or still on "input" (keyboard Done key) → save
+          onConfirm(draftRef.current);
+        }
+      } else if (e.key === "Escape") {
         e.preventDefault();
-        if (which === "cancel") onCancel();
-        else onConfirm(draft);
-      } else if (e.key === "Escape" || e.key === "Backspace") {
-        e.preventDefault();
+        e.stopPropagation();
+        inputRef.current?.blur();
         onCancel();
       }
     };
-  }
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  // onConfirm/onCancel are stable refs from parent; no need to re-register.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const inputType = type === "password" ? (showPass ? "text" : "password") : type;
 
-  function btnStyle(active: boolean, isPrimary: boolean) {
+  function btnStyle(active: boolean, isPrimary: boolean): React.CSSProperties {
     const base: React.CSSProperties = isPrimary
       ? { background: "rgb(196,18,48)", border: "2px solid rgb(196,18,48)", color: "#fff" }
       : { background: "rgba(255,255,255,0.1)", border: "2px solid rgba(255,255,255,0.2)", color: "#fff" };
     if (active) {
-      base.boxShadow = "0 0 0 4px rgba(255,255,255,0.5)";
-      base.transform = "scale(1.04)";
-      if (isPrimary) base.background = "rgb(160,14,38)";
-      else base.background = "rgba(255,255,255,0.22)";
+      base.boxShadow = "0 0 0 5px rgba(255,255,255,0.55)";
+      base.transform = "scale(1.06)";
+      base.background = isPrimary ? "rgb(160,14,38)" : "rgba(255,255,255,0.22)";
     }
     return base;
   }
@@ -201,22 +215,20 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
           {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
         </div>
 
-        {/* Input row */}
+        {/* Input — always holds real DOM focus; keyboard stays open */}
         <div className="flex items-center gap-3">
           <input
             ref={inputRef}
             type={inputType}
             value={draft}
             onChange={e => setDraft(e.target.value)}
-            onFocus={handleInputFocus}
-            onKeyDown={onInputKeyDown}
             className="flex-1 rounded-2xl px-6 py-4 text-3xl bg-white/10 text-foreground outline-none"
             style={{
               fontFamily: "monospace",
               letterSpacing: "0.04em",
-              border: btnFocus === "input"
+              border: vFocus === "input"
                 ? "2px solid rgb(196,18,48)"
-                : "2px solid rgba(255,255,255,0.2)",
+                : "2px solid rgba(255,255,255,0.15)",
             }}
           />
           {type === "password" && (
@@ -232,30 +244,24 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
 
         {/* Nav hint */}
         <p className="text-sm text-muted-foreground text-center -mt-1">
-          ↓ D-pad Down to reach buttons &nbsp;·&nbsp; ← → to switch &nbsp;·&nbsp; OK to confirm
+          D-pad ↑ to highlight buttons &nbsp;·&nbsp; ↓ to return to keyboard &nbsp;·&nbsp; ← → to switch
         </p>
 
-        {/* Action buttons — fully D-pad focusable */}
+        {/* Buttons — visually highlighted by vFocus, no real DOM focus needed */}
         <div className="flex gap-4 justify-end">
           <button
-            ref={cancelRef}
-            tabIndex={0}
-            onFocus={handleCancelFocus}
-            onKeyDown={onBtnKeyDown("cancel")}
-            onClick={onCancel}
+            tabIndex={-1}
+            onClick={() => { inputRef.current?.blur(); onCancel(); }}
             className="px-10 py-4 rounded-2xl text-xl font-semibold transition-all duration-100 outline-none"
-            style={btnStyle(btnFocus === "cancel", false)}
+            style={btnStyle(vFocus === "cancel", false)}
           >
             Cancel
           </button>
           <button
-            ref={okRef}
-            tabIndex={0}
-            onFocus={handleOkFocus}
-            onKeyDown={onBtnKeyDown("ok")}
-            onClick={() => onConfirm(draft)}
+            tabIndex={-1}
+            onClick={() => { inputRef.current?.blur(); onConfirm(draft); }}
             className="px-10 py-4 rounded-2xl text-xl font-semibold transition-all duration-100 outline-none"
-            style={btnStyle(btnFocus === "ok", true)}
+            style={btnStyle(vFocus === "ok", true)}
           >
             OK
           </button>
