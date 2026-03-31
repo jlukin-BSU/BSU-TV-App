@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Power, AlertCircle } from "lucide-react";
+import { Power, AlertCircle, Cast, Airplay } from "lucide-react";
 import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
@@ -33,34 +33,8 @@ interface TileConfig {
 const iconClass = (focused: boolean) =>
   `w-20 h-20 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`;
 
-/** Material Symbols icon — cast or airplay */
-function MaterialIcon({ name, focused }: { name: string; focused: boolean }) {
-  return (
-    <span
-      style={{
-        fontFamily: "'Material Symbols Outlined'",
-        fontWeight: "normal",
-        fontStyle: "normal",
-        fontSize: "80px",
-        lineHeight: 1,
-        letterSpacing: "normal",
-        textTransform: "none",
-        whiteSpace: "nowrap",
-        display: "inline-block",
-        direction: "ltr",
-        userSelect: "none",
-        fontFeatureSettings: "'liga'",
-        WebkitFontSmoothing: "antialiased",
-        fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48",
-        color: "white",
-        opacity: focused ? 1 : 0.7,
-        transition: "opacity 0.3s",
-      } as React.CSSProperties}
-    >
-      {name}
-    </span>
-  );
-}
+const lucideIconClass = (focused: boolean) =>
+  `w-20 h-20 transition-all duration-300 ${focused ? "text-white opacity-100" : "text-white opacity-70"}`;
 
 const ALL_TILES: TileConfig[] = [
   {
@@ -104,12 +78,16 @@ const ALL_TILES: TileConfig[] = [
   {
     id: "cast",
     label: "Cast",
-    renderIcon: (focused) => <MaterialIcon name="cast" focused={focused} />,
+    renderIcon: (focused) => (
+      <Cast className={lucideIconClass(focused)} strokeWidth={1.5} />
+    ),
   },
   {
     id: "airplay",
     label: "AirPlay",
-    renderIcon: (focused) => <MaterialIcon name="airplay" focused={focused} />,
+    renderIcon: (focused) => (
+      <Airplay className={lucideIconClass(focused)} strokeWidth={1.5} />
+    ),
   },
   {
     id: "hulu",
