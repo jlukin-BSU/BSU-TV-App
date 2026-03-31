@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from "react";
-import { Device } from "@capacitor/device";
 
 const SETTINGS_KEY = "bsu_hub_settings";
 const IPCP_KEY     = "bsu_ipcp_settings";
@@ -105,27 +104,25 @@ export function useIpcpSettings() {
     } catch {}
   }, []);
 
-  // On first load (tvId not yet saved), auto-populate with the device name
-  // reported by Capacitor so the Admin Settings field is pre-filled.
+  // On first load (tvId not yet saved), auto-populate with the Android device
+  // model parsed from the WebView User-Agent string.
+  // Android UA format: "Mozilla/5.0 (Linux; Android X; <MODEL> Build/...)"
   useEffect(() => {
     const saved = (() => {
       try { return JSON.parse(localStorage.getItem(IPCP_KEY) ?? "{}"); } catch { return {}; }
     })();
     if (saved.ipcpTvId) return; // user already set a value — don't overwrite
 
-    Device.getInfo()
-      .then(info => {
-        const name = info.name?.trim();
-        if (name && name.toLowerCase() !== "localhost") {
-          setIpcp(prev => ({ ...prev, ipcpTvId: name }));
-          // Persist so Admin Settings shows it immediately on next open.
-          try {
-            const current = JSON.parse(localStorage.getItem(IPCP_KEY) ?? "{}");
-            localStorage.setItem(IPCP_KEY, JSON.stringify({ ...current, ipcpTvId: name }));
-          } catch {}
-        }
-      })
-      .catch(() => {});
+    const ua = navigator.userAgent;
+    const match = ua.match(/\(Linux;\s*Android\s*[\d.]+;\s*([^)]+?)\s*Build\//);
+    const model = match?.[1]?.trim();
+    if (model) {
+      setIpcp(prev => ({ ...prev, ipcpTvId: model }));
+      try {
+        const current = JSON.parse(localStorage.getItem(IPCP_KEY) ?? "{}");
+        localStorage.setItem(IPCP_KEY, JSON.stringify({ ...current, ipcpTvId: model }));
+      } catch {}
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -8,6 +8,3 @@ project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor
 // absolute Replit paths that won't exist on a local computer.
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('./capacitor-android')
-
-include ':capacitor-device'
-project(':capacitor-device').projectDir = new File('./capacitor-device')
