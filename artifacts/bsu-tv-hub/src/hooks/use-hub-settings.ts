@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { Device } from "@capacitor/device";
 
 const SETTINGS_KEY = "bsu_hub_settings";
 const IPCP_KEY     = "bsu_ipcp_settings";
@@ -102,6 +103,30 @@ export function useIpcpSettings() {
     try {
       localStorage.setItem(IPCP_KEY, JSON.stringify(updated));
     } catch {}
+  }, []);
+
+  // On first load (tvId not yet saved), auto-populate with the device name
+  // reported by Capacitor so the Admin Settings field is pre-filled.
+  useEffect(() => {
+    const saved = (() => {
+      try { return JSON.parse(localStorage.getItem(IPCP_KEY) ?? "{}"); } catch { return {}; }
+    })();
+    if (saved.ipcpTvId) return; // user already set a value — don't overwrite
+
+    Device.getInfo()
+      .then(info => {
+        const name = info.name?.trim();
+        if (name && name.toLowerCase() !== "localhost") {
+          setIpcp(prev => ({ ...prev, ipcpTvId: name }));
+          // Persist so Admin Settings shows it immediately on next open.
+          try {
+            const current = JSON.parse(localStorage.getItem(IPCP_KEY) ?? "{}");
+            localStorage.setItem(IPCP_KEY, JSON.stringify({ ...current, ipcpTvId: name }));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return [ipcp, updateIpcp] as const;

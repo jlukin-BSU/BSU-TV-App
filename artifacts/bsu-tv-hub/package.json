@@ -81,6 +81,7 @@
   "dependencies": {
     "@capacitor/android": "^8.2.0",
     "@capacitor/core": "^8.2.0",
+    "@capacitor/device": "^8.0.2",
     "react-use": "^17.6.0"
   }
 }
