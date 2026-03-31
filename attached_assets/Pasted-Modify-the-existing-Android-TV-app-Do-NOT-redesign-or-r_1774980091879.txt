@@ -1,0 +1,126 @@
+Modify the existing Android TV app. Do NOT redesign or restructure it.
+
+IMPORTANT CONTEXT:
+An App Settings page ALREADY EXISTS in the app.
+You are ADDING fields and logic to that existing settings page.
+Do NOT create a new settings page.
+
+There are TWO places actions are triggered:
+1) HDMI buttons that appear AFTER selecting "TV Inputs"
+2) Top-level tiles on the main home screen (Cast, AirPlay, Screen Off)
+
+Only the HDMI buttons map to HDMI actions.
+Cast, AirPlay, and Screen Off are TOP-LEVEL tiles, not part of the TV Inputs submenu.
+
+--------------------------------------------------
+
+1. APP SETTINGS PAGE (ADD TO EXISTING)
+
+Extend the EXISTING App Settings page to support IPCP configuration.
+All values must be editable on the TV and persisted locally.
+Nothing may be hardcoded.
+
+Add these fields to the existing settings UI:
+
+- IPCP Host (string, required)
+- Port (number, default 80)
+- Username (string, editable, auto-populate with "admin")
+- Password (string, masked input)
+- Use HTTPS (boolean toggle)
+
+Persist using SharedPreferences or equivalent.
+Read these values at runtime whenever sending IPCP commands.
+
+--------------------------------------------------
+
+2. TV IDENTIFIER
+
+Use the Android TV hostname as the TV identifier.
+
+Include this value in every IPCP command as the "tv" field.
+
+--------------------------------------------------
+
+3. ACTION ENUM (CENTRALIZED)
+
+Create or extend a centralized enum / constant set for IPCP actions
+so additional actions can be added later without refactoring.
+
+Supported actions:
+
+HDMI1
+HDMI2
+PWROFF
+PWRON
+CAST
+AIRPLAY
+
+--------------------------------------------------
+
+4. HDMI BUTTON EXECUTION CONTEXT
+
+These actions are executed ONLY from the HDMI selection buttons
+shown inside the "TV Inputs" submenu.
+
+When the user selects:
+- HDMI 1 → send action "HDMI1"
+- HDMI 2 → send action "HDMI2"
+
+This replaces the existing native popup / TvInputPlugin HDMI switching
+logic for those HDMI buttons only.
+
+The "TV Inputs" tile itself remains unchanged.
+
+--------------------------------------------------
+
+5. TOP-LEVEL TILE ACTIONS
+
+Add or update TOP-LEVEL tiles on the main home screen:
+
+- Cast
+  - Sends action "CAST"
+
+- AirPlay
+  - Sends action "AIRPLAY"
+
+- Screen Off
+  - Sends action "PWROFF"
+
+These tiles:
+- Are NOT part of the TV Inputs submenu
+- Behave like existing top-level tiles
+- Can be enabled/disabled
+- Can be reordered
+- Icons will be provided separately
+
+--------------------------------------------------
+
+6. HTTP + JSON COMMAND FORMAT
+
+Whenever an action is triggered (HDMI buttons or top-level tiles),
+send an HTTP POST to the configured IPCP endpoint using Basic Auth
+(username and password from settings).
+
+POST body must be JSON:
+
+{
+  "tv": "<android_tv_hostname>",
+  "action": "<ACTION>",
+  "timestamp": <epoch_seconds>
+}
+
+--------------------------------------------------
+
+7. DO NOT CHANGE
+
+- Existing App Settings page layout except to add the new fields
+- Main home tile layout or navigation structure
+- TV Inputs tile behavior itself
+- Activity lifecycle
+- Capacitor project structure
+
+All changes must be limited to:
+- Extending the existing App Settings page
+- HDMI submenu button behavior
+- Cast / AirPlay / Screen Off tile actions
+- IPCP command dispatch logic
