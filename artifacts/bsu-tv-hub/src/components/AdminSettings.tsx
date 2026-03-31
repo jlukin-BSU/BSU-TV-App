@@ -101,68 +101,62 @@ interface FloatingEditOverlayProps {
   onCancel:  () => void;
 }
 function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm, onCancel }: FloatingEditOverlayProps) {
-  const [draft, setDraft] = useState(initValue);
+  const [draft, setDraft]       = useState(initValue);
   const [showPass, setShowPass] = useState(false);
 
-  // Virtual focus — the <input> always holds real DOM focus so the keyboard
-  // stays visible. We only track which area is visually highlighted.
-  const [vFocus, setVFocus] = useState<"input" | "cancel" | "ok">("input");
+  // Virtual focus drives highlighting. Starts on "cancel" so the user can
+  // immediately confirm or cancel without touching the keyboard.
+  // "field" = the text input row (selecting it opens the keyboard).
+  const [vFocus, setVFocus] = useState<"field" | "cancel" | "ok">("cancel");
 
   const inputRef  = useRef<HTMLInputElement>(null);
-  // Keep a ref so the global handler always sees the current value.
   const draftRef  = useRef(draft);
   const vFocusRef = useRef(vFocus);
   useEffect(() => { draftRef.current  = draft;  }, [draft]);
   useEffect(() => { vFocusRef.current = vFocus; }, [vFocus]);
 
-  // Focus the input so the keyboard appears. Input keeps real focus forever.
-  useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus(), 120);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Global D-pad handler (capture phase, highest priority).
-  // The input keeps real DOM focus the whole time — keyboard stays visible.
-  // Only OK/Cancel activation blurs the input to dismiss the keyboard.
+  // Global capture-phase D-pad handler.
+  // The keyboard only appears when the user explicitly selects the text field.
+  // Cancel / OK close the overlay; neither re-opens the keyboard.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const vf = vFocusRef.current;
 
       if (e.key === "ArrowUp") {
-        if (vf === "input") {
-          // Navigate up from input area → highlight Cancel button.
-          e.preventDefault();
-          e.stopPropagation();
-          setVFocus("cancel");
-        } else {
-          // Already on a button — return to input (keyboard was never hidden).
-          e.preventDefault();
-          e.stopPropagation();
-          setVFocus("input");
-          inputRef.current?.focus();
-        }
-      } else if (e.key === "ArrowDown") {
-        if (vf === "cancel" || vf === "ok") {
-          // Navigate back down to keyboard.
-          e.preventDefault();
-          e.stopPropagation();
-          setVFocus("input");
-          inputRef.current?.focus();
-        }
-        // If vf === "input", let the key fall through to the keyboard.
-      } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && (vf === "cancel" || vf === "ok")) {
         e.preventDefault();
         e.stopPropagation();
-        setVFocus(vf === "cancel" ? "ok" : "cancel");
+        if (vf === "field") {
+          setVFocus("cancel");
+          inputRef.current?.blur(); // dismiss keyboard when leaving field
+        } else if (vf === "cancel" || vf === "ok") {
+          // already at top — wrap or stay
+          setVFocus("cancel");
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (vf === "cancel" || vf === "ok") {
+          setVFocus("field");
+        }
+        // already at "field" — let ArrowDown fall through to keyboard
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        if (vf === "cancel" || vf === "ok") {
+          e.preventDefault();
+          e.stopPropagation();
+          setVFocus(vf === "cancel" ? "ok" : "cancel");
+        }
+        // inside field: let left/right move text cursor
       } else if (e.key === "Enter") {
         e.preventDefault();
         e.stopPropagation();
-        // Blur first so the keyboard dismisses before we close the overlay.
-        inputRef.current?.blur();
-        if (vf === "cancel") {
+        if (vf === "field") {
+          // Open keyboard for this field.
+          inputRef.current?.focus();
+        } else if (vf === "cancel") {
+          inputRef.current?.blur();
           onCancel();
         } else {
-          // "ok" or still on "input" (keyboard Done key) → save
+          inputRef.current?.blur();
           onConfirm(draftRef.current);
         }
       } else if (e.key === "Escape") {
@@ -174,7 +168,6 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  // onConfirm/onCancel are stable refs from parent; no need to re-register.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -209,46 +202,50 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
           boxShadow: "0 12px 64px rgba(0,0,0,0.85)",
         }}
       >
-        {/* Label + hint */}
+        {/* Label */}
         <div className="flex flex-col gap-1">
           <span className="text-2xl font-bold text-primary">{label}</span>
           {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
         </div>
 
-        {/* Input — always holds real DOM focus; keyboard stays open */}
-        <div className="flex items-center gap-3">
+        {/* Text field — selecting it (Enter) opens keyboard */}
+        <div
+          className="flex items-center gap-3 rounded-2xl px-6 py-3 cursor-pointer transition-all duration-100"
+          style={{
+            background: "rgba(255,255,255,0.07)",
+            border: vFocus === "field"
+              ? "2px solid rgb(196,18,48)"
+              : "2px solid rgba(255,255,255,0.15)",
+            boxShadow: vFocus === "field" ? "0 0 0 3px rgba(196,18,48,0.25)" : "none",
+          }}
+          onClick={() => { setVFocus("field"); inputRef.current?.focus(); }}
+        >
           <input
             ref={inputRef}
             type={inputType}
             value={draft}
             onChange={e => setDraft(e.target.value)}
-            className="flex-1 rounded-2xl px-6 py-4 text-3xl bg-white/10 text-foreground outline-none"
-            style={{
-              fontFamily: "monospace",
-              letterSpacing: "0.04em",
-              border: vFocus === "input"
-                ? "2px solid rgb(196,18,48)"
-                : "2px solid rgba(255,255,255,0.15)",
-            }}
+            onFocus={() => setVFocus("field")}
+            onBlur={() => { /* keep vFocus on field so user can re-select */ }}
+            className="flex-1 text-3xl bg-transparent text-foreground outline-none"
+            style={{ fontFamily: "monospace", letterSpacing: "0.04em" }}
           />
           {type === "password" && (
             <button
               tabIndex={-1}
-              onClick={() => setShowPass(s => !s)}
-              className="p-3 text-muted-foreground hover:text-foreground shrink-0"
+              onClick={e => { e.stopPropagation(); setShowPass(s => !s); }}
+              className="p-2 text-muted-foreground hover:text-foreground shrink-0"
             >
-              {showPass ? <EyeOff className="w-8 h-8" /> : <Eye className="w-8 h-8" />}
+              {showPass ? <EyeOff className="w-7 h-7" /> : <Eye className="w-7 h-7" />}
             </button>
+          )}
+          {vFocus === "field" && (
+            <span className="text-sm text-primary font-medium shrink-0 animate-pulse">editing</span>
           )}
         </div>
 
-        {/* Nav hint */}
-        <p className="text-sm text-muted-foreground text-center -mt-1">
-          D-pad ↑ to highlight buttons &nbsp;·&nbsp; ↓ to return to keyboard &nbsp;·&nbsp; ← → to switch
-        </p>
-
-        {/* Buttons — visually highlighted by vFocus, no real DOM focus needed */}
-        <div className="flex gap-4 justify-end">
+        {/* Action buttons */}
+        <div className="flex gap-4 justify-end pt-1">
           <button
             tabIndex={-1}
             onClick={() => { inputRef.current?.blur(); onCancel(); }}
