@@ -89,8 +89,8 @@ lint/tmp/
 # Android Profiling
 *.hprof
 
-# Cordova plugins for Capacitor
-capacitor-cordova-android-plugins
+# capacitor-cordova-android-plugins is intentionally committed so that
+# Android Studio can build without requiring a local `cap sync` first.
 
 # Capacitor-generated files are intentionally tracked so the repo
 # contains a fully buildable Android project without needing a separate
