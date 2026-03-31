@@ -67,16 +67,40 @@ interface TextInputRowProps {
 }
 function TextInputRow({ label, value, onChange, focused, type = "text", hint }: TextInputRowProps) {
   const [showPass, setShowPass] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const rowRef    = useRef<HTMLDivElement>(null);
 
+  // When this row gains focus, focus the input and immediately scroll it into
+  // view. Then listen for visualViewport resize (soft keyboard appearing) and
+  // re-scroll so the keyboard never covers the active field.
   useEffect(() => {
-    if (focused) inputRef.current?.focus();
+    if (!focused) return;
+
+    const el = inputRef.current;
+    if (el) {
+      el.focus();
+      // Small delay lets the browser finish layout before scrolling.
+      setTimeout(() => {
+        rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+    }
+
+    const scrollIntoSafeArea = () => {
+      rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    // visualViewport shrinks when the soft keyboard opens — re-center the field.
+    window.visualViewport?.addEventListener("resize", scrollIntoSafeArea);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", scrollIntoSafeArea);
+    };
   }, [focused]);
 
   const inputType = type === "password" ? (showPass ? "text" : "password") : type;
 
   return (
     <div
+      ref={rowRef}
       className={rowClass(focused)}
       style={{ border: "1px solid rgba(255,255,255,0.08)" }}
     >
