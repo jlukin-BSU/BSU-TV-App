@@ -11,16 +11,22 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Collections;
 
 /**
- * Exposes the Android device hostname to the WebView.
+ * Exposes the Android device's true network hostname to the WebView.
  *
- * Resolution order:
- *  1. Settings.System "device_name"  — Android TV device name set in Settings
- *  2. Settings.Global "device_name"  — fallback for some Android TV builds
- *  3. InetAddress.getLocalHost().getHostName() — network hostname from DHCP
- *  4. Build.MODEL                    — last resort hardware model string
+ * Resolution order (most-to-least reliable for network identity):
+ *  1. /proc/sys/kernel/hostname  — kernel hostname (what DHCP registers)
+ *  2. System.getProperty("net.hostname") — Android network hostname property
+ *  3. InetAddress.getLocalHost().getHostName() — JVM resolution
+ *  4. Settings.System "device_name"  — Android TV device name in Settings
+ *  5. Settings.Global "device_name"  — fallback for some builds
+ *  6. Build.MODEL                    — absolute last resort
  */
 @CapacitorPlugin(name = "DeviceHostname")
 public class DeviceHostnamePlugin extends Plugin {
@@ -30,21 +36,68 @@ public class DeviceHostnamePlugin extends Plugin {
     @PluginMethod
     public void getHostname(PluginCall call) {
         String hostname = null;
-        Context ctx = getContext();
 
+        // 1. Kernel hostname — most reliable, matches what DHCP/DNS sees
         try {
-            hostname = Settings.System.getString(ctx.getContentResolver(), "device_name");
-            if (hostname != null && !hostname.isEmpty()) {
-                Log.d(TAG, "hostname from Settings.System device_name: " + hostname);
+            BufferedReader br = new BufferedReader(new FileReader("/proc/sys/kernel/hostname"));
+            String line = br.readLine();
+            br.close();
+            if (line != null) line = line.trim();
+            if (line != null && !line.isEmpty() && !line.equals("localhost") && !line.equals("android")) {
+                hostname = line;
+                Log.d(TAG, "hostname from /proc/sys/kernel/hostname: " + hostname);
             }
         } catch (Exception e) {
-            Log.w(TAG, "Settings.System device_name failed", e);
+            Log.w(TAG, "/proc/sys/kernel/hostname read failed", e);
         }
 
+        // 2. Android system network property
         if (hostname == null || hostname.isEmpty()) {
             try {
-                hostname = Settings.Global.getString(ctx.getContentResolver(), "device_name");
-                if (hostname != null && !hostname.isEmpty()) {
+                String prop = System.getProperty("net.hostname");
+                if (prop != null && !prop.isEmpty() && !prop.equals("localhost") && !prop.equals("android")) {
+                    hostname = prop;
+                    Log.d(TAG, "hostname from net.hostname property: " + hostname);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "net.hostname property read failed", e);
+            }
+        }
+
+        // 3. JVM InetAddress resolution
+        if (hostname == null || hostname.isEmpty()) {
+            try {
+                String h = InetAddress.getLocalHost().getHostName();
+                if (h != null && !h.equals("localhost") && !h.equals("android")) {
+                    hostname = h;
+                    Log.d(TAG, "hostname from InetAddress: " + hostname);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "InetAddress.getLocalHost failed", e);
+            }
+        }
+
+        // 4. Android TV Settings device_name (System)
+        if (hostname == null || hostname.isEmpty()) {
+            try {
+                Context ctx = getContext();
+                String name = Settings.System.getString(ctx.getContentResolver(), "device_name");
+                if (name != null && !name.isEmpty()) {
+                    hostname = name;
+                    Log.d(TAG, "hostname from Settings.System device_name: " + hostname);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Settings.System device_name failed", e);
+            }
+        }
+
+        // 5. Android TV Settings device_name (Global)
+        if (hostname == null || hostname.isEmpty()) {
+            try {
+                Context ctx = getContext();
+                String name = Settings.Global.getString(ctx.getContentResolver(), "device_name");
+                if (name != null && !name.isEmpty()) {
+                    hostname = name;
                     Log.d(TAG, "hostname from Settings.Global device_name: " + hostname);
                 }
             } catch (Exception e) {
@@ -52,16 +105,7 @@ public class DeviceHostnamePlugin extends Plugin {
             }
         }
 
-        if (hostname == null || hostname.isEmpty()) {
-            try {
-                hostname = InetAddress.getLocalHost().getHostName();
-                if ("localhost".equals(hostname)) hostname = null;
-                else Log.d(TAG, "hostname from InetAddress: " + hostname);
-            } catch (Exception e) {
-                Log.w(TAG, "InetAddress.getLocalHost failed", e);
-            }
-        }
-
+        // 6. Build.MODEL absolute fallback
         if (hostname == null || hostname.isEmpty()) {
             hostname = Build.MODEL;
             Log.d(TAG, "hostname fallback Build.MODEL: " + hostname);
