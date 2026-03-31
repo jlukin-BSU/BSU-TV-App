@@ -39,8 +39,10 @@ export async function sendIpcpCommand(
   const protocol = ipcpUseHttps ? "https" : "http";
   const url = `${protocol}://${ipcpHost}:${ipcpPort}`;
 
+  if (!ipcpTvId) throw new Error("TV Identifier is not configured");
+
   const body = JSON.stringify({
-    tv:        ipcpTvId || window.location.hostname,
+    tv:        ipcpTvId,
     action,
     timestamp: Math.floor(Date.now() / 1000),
   });
