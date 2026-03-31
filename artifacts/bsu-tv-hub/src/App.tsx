@@ -37,15 +37,25 @@ const iconClass = (focused: boolean) =>
 function MaterialIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
     <span
-      className="material-symbols-outlined select-none"
       style={{
+        fontFamily: "'Material Symbols Outlined'",
+        fontWeight: "normal",
+        fontStyle: "normal",
         fontSize: "80px",
         lineHeight: 1,
+        letterSpacing: "normal",
+        textTransform: "none",
+        whiteSpace: "nowrap",
+        display: "inline-block",
+        direction: "ltr",
+        userSelect: "none",
+        fontFeatureSettings: "'liga'",
+        WebkitFontSmoothing: "antialiased",
+        fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48",
         color: "white",
         opacity: focused ? 1 : 0.7,
         transition: "opacity 0.3s",
-        fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48",
-      }}
+      } as React.CSSProperties}
     >
       {name}
     </span>
