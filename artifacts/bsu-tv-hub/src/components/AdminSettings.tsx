@@ -56,51 +56,18 @@ function Toggle({ value }: { value: boolean }) {
   );
 }
 
-// ─── Text input row ───────────────────────────────────────────────────────────
+// ─── Text input row (display-only — editing happens via FloatingEditOverlay) ──
 interface TextInputRowProps {
-  label:     string;
-  value:     string;
-  onChange:  (v: string) => void;
-  focused:   boolean;
-  type?:     "text" | "password" | "number";
-  hint?:     string;
+  label:    string;
+  value:    string;
+  focused:  boolean;
+  type?:    "text" | "password" | "number";
+  hint?:    string;
 }
-function TextInputRow({ label, value, onChange, focused, type = "text", hint }: TextInputRowProps) {
-  const [showPass, setShowPass] = useState(false);
-  const inputRef  = useRef<HTMLInputElement>(null);
-  const rowRef    = useRef<HTMLDivElement>(null);
-
-  // When this row gains focus, focus the input and immediately scroll it into
-  // view. Then listen for visualViewport resize (soft keyboard appearing) and
-  // re-scroll so the keyboard never covers the active field.
-  useEffect(() => {
-    if (!focused) return;
-
-    const el = inputRef.current;
-    if (el) {
-      el.focus();
-      // Small delay lets the browser finish layout before scrolling.
-      setTimeout(() => {
-        rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 100);
-    }
-
-    const scrollIntoSafeArea = () => {
-      rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    };
-
-    // visualViewport shrinks when the soft keyboard opens — re-center the field.
-    window.visualViewport?.addEventListener("resize", scrollIntoSafeArea);
-    return () => {
-      window.visualViewport?.removeEventListener("resize", scrollIntoSafeArea);
-    };
-  }, [focused]);
-
-  const inputType = type === "password" ? (showPass ? "text" : "password") : type;
-
+function TextInputRow({ label, value, focused, type = "text", hint }: TextInputRowProps) {
+  const display = type === "password" ? "•".repeat(Math.min(value.length, 16)) : value;
   return (
     <div
-      ref={rowRef}
       className={rowClass(focused)}
       style={{ border: "1px solid rgba(255,255,255,0.08)" }}
     >
@@ -109,26 +76,122 @@ function TextInputRow({ label, value, onChange, focused, type = "text", hint }: 
         {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <input
-          ref={inputRef}
-          type={inputType}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="rounded-xl px-4 py-2 text-lg bg-white/10 text-foreground border border-white/20 outline-none focus:border-primary w-56 text-right"
+        <span
+          className="rounded-xl px-4 py-2 text-lg bg-white/10 text-foreground border border-white/20 w-56 text-right overflow-hidden text-ellipsis whitespace-nowrap"
           style={{ fontFamily: "monospace" }}
-          tabIndex={-1}
-        />
-        {type === "password" && (
-          <button
-            tabIndex={-1}
-            onClick={() => setShowPass(s => !s)}
-            className="p-1 text-muted-foreground hover:text-foreground"
-          >
-            {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-          </button>
+        >
+          {display || <span className="text-muted-foreground text-base">—</span>}
+        </span>
+        {focused && (
+          <span className="text-sm text-primary font-medium animate-pulse">OK to edit</span>
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Floating edit overlay ────────────────────────────────────────────────────
+// Appears at the top of the screen, always above the keyboard.
+interface FloatingEditOverlayProps {
+  label:     string;
+  hint?:     string;
+  initValue: string;
+  type?:     "text" | "password" | "number";
+  onConfirm: (v: string) => void;
+  onCancel:  () => void;
+}
+function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm, onCancel }: FloatingEditOverlayProps) {
+  const [draft, setDraft] = useState(initValue);
+  const [showPass, setShowPass] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Small delay so the animation finishes before focusing (avoids keyboard
+    // appearing before the overlay is fully visible).
+    const t = setTimeout(() => inputRef.current?.focus(), 120);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Intercept Enter/Escape in the capture phase so they never reach the
+  // D-pad handler in the parent modal.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        onConfirm(draft);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel();
+      }
+      // Let Backspace pass through so the user can delete characters.
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [draft, onConfirm, onCancel]);
+
+  const inputType = type === "password" ? (showPass ? "text" : "password") : type;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -24 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -24 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      className="fixed inset-x-0 z-[200] flex justify-center px-8"
+      style={{ top: "6%" }}
+    >
+      <div
+        className="w-full max-w-[60rem] rounded-3xl px-12 py-8 flex flex-col gap-5"
+        style={{
+          background: "rgba(18,18,18,0.98)",
+          border: "2px solid rgb(196,18,48)",
+          boxShadow: "0 12px 64px rgba(0,0,0,0.85)",
+        }}
+      >
+        {/* Label + hint */}
+        <div className="flex flex-col gap-1">
+          <span className="text-2xl font-bold text-primary">{label}</span>
+          {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
+        </div>
+
+        {/* Input row */}
+        <div className="flex items-center gap-3">
+          <input
+            ref={inputRef}
+            type={inputType}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            className="flex-1 rounded-2xl px-6 py-4 text-3xl bg-white/10 text-foreground outline-none"
+            style={{
+              fontFamily: "monospace",
+              letterSpacing: "0.04em",
+              border: "2px solid rgb(196,18,48)",
+            }}
+          />
+          {type === "password" && (
+            <button
+              tabIndex={-1}
+              onClick={() => setShowPass(s => !s)}
+              className="p-3 text-muted-foreground hover:text-foreground shrink-0"
+            >
+              {showPass ? <EyeOff className="w-8 h-8" /> : <Eye className="w-8 h-8" />}
+            </button>
+          )}
+        </div>
+
+        {/* Hint bar */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>Type to edit</span>
+          <span>
+            <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono">Enter</kbd> save
+            &nbsp;·&nbsp;
+            <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono">Esc</kbd> cancel
+          </span>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -138,11 +201,14 @@ export function AdminSettings({
 }: AdminSettingsProps) {
   const [focusIdx, setFocusIdx] = useState(0);
 
-  // Track the visual viewport height so we can shrink the modal when the
-  // soft keyboard opens (keyboard shrinks visualViewport, not window).
-  const [vpHeight, setVpHeight] = useState(
-    () => window.visualViewport?.height ?? window.innerHeight
-  );
+  // When non-null, a FloatingEditOverlay is shown for this IPCP field.
+  const [editingField, setEditingField] = useState<{
+    kind:  string;
+    label: string;
+    hint?: string;
+    value: string;
+    type:  "text" | "password" | "number";
+  } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs  = useRef<(HTMLDivElement | null)[]>([]);
@@ -170,31 +236,6 @@ export function AdminSettings({
     if (open) setFocusIdx(0);
   }, [open]);
 
-  // Shrink modal when soft keyboard appears by tracking visual viewport height.
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => {
-      setVpHeight(vv.height);
-      // After the viewport shrinks, scroll the focused row into view inside
-      // the modal's own scroll container so it stays above the keyboard.
-      setTimeout(() => {
-        const el = itemRefs.current[focusIdx];
-        if (el && scrollRef.current) {
-          el.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        }
-      }, 80);
-    };
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  // focusIdx intentionally omitted — we capture it via closure at handler time
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
   useEffect(() => {
     const el = itemRefs.current[focusIdx];
     if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -218,6 +259,23 @@ export function AdminSettings({
     setFocusIdx(1 + swapIdx);
   }
 
+  // Opens the FloatingEditOverlay for the given IPCP text field.
+  function openEdit(kind: string, label: string, value: string, type: "text"|"password"|"number" = "text", hint?: string) {
+    setEditingField({ kind, label, hint, value, type });
+  }
+
+  function confirmEdit(newVal: string) {
+    if (!editingField) return;
+    switch (editingField.kind) {
+      case "ipcp-host": onIpcpChange({ ...ipcp, ipcpHost: newVal }); break;
+      case "ipcp-port": onIpcpChange({ ...ipcp, ipcpPort: Number(newVal) || 80 }); break;
+      case "ipcp-user": onIpcpChange({ ...ipcp, ipcpUsername: newVal }); break;
+      case "ipcp-pass": onIpcpChange({ ...ipcp, ipcpPassword: newVal }); break;
+      case "ipcp-tvid": onIpcpChange({ ...ipcp, ipcpTvId: newVal }); break;
+    }
+    setEditingField(null);
+  }
+
   // ── activate focused item ─────────────────────────────────────────────────
   const activateFocused = useCallback(() => {
     const item = items[focusIdx];
@@ -232,6 +290,21 @@ export function AdminSettings({
       case "ipcp-https":
         onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
         break;
+      case "ipcp-host":
+        openEdit("ipcp-host", "IPCP Host", ipcp.ipcpHost, "text", "IP address or hostname of the IPCP server");
+        break;
+      case "ipcp-port":
+        openEdit("ipcp-port", "Port", String(ipcp.ipcpPort), "number", "Default: 80 (HTTP) or 443 (HTTPS)");
+        break;
+      case "ipcp-user":
+        openEdit("ipcp-user", "Username", ipcp.ipcpUsername);
+        break;
+      case "ipcp-pass":
+        openEdit("ipcp-pass", "Password", ipcp.ipcpPassword, "password");
+        break;
+      case "ipcp-tvid":
+        openEdit("ipcp-tvid", "TV Identifier", ipcp.ipcpTvId, "text", `Sent as "tv" in every command. Leave blank to use device hostname.`);
+        break;
       default:
         break;
     }
@@ -242,6 +315,10 @@ export function AdminSettings({
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
+      // When the floating edit overlay is open it captures Enter/Escape itself
+      // in the capture phase; block all D-pad navigation here too.
+      if (editingField) return;
+
       switch (e.key) {
         case "ArrowUp":
           e.preventDefault();
@@ -283,7 +360,7 @@ export function AdminSettings({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, focusIdx, items, settings, ipcp, activateFocused]);
+  }, [open, focusIdx, items, settings, ipcp, activateFocused, editingField]);
 
   function setRef(idx: number) {
     return (el: HTMLDivElement | null) => { itemRefs.current[idx] = el; };
@@ -300,24 +377,31 @@ export function AdminSettings({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-x-0 top-0 z-[100] flex items-center justify-center"
-          style={{
-            height: `${vpHeight}px`,
-            background: "rgba(10,10,10,0.92)",
-            backdropFilter: "blur(16px)",
-          }}
+          className="fixed inset-0 z-[100] flex items-center justify-center"
+          style={{ background: "rgba(10,10,10,0.92)", backdropFilter: "blur(16px)" }}
         >
+          {/* Floating text-edit overlay — always above keyboard */}
+          <AnimatePresence>
+            {editingField && (
+              <FloatingEditOverlay
+                key={editingField.kind}
+                label={editingField.label}
+                hint={editingField.hint}
+                initValue={editingField.value}
+                type={editingField.type}
+                onConfirm={confirmEdit}
+                onCancel={() => setEditingField(null)}
+              />
+            )}
+          </AnimatePresence>
+
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.92, opacity: 0 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="relative rounded-3xl flex flex-col w-[64rem]"
-            style={{
-              maxHeight: `${vpHeight * 0.92}px`,
-              background: "rgba(30,30,30,0.98)",
-              border: "1px solid rgba(255,255,255,0.1)",
-            }}
+            className="relative rounded-3xl flex flex-col w-[64rem] max-h-[85vh]"
+            style={{ background: "rgba(30,30,30,0.98)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
             {/* Fixed header */}
             <div className="flex items-center justify-between px-16 pt-10 pb-5 shrink-0">
@@ -409,51 +493,22 @@ export function AdminSettings({
                   Navigate to a field and press OK/Enter to edit.
                 </p>
 
-                {/* Host */}
-                <div ref={setRef(ipcpStart + 0)} onClick={() => setFocusIdx(ipcpStart + 0)}>
-                  <TextInputRow
-                    label="IPCP Host"
-                    hint="IP address or hostname of the IPCP server"
-                    value={ipcp.ipcpHost}
-                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpHost: v })}
-                    focused={focusIdx === ipcpStart + 0}
-                  />
+                <div ref={setRef(ipcpStart + 0)} onClick={() => { setFocusIdx(ipcpStart + 0); openEdit("ipcp-host", "IPCP Host", ipcp.ipcpHost, "text", "IP address or hostname of the IPCP server"); }}>
+                  <TextInputRow label="IPCP Host" hint="IP address or hostname of the IPCP server" value={ipcp.ipcpHost} focused={focusIdx === ipcpStart + 0} />
                 </div>
 
-                {/* Port */}
-                <div ref={setRef(ipcpStart + 1)} onClick={() => setFocusIdx(ipcpStart + 1)}>
-                  <TextInputRow
-                    label="Port"
-                    hint="Default: 80 (HTTP) or 443 (HTTPS)"
-                    value={String(ipcp.ipcpPort)}
-                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpPort: Number(v) || 80 })}
-                    focused={focusIdx === ipcpStart + 1}
-                    type="number"
-                  />
+                <div ref={setRef(ipcpStart + 1)} onClick={() => { setFocusIdx(ipcpStart + 1); openEdit("ipcp-port", "Port", String(ipcp.ipcpPort), "number", "Default: 80 (HTTP) or 443 (HTTPS)"); }}>
+                  <TextInputRow label="Port" hint="Default: 80 (HTTP) or 443 (HTTPS)" value={String(ipcp.ipcpPort)} focused={focusIdx === ipcpStart + 1} type="number" />
                 </div>
 
-                {/* Username */}
-                <div ref={setRef(ipcpStart + 2)} onClick={() => setFocusIdx(ipcpStart + 2)}>
-                  <TextInputRow
-                    label="Username"
-                    value={ipcp.ipcpUsername}
-                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpUsername: v })}
-                    focused={focusIdx === ipcpStart + 2}
-                  />
+                <div ref={setRef(ipcpStart + 2)} onClick={() => { setFocusIdx(ipcpStart + 2); openEdit("ipcp-user", "Username", ipcp.ipcpUsername); }}>
+                  <TextInputRow label="Username" value={ipcp.ipcpUsername} focused={focusIdx === ipcpStart + 2} />
                 </div>
 
-                {/* Password */}
-                <div ref={setRef(ipcpStart + 3)} onClick={() => setFocusIdx(ipcpStart + 3)}>
-                  <TextInputRow
-                    label="Password"
-                    value={ipcp.ipcpPassword}
-                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpPassword: v })}
-                    focused={focusIdx === ipcpStart + 3}
-                    type="password"
-                  />
+                <div ref={setRef(ipcpStart + 3)} onClick={() => { setFocusIdx(ipcpStart + 3); openEdit("ipcp-pass", "Password", ipcp.ipcpPassword, "password"); }}>
+                  <TextInputRow label="Password" value={ipcp.ipcpPassword} focused={focusIdx === ipcpStart + 3} type="password" />
                 </div>
 
-                {/* Use HTTPS toggle */}
                 <div
                   ref={setRef(ipcpStart + 4)}
                   onClick={() => {
@@ -472,15 +527,8 @@ export function AdminSettings({
                   <Toggle value={ipcp.ipcpUseHttps} />
                 </div>
 
-                {/* TV Identifier */}
-                <div ref={setRef(ipcpStart + 5)} onClick={() => setFocusIdx(ipcpStart + 5)}>
-                  <TextInputRow
-                    label="TV Identifier"
-                    hint={`Sent as "tv" in every command. Leave blank to use device hostname.`}
-                    value={ipcp.ipcpTvId}
-                    onChange={(v) => onIpcpChange({ ...ipcp, ipcpTvId: v })}
-                    focused={focusIdx === ipcpStart + 5}
-                  />
+                <div ref={setRef(ipcpStart + 5)} onClick={() => { setFocusIdx(ipcpStart + 5); openEdit("ipcp-tvid", "TV Identifier", ipcp.ipcpTvId, "text", `Sent as "tv" in every command. Leave blank to use device hostname.`); }}>
+                  <TextInputRow label="TV Identifier" hint={`Sent as "tv" in every command. Leave blank to use device hostname.`} value={ipcp.ipcpTvId} focused={focusIdx === ipcpStart + 5} />
                 </div>
               </div>
 
