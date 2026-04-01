@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 
 const SETTINGS_KEY = "bsu_hub_settings";
 const IPCP_KEY     = "bsu_ipcp_settings";
+const SICS_KEY     = "bsu_sics_settings";
 
 export const ALL_TILE_IDS = [
   "signage", "livetv", "hdmi", "youtube", "screenoff",
@@ -104,6 +105,36 @@ export function useIpcpSettings() {
     } catch {}
   }, []);
 
-
   return [ipcp, updateIpcp] as const;
+}
+
+// ── Simple IP Control settings ────────────────────────────────────────────────
+
+export interface SicsSettings {
+  tvAddress: string;
+  sicsPort:  number;
+}
+
+export const DEFAULT_SICS: SicsSettings = {
+  tvAddress: "",
+  sicsPort:  20060,
+};
+
+function loadSics(): SicsSettings {
+  try {
+    const raw = localStorage.getItem(SICS_KEY);
+    if (raw) return { ...DEFAULT_SICS, ...(JSON.parse(raw) as Partial<SicsSettings>) };
+  } catch {}
+  return { ...DEFAULT_SICS };
+}
+
+export function useSicsSettings() {
+  const [sics, setSics] = useState<SicsSettings>(loadSics);
+
+  const updateSics = useCallback((updated: SicsSettings) => {
+    setSics(updated);
+    try { localStorage.setItem(SICS_KEY, JSON.stringify(updated)); } catch {}
+  }, []);
+
+  return [sics, updateSics] as const;
 }

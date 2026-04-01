@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Settings, X, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
-import { HubSettings, IpcpSettings, ALL_TILE_IDS } from "../hooks/use-hub-settings";
+import { HubSettings, IpcpSettings, SicsSettings, ALL_TILE_IDS } from "../hooks/use-hub-settings";
 
 interface TileInfo {
   id: string;
@@ -16,6 +16,8 @@ interface AdminSettingsProps {
   tiles:            TileInfo[];
   ipcp:             IpcpSettings;
   onIpcpChange:     (s: IpcpSettings) => void;
+  sics:             SicsSettings;
+  onSicsChange:     (s: SicsSettings) => void;
 }
 
 // ─── focusable item descriptors ──────────────────────────────────────────────
@@ -27,7 +29,9 @@ type FocusItem =
   | { kind: "ipcp-user" }
   | { kind: "ipcp-pass" }
   | { kind: "ipcp-https" }
-  | { kind: "ipcp-tvid" };
+  | { kind: "ipcp-tvid" }
+  | { kind: "sics-addr" }
+  | { kind: "sics-port" };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function rowClass(focused: boolean) {
@@ -269,7 +273,7 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function AdminSettings({
-  open, onClose, settings, onSettingsChange, tiles, ipcp, onIpcpChange,
+  open, onClose, settings, onSettingsChange, tiles, ipcp, onIpcpChange, sics, onSicsChange,
 }: AdminSettingsProps) {
   const [focusIdx, setFocusIdx] = useState(0);
 
@@ -298,10 +302,16 @@ export function AdminSettings({
     { kind: "ipcp-tvid" },
   ];
 
+  const SICS_ITEMS: FocusItem[] = [
+    { kind: "sics-addr" },
+    { kind: "sics-port" },
+  ];
+
   const items: FocusItem[] = [
     { kind: "signage" },
     ...orderedTiles.map((t, idx): FocusItem => ({ kind: "tile", id: t.id, idx })),
     ...IPCP_ITEMS,
+    ...SICS_ITEMS,
   ];
 
   useEffect(() => {
@@ -344,6 +354,8 @@ export function AdminSettings({
       case "ipcp-user": onIpcpChange({ ...ipcp, ipcpUsername: newVal }); break;
       case "ipcp-pass": onIpcpChange({ ...ipcp, ipcpPassword: newVal }); break;
       case "ipcp-tvid": onIpcpChange({ ...ipcp, ipcpTvId: newVal }); break;
+      case "sics-addr": onSicsChange({ ...sics, tvAddress: newVal }); break;
+      case "sics-port": onSicsChange({ ...sics, sicsPort: Number(newVal) || 20060 }); break;
     }
     setEditingField(null);
   }
@@ -376,6 +388,12 @@ export function AdminSettings({
         break;
       case "ipcp-tvid":
         openEdit("ipcp-tvid", "TV Identifier", ipcp.ipcpTvId, "text", `Sent as "tv" in every command. Leave blank to use device hostname.`);
+        break;
+      case "sics-addr":
+        openEdit("sics-addr", "TV Address", sics.tvAddress, "text", "Sony TV IP address (e.g. 192.168.1.50). Never use localhost.");
+        break;
+      case "sics-port":
+        openEdit("sics-port", "Simple IP Control Port", String(sics.sicsPort), "number", "Default: 20060");
         break;
       default:
         break;
@@ -440,6 +458,7 @@ export function AdminSettings({
 
   const tileStart = 1;
   const ipcpStart = 1 + orderedTiles.length;
+  const sicsStart = ipcpStart + IPCP_ITEMS.length;
 
   return (
     <AnimatePresence>
@@ -601,6 +620,25 @@ export function AdminSettings({
 
                 <div ref={setRef(ipcpStart + 5)} onClick={() => { setFocusIdx(ipcpStart + 5); openEdit("ipcp-tvid", "TV Identifier", ipcp.ipcpTvId, "text", `Sent as "tv" in every command. Leave blank to use device hostname.`); }}>
                   <TextInputRow label="TV Identifier" hint={`Sent as "tv" in every command. Leave blank to use device hostname.`} value={ipcp.ipcpTvId} focused={focusIdx === ipcpStart + 5} />
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              {/* ── Simple IP Control ── */}
+              <div className="flex flex-col gap-3">
+                <h3 className="text-2xl font-semibold text-foreground/80">Simple IP Control</h3>
+                <p className="text-base text-muted-foreground">
+                  Sony TV network address for HDMI switching, AirPlay, Cast and Screen Off.
+                  Must be a reachable IP — never localhost.
+                </p>
+
+                <div ref={setRef(sicsStart + 0)} onClick={() => { setFocusIdx(sicsStart + 0); openEdit("sics-addr", "TV Address", sics.tvAddress, "text", "Sony TV IP address (e.g. 192.168.1.50). Never use localhost."); }}>
+                  <TextInputRow label="TV Address" hint="Sony TV IP address on your network (e.g. 192.168.1.50)" value={sics.tvAddress} focused={focusIdx === sicsStart + 0} />
+                </div>
+
+                <div ref={setRef(sicsStart + 1)} onClick={() => { setFocusIdx(sicsStart + 1); openEdit("sics-port", "Simple IP Control Port", String(sics.sicsPort), "number", "Default: 20060"); }}>
+                  <TextInputRow label="Port" hint="Default: 20060" value={String(sics.sicsPort)} focused={focusIdx === sicsStart + 1} type="number" />
                 </div>
               </div>
 

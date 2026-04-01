@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(TvInputPlugin.class);
         registerPlugin(AppLauncherPlugin.class);
         registerPlugin(ScreenOffPlugin.class);
+        registerPlugin(SimpleIpControlPlugin.class);
         super.onCreate(savedInstanceState);
     }
 

@@ -1,0 +1,45 @@
+Modify the existing Android TV app as follows:
+
+1. SETTINGS FIELD FOR TV ADDRESS
+- Add an editable field in the app's Settings page labeled "TV Address" (string).
+- This field is for the user to enter the Sony TV's IP address or hostname.
+- The app must NOT use "localhost" or 127.0.0.1. The address must be a network-reachable IP or hostname.
+- Store this value locally and use it for all Simple IP Control commands.
+
+2. HDMI INPUT SWITCHING (TV SOURCES SUBMENU)
+- In the TV Sources submenu, each HDMI tile (e.g., HDMI 1, HDMI 2) should send a Simple IP Control command over the network to the TV address specified in settings.
+- The command must use the Simple IP Control protocol (not REST, not PSK).
+- Example (TCP, port 20060, plain text):  
+  For HDMI 1: `*SCINP:3#`  
+  For HDMI 2: `*SCINP:4#`  
+  (Replace "3" and "4" with the correct input numbers for your TV.)
+
+3. AIRPLAY AND CAST INPUTS
+- The AirPlay tile should send the Simple IP Control command to switch the TV to the AirPlay input.
+  - Example: `*SCINP:<AirPlayInputNumber>#`
+- The Cast tile should send the Simple IP Control command to switch the TV to the Google Cast input.
+  - Example: `*SCINP:<CastInputNumber>#`
+- (You may need to confirm the correct input numbers for AirPlay and Cast on your TV model.)
+
+4. SCREEN OFF TILE
+- Change the "Screen Off" tile to send the regular power off command using Simple IP Control.
+  - Example: `*POWR:0#` (Power Off)
+
+5. NETWORK COMMANDS
+- All commands must be sent to the TV address specified in settings, on the correct port (default for Simple IP Control is 20060, but allow this to be editable if possible).
+- Do NOT use localhost or 127.0.0.1.
+
+6. SAMPLE KOTLIN CODE (for sending a command)
+```kotlin
+fun sendSimpleIpCommand(tvAddress: String, port: Int, command: String) {
+    val socket = Socket(tvAddress, port)
+    val writer = PrintWriter(socket.getOutputStream(), true)
+    writer.println(command)
+    writer.flush()
+    writer.close()
+    socket.close()
+}
+
+// Example usage:
+sendSimpleIpCommand(tvAddress, 20060, "*SCINP:3#") // Switch to HDMI 1
+sendSimpleIpCommand(tvAddress, 20060, "*POWR:0#") // Power Off

@@ -10,9 +10,9 @@ import { AdminSettings } from "./components/AdminSettings";
 import { HdmiPicker } from "./components/HdmiPicker";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
-import { useHubSettings, useIpcpSettings } from "./hooks/use-hub-settings";
+import { useHubSettings, useIpcpSettings, useSicsSettings } from "./hooks/use-hub-settings";
 import AppLauncher, { OPTISIGNS_PACKAGE } from "./plugins/app-launcher";
-import { sendIpcpCommand, IpcpAction } from "./ipcp";
+import { sendSicsCommand, SicsCommand } from "./plugins/simple-ip-control";
 import { Capacitor } from "@capacitor/core";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
@@ -123,11 +123,11 @@ const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   tubi:     { packageName: "com.tubitv" },
 };
 
-/** AppIds that dispatch an IPCP command instead of launching an Android app. */
-const IPCP_TILE_ACTIONS: Partial<Record<AppId, IpcpAction>> = {
-  screenoff: IpcpAction.PWROFF,
-  cast:      IpcpAction.CAST,
-  airplay:   IpcpAction.AIRPLAY,
+/** AppIds that send a Simple IP Control command to the TV. */
+const SICS_TILE_COMMANDS: Partial<Record<AppId, string>> = {
+  screenoff: SicsCommand.PWROFF,
+  cast:      SicsCommand.CAST,
+  airplay:   SicsCommand.AIRPLAY,
 };
 
 /** Number of Back/Return key presses within the time window to open admin settings. */
@@ -137,6 +137,7 @@ const ADMIN_CLICK_WINDOW_MS = 3000;
 function HubScreen() {
   const [settings, updateSettings] = useHubSettings();
   const [ipcp, updateIpcp]         = useIpcpSettings();
+  const [sics, updateSics]         = useSicsSettings();
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
@@ -247,15 +248,15 @@ function HubScreen() {
       return;
     }
 
-    // IPCP tiles: screenoff, cast, airplay
-    const ipcpAction = IPCP_TILE_ACTIONS[appId];
-    if (ipcpAction) {
+    // Simple IP Control tiles: screenoff, cast, airplay
+    const sicsCmd = SICS_TILE_COMMANDS[appId];
+    if (sicsCmd) {
       setLaunchError(null);
       try {
-        await sendIpcpCommand(ipcpAction, ipcp);
+        await sendSicsCommand(sics.tvAddress, sics.sicsPort, sicsCmd);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`IPCP ${ipcpAction} failed:`, msg);
+        console.warn(`SICS ${sicsCmd} failed:`, msg);
         setLaunchError(msg);
         setTimeout(() => setLaunchError(null), 5000);
       }
@@ -297,7 +298,7 @@ function HubScreen() {
       setActiveApp(appId);
       setTransitioningTo(null);
     }, 2500);
-  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen, ipcp]);
+  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen, sics]);
 
   const hubIsIdle = activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen;
 
@@ -388,7 +389,7 @@ function HubScreen() {
       <HdmiPicker
         open={hdmiPickerOpen}
         onClose={() => setHdmiPickerOpen(false)}
-        ipcpCfg={ipcp}
+        sicsCfg={sics}
       />
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={() => setActiveApp(null)} />
@@ -400,6 +401,8 @@ function HubScreen() {
         tiles={ALL_TILES.map(t => ({ id: t.id, label: t.label }))}
         ipcp={ipcp}
         onIpcpChange={updateIpcp}
+        sics={sics}
+        onSicsChange={updateSics}
       />
     </div>
   );
