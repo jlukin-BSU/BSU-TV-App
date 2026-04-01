@@ -1,8 +1,4 @@
 import { useState, useCallback, useEffect } from "react";
-import { registerPlugin } from "@capacitor/core";
-
-interface DeviceHostnamePlugin { getHostname(): Promise<{ hostname: string }>; }
-const DeviceHostname = registerPlugin<DeviceHostnamePlugin>("DeviceHostname");
 
 const SETTINGS_KEY = "bsu_hub_settings";
 const IPCP_KEY     = "bsu_ipcp_settings";
@@ -108,35 +104,6 @@ export function useIpcpSettings() {
     } catch {}
   }, []);
 
-  // On first load (tvId not yet saved), auto-populate with the device hostname
-  // obtained from the native DeviceHostname plugin (Android TV device name /
-  // network hostname). Falls back to UA model string in browsers.
-  useEffect(() => {
-    const saved = (() => {
-      try { return JSON.parse(localStorage.getItem(IPCP_KEY) ?? "{}"); } catch { return {}; }
-    })();
-    if (saved.ipcpTvId) return; // user already set a value — don't overwrite
-
-    const applyHostname = (name: string) => {
-      if (!name) return;
-      setIpcp(prev => ({ ...prev, ipcpTvId: name }));
-      try {
-        const current = JSON.parse(localStorage.getItem(IPCP_KEY) ?? "{}");
-        localStorage.setItem(IPCP_KEY, JSON.stringify({ ...current, ipcpTvId: name }));
-      } catch {}
-    };
-
-    // Try native plugin first (works inside the APK on Android TV).
-    DeviceHostname.getHostname()
-      .then(r => applyHostname(r.hostname))
-      .catch(() => {
-        // Browser / dev fallback: parse model from WebView UA string.
-        const match = navigator.userAgent.match(/\(Linux;\s*Android\s*[\d.]+;\s*([^)]+?)\s*Build\//);
-        const model = match?.[1]?.trim();
-        if (model) applyHostname(model);
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return [ipcp, updateIpcp] as const;
 }
