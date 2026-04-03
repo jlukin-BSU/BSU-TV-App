@@ -1,23 +1,23 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import hdmiIcon from "@assets/Hdmi-Port--Streamline-Lucide_1774491136778.png";
-import { sendSicsCommand, SicsCommand } from "../plugins/simple-ip-control";
-import type { SicsSettings } from "../hooks/use-hub-settings";
+import { sendRelayCommand } from "../relay";
+import type { RelaySettings } from "../hooks/use-hub-settings";
 
 const INPUTS = [
-  { label: "Wall HDMI 1", command: SicsCommand.HDMI1 },
-  { label: "Wall HDMI 2", command: SicsCommand.HDMI2 },
+  { label: "Wall HDMI 1", action: "HDMI1" },
+  { label: "Wall HDMI 2", action: "HDMI2" },
 ] as const;
 
 interface HdmiPickerProps {
-  open:    boolean;
-  onClose: () => void;
-  sicsCfg: SicsSettings;
+  open:      boolean;
+  onClose:   () => void;
+  relayCfg:  RelaySettings;
 }
 
 type State = "idle" | "switching" | "error";
 
-export function HdmiPicker({ open, onClose, sicsCfg }: HdmiPickerProps) {
+export function HdmiPicker({ open, onClose, relayCfg }: HdmiPickerProps) {
   const [focusIndex, setFocusIndex]       = useState(0);
   const [state, setState]                 = useState<State>("idle");
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
@@ -38,11 +38,11 @@ export function HdmiPicker({ open, onClose, sicsCfg }: HdmiPickerProps) {
     setErrorMsg(null);
 
     try {
-      await sendSicsCommand(sicsCfg.tvAddress, sicsCfg.sicsPort, entry.command);
+      await sendRelayCommand(relayCfg.tvHostname, entry.action);
       setTimeout(() => onClose(), 1200);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn("SICS command failed:", msg);
+      console.warn("Relay command failed:", msg);
       setErrorMsg(msg);
       setState("error");
       setTimeout(() => {

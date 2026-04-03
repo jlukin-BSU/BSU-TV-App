@@ -10,9 +10,9 @@ import { AdminSettings } from "./components/AdminSettings";
 import { HdmiPicker } from "./components/HdmiPicker";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
-import { useHubSettings, useIpcpSettings, useSicsSettings } from "./hooks/use-hub-settings";
+import { useHubSettings, useRelaySettings } from "./hooks/use-hub-settings";
 import AppLauncher, { OPTISIGNS_PACKAGE } from "./plugins/app-launcher";
-import { sendSicsCommand, SicsCommand } from "./plugins/simple-ip-control";
+import { sendRelayCommand } from "./relay";
 import { Capacitor } from "@capacitor/core";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
@@ -123,11 +123,11 @@ const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
   tubi:     { packageName: "com.tubitv" },
 };
 
-/** AppIds that send a Simple IP Control command to the TV. */
-const SICS_TILE_COMMANDS: Partial<Record<AppId, string>> = {
-  screenoff: SicsCommand.PWROFF,
-  cast:      SicsCommand.CAST,
-  airplay:   SicsCommand.AIRPLAY,
+/** AppIds that send a relay command. Value is the action string sent to the relay server. */
+const RELAY_TILE_ACTIONS: Partial<Record<AppId, string>> = {
+  screenoff: "PWROFF",
+  cast:      "CAST",
+  airplay:   "AIRPLAY",
 };
 
 /** Number of Back/Return key presses within the time window to open admin settings. */
@@ -136,8 +136,7 @@ const ADMIN_CLICK_WINDOW_MS = 3000;
 
 function HubScreen() {
   const [settings, updateSettings] = useHubSettings();
-  const [ipcp, updateIpcp]         = useIpcpSettings();
-  const [sics, updateSics]         = useSicsSettings();
+  const [relay, updateRelay]       = useRelaySettings();
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
@@ -248,15 +247,15 @@ function HubScreen() {
       return;
     }
 
-    // Simple IP Control tiles: screenoff, cast, airplay
-    const sicsCmd = SICS_TILE_COMMANDS[appId];
-    if (sicsCmd) {
+    // Relay tiles: screenoff, cast, airplay
+    const relayAction = RELAY_TILE_ACTIONS[appId];
+    if (relayAction) {
       setLaunchError(null);
       try {
-        await sendSicsCommand(sics.tvAddress, sics.sicsPort, sicsCmd);
+        await sendRelayCommand(relay.tvHostname, relayAction);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`SICS ${sicsCmd} failed:`, msg);
+        console.warn(`Relay ${relayAction} failed:`, msg);
         setLaunchError(msg);
         setTimeout(() => setLaunchError(null), 5000);
       }
@@ -298,7 +297,7 @@ function HubScreen() {
       setActiveApp(appId);
       setTransitioningTo(null);
     }, 2500);
-  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen, sics]);
+  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen, relay]);
 
   const hubIsIdle = activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen;
 
@@ -389,7 +388,7 @@ function HubScreen() {
       <HdmiPicker
         open={hdmiPickerOpen}
         onClose={() => setHdmiPickerOpen(false)}
-        sicsCfg={sics}
+        relayCfg={relay}
       />
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={() => setActiveApp(null)} />
@@ -399,10 +398,8 @@ function HubScreen() {
         settings={settings}
         onSettingsChange={updateSettings}
         tiles={ALL_TILES.map(t => ({ id: t.id, label: t.label }))}
-        ipcp={ipcp}
-        onIpcpChange={updateIpcp}
-        sics={sics}
-        onSicsChange={updateSics}
+        relay={relay}
+        onRelayChange={updateRelay}
       />
     </div>
   );

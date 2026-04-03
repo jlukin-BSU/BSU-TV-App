@@ -1,8 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 
 const SETTINGS_KEY = "bsu_hub_settings";
-const IPCP_KEY     = "bsu_ipcp_settings";
-const SICS_KEY     = "bsu_sics_settings";
+const RELAY_KEY    = "bsu_relay_settings";
 
 export const ALL_TILE_IDS = [
   "signage", "livetv", "hdmi", "youtube", "screenoff",
@@ -16,22 +15,12 @@ export interface HubSettings {
   tileOrder: string[];
 }
 
-export interface IpcpSettings {
-  ipcpHost:     string;
-  ipcpPort:     number;
-  ipcpUsername: string;
-  ipcpPassword: string;
-  ipcpUseHttps: boolean;
-  ipcpTvId:     string;
+export interface RelaySettings {
+  tvHostname: string;
 }
 
-export const DEFAULT_IPCP: IpcpSettings = {
-  ipcpHost:     "",
-  ipcpPort:     80,
-  ipcpUsername: "admin",
-  ipcpPassword: "",
-  ipcpUseHttps: false,
-  ipcpTvId:     "",
+export const DEFAULT_RELAY: RelaySettings = {
+  tvHostname: "",
 };
 
 export const DEFAULT_TILE_VISIBILITY: Record<string, boolean> = {
@@ -71,15 +60,12 @@ function loadSettings(): HubSettings {
   };
 }
 
-function loadIpcp(): IpcpSettings {
+function loadRelay(): RelaySettings {
   try {
-    const raw = localStorage.getItem(IPCP_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<IpcpSettings>;
-      return { ...DEFAULT_IPCP, ...parsed };
-    }
+    const raw = localStorage.getItem(RELAY_KEY);
+    if (raw) return { ...DEFAULT_RELAY, ...(JSON.parse(raw) as Partial<RelaySettings>) };
   } catch {}
-  return { ...DEFAULT_IPCP };
+  return { ...DEFAULT_RELAY };
 }
 
 export function useHubSettings() {
@@ -87,54 +73,19 @@ export function useHubSettings() {
 
   const updateSettings = useCallback((updated: HubSettings) => {
     setSettings(updated);
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
-    } catch {}
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated)); } catch {}
   }, []);
 
   return [settings, updateSettings] as const;
 }
 
-export function useIpcpSettings() {
-  const [ipcp, setIpcp] = useState<IpcpSettings>(loadIpcp);
+export function useRelaySettings() {
+  const [relay, setRelay] = useState<RelaySettings>(loadRelay);
 
-  const updateIpcp = useCallback((updated: IpcpSettings) => {
-    setIpcp(updated);
-    try {
-      localStorage.setItem(IPCP_KEY, JSON.stringify(updated));
-    } catch {}
+  const updateRelay = useCallback((updated: RelaySettings) => {
+    setRelay(updated);
+    try { localStorage.setItem(RELAY_KEY, JSON.stringify(updated)); } catch {}
   }, []);
 
-  return [ipcp, updateIpcp] as const;
-}
-
-// ── Simple IP Control settings ────────────────────────────────────────────────
-
-export interface SicsSettings {
-  tvAddress: string;
-  sicsPort:  number;
-}
-
-export const DEFAULT_SICS: SicsSettings = {
-  tvAddress: "",
-  sicsPort:  20060,
-};
-
-function loadSics(): SicsSettings {
-  try {
-    const raw = localStorage.getItem(SICS_KEY);
-    if (raw) return { ...DEFAULT_SICS, ...(JSON.parse(raw) as Partial<SicsSettings>) };
-  } catch {}
-  return { ...DEFAULT_SICS };
-}
-
-export function useSicsSettings() {
-  const [sics, setSics] = useState<SicsSettings>(loadSics);
-
-  const updateSics = useCallback((updated: SicsSettings) => {
-    setSics(updated);
-    try { localStorage.setItem(SICS_KEY, JSON.stringify(updated)); } catch {}
-  }, []);
-
-  return [sics, updateSics] as const;
+  return [relay, updateRelay] as const;
 }

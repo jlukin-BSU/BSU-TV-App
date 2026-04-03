@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Settings, X, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
-import { HubSettings, IpcpSettings, SicsSettings, ALL_TILE_IDS } from "../hooks/use-hub-settings";
+import { HubSettings, RelaySettings, ALL_TILE_IDS } from "../hooks/use-hub-settings";
 
 interface TileInfo {
   id: string;
@@ -14,24 +14,15 @@ interface AdminSettingsProps {
   settings:         HubSettings;
   onSettingsChange: (s: HubSettings) => void;
   tiles:            TileInfo[];
-  ipcp:             IpcpSettings;
-  onIpcpChange:     (s: IpcpSettings) => void;
-  sics:             SicsSettings;
-  onSicsChange:     (s: SicsSettings) => void;
+  relay:            RelaySettings;
+  onRelayChange:    (s: RelaySettings) => void;
 }
 
 // ─── focusable item descriptors ──────────────────────────────────────────────
 type FocusItem =
   | { kind: "signage" }
-  | { kind: "tile";       id: string; idx: number }
-  | { kind: "ipcp-host" }
-  | { kind: "ipcp-port" }
-  | { kind: "ipcp-user" }
-  | { kind: "ipcp-pass" }
-  | { kind: "ipcp-https" }
-  | { kind: "ipcp-tvid" }
-  | { kind: "sics-addr" }
-  | { kind: "sics-port" };
+  | { kind: "tile";        id: string; idx: number }
+  | { kind: "tv-hostname" };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function rowClass(focused: boolean) {
@@ -273,7 +264,7 @@ function FloatingEditOverlay({ label, hint, initValue, type = "text", onConfirm,
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function AdminSettings({
-  open, onClose, settings, onSettingsChange, tiles, ipcp, onIpcpChange, sics, onSicsChange,
+  open, onClose, settings, onSettingsChange, tiles, relay, onRelayChange,
 }: AdminSettingsProps) {
   const [focusIdx, setFocusIdx] = useState(0);
 
@@ -293,25 +284,10 @@ export function AdminSettings({
     .map(id => tiles.find(t => t.id === id))
     .filter((t): t is TileInfo => !!t);
 
-  const IPCP_ITEMS: FocusItem[] = [
-    { kind: "ipcp-host" },
-    { kind: "ipcp-port" },
-    { kind: "ipcp-user" },
-    { kind: "ipcp-pass" },
-    { kind: "ipcp-https" },
-    { kind: "ipcp-tvid" },
-  ];
-
-  const SICS_ITEMS: FocusItem[] = [
-    { kind: "sics-addr" },
-    { kind: "sics-port" },
-  ];
-
   const items: FocusItem[] = [
     { kind: "signage" },
     ...orderedTiles.map((t, idx): FocusItem => ({ kind: "tile", id: t.id, idx })),
-    ...IPCP_ITEMS,
-    ...SICS_ITEMS,
+    { kind: "tv-hostname" },
   ];
 
   useEffect(() => {
@@ -349,13 +325,7 @@ export function AdminSettings({
   function confirmEdit(newVal: string) {
     if (!editingField) return;
     switch (editingField.kind) {
-      case "ipcp-host": onIpcpChange({ ...ipcp, ipcpHost: newVal }); break;
-      case "ipcp-port": onIpcpChange({ ...ipcp, ipcpPort: Number(newVal) || 80 }); break;
-      case "ipcp-user": onIpcpChange({ ...ipcp, ipcpUsername: newVal }); break;
-      case "ipcp-pass": onIpcpChange({ ...ipcp, ipcpPassword: newVal }); break;
-      case "ipcp-tvid": onIpcpChange({ ...ipcp, ipcpTvId: newVal }); break;
-      case "sics-addr": onSicsChange({ ...sics, tvAddress: newVal }); break;
-      case "sics-port": onSicsChange({ ...sics, sicsPort: Number(newVal) || 20060 }); break;
+      case "tv-hostname": onRelayChange({ ...relay, tvHostname: newVal }); break;
     }
     setEditingField(null);
   }
@@ -371,35 +341,14 @@ export function AdminSettings({
       case "tile":
         setTileVisible(item.id, !(settings.tileVisibility[item.id] ?? true));
         break;
-      case "ipcp-https":
-        onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
-        break;
-      case "ipcp-host":
-        openEdit("ipcp-host", "IPCP Host", ipcp.ipcpHost, "text", "IP address or hostname of the IPCP server");
-        break;
-      case "ipcp-port":
-        openEdit("ipcp-port", "Port", String(ipcp.ipcpPort), "number", "Default: 80 (HTTP) or 443 (HTTPS)");
-        break;
-      case "ipcp-user":
-        openEdit("ipcp-user", "Username", ipcp.ipcpUsername);
-        break;
-      case "ipcp-pass":
-        openEdit("ipcp-pass", "Password", ipcp.ipcpPassword, "password");
-        break;
-      case "ipcp-tvid":
-        openEdit("ipcp-tvid", "TV Identifier", ipcp.ipcpTvId, "text", `Sent as "tv" in every command. Leave blank to use device hostname.`);
-        break;
-      case "sics-addr":
-        openEdit("sics-addr", "TV Address", sics.tvAddress, "text", "Sony TV IP address (e.g. 192.168.1.50). Never use localhost.");
-        break;
-      case "sics-port":
-        openEdit("sics-port", "Simple IP Control Port", String(sics.sicsPort), "number", "Default: 20060");
+      case "tv-hostname":
+        openEdit("tv-hostname", "TV Hostname", relay.tvHostname, "text", "Hostname sent with every control command (e.g. its-sony-bz30l-01)");
         break;
       default:
         break;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusIdx, items, settings, ipcp]);
+  }, [focusIdx, items, settings, relay]);
 
   // ── D-pad handler ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -424,7 +373,6 @@ export function AdminSettings({
           if (cur?.kind === "tile") moveTile(cur.id, "up");
           if (cur?.kind === "signage") setAutoSignage(!settings.autoSignageEnabled);
           if (cur?.kind === "tile") setTileVisible(cur.id, !(settings.tileVisibility[cur.id] ?? true));
-          if (cur?.kind === "ipcp-https") onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
           break;
         }
         case "ArrowRight": {
@@ -432,7 +380,6 @@ export function AdminSettings({
           const cur = items[focusIdx];
           if (cur?.kind === "tile") moveTile(cur.id, "down");
           if (cur?.kind === "signage") setAutoSignage(!settings.autoSignageEnabled);
-          if (cur?.kind === "ipcp-https") onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
           break;
         }
         case "Enter":
@@ -450,15 +397,14 @@ export function AdminSettings({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, focusIdx, items, settings, ipcp, activateFocused, editingField]);
+  }, [open, focusIdx, items, settings, relay, activateFocused, editingField]);
 
   function setRef(idx: number) {
     return (el: HTMLDivElement | null) => { itemRefs.current[idx] = el; };
   }
 
-  const tileStart = 1;
-  const ipcpStart = 1 + orderedTiles.length;
-  const sicsStart = ipcpStart + IPCP_ITEMS.length;
+  const tileStart      = 1;
+  const tvHostnameIdx  = 1 + orderedTiles.length;
 
   return (
     <AnimatePresence>
@@ -576,69 +522,27 @@ export function AdminSettings({
 
               <div className="h-px bg-border" />
 
-              {/* ── IPCP Configuration ── */}
+              {/* ── TV Control ── */}
               <div className="flex flex-col gap-3">
-                <h3 className="text-2xl font-semibold text-foreground/80">IPCP Configuration</h3>
+                <h3 className="text-2xl font-semibold text-foreground/80">TV Control</h3>
                 <p className="text-base text-muted-foreground">
-                  Connection settings for sending control commands (HDMI switch, Cast, AirPlay, Screen Off).
-                  Navigate to a field and press OK/Enter to edit.
+                  The TV hostname is sent with every control command (HDMI switch, Cast, AirPlay, Screen Off)
+                  to the relay server at <code className="text-sm bg-white/10 px-2 py-0.5 rounded">its-avctrl-bsu-av:3000</code>.
                 </p>
-
-                <div ref={setRef(ipcpStart + 0)} onClick={() => { setFocusIdx(ipcpStart + 0); openEdit("ipcp-host", "IPCP Host", ipcp.ipcpHost, "text", "IP address or hostname of the IPCP server"); }}>
-                  <TextInputRow label="IPCP Host" hint="IP address or hostname of the IPCP server" value={ipcp.ipcpHost} focused={focusIdx === ipcpStart + 0} />
-                </div>
-
-                <div ref={setRef(ipcpStart + 1)} onClick={() => { setFocusIdx(ipcpStart + 1); openEdit("ipcp-port", "Port", String(ipcp.ipcpPort), "number", "Default: 80 (HTTP) or 443 (HTTPS)"); }}>
-                  <TextInputRow label="Port" hint="Default: 80 (HTTP) or 443 (HTTPS)" value={String(ipcp.ipcpPort)} focused={focusIdx === ipcpStart + 1} type="number" />
-                </div>
-
-                <div ref={setRef(ipcpStart + 2)} onClick={() => { setFocusIdx(ipcpStart + 2); openEdit("ipcp-user", "Username", ipcp.ipcpUsername); }}>
-                  <TextInputRow label="Username" value={ipcp.ipcpUsername} focused={focusIdx === ipcpStart + 2} />
-                </div>
-
-                <div ref={setRef(ipcpStart + 3)} onClick={() => { setFocusIdx(ipcpStart + 3); openEdit("ipcp-pass", "Password", ipcp.ipcpPassword, "password"); }}>
-                  <TextInputRow label="Password" value={ipcp.ipcpPassword} focused={focusIdx === ipcpStart + 3} type="password" />
-                </div>
 
                 <div
-                  ref={setRef(ipcpStart + 4)}
+                  ref={setRef(tvHostnameIdx)}
                   onClick={() => {
-                    setFocusIdx(ipcpStart + 4);
-                    onIpcpChange({ ...ipcp, ipcpUseHttps: !ipcp.ipcpUseHttps });
+                    setFocusIdx(tvHostnameIdx);
+                    openEdit("tv-hostname", "TV Hostname", relay.tvHostname, "text", "Hostname sent with every command (e.g. its-sony-bz30l-01)");
                   }}
-                  className={rowClass(focusIdx === ipcpStart + 4)}
-                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
                 >
-                  <div className="flex flex-col gap-0.5 flex-1">
-                    <span className="text-xl font-medium text-foreground">Use HTTPS</span>
-                    <span className="text-base text-muted-foreground">
-                      Enable for TLS-secured connections (port 443 recommended)
-                    </span>
-                  </div>
-                  <Toggle value={ipcp.ipcpUseHttps} />
-                </div>
-
-                <div ref={setRef(ipcpStart + 5)} onClick={() => { setFocusIdx(ipcpStart + 5); openEdit("ipcp-tvid", "TV Identifier", ipcp.ipcpTvId, "text", `Sent as "tv" in every command. Leave blank to use device hostname.`); }}>
-                  <TextInputRow label="TV Identifier" hint={`Sent as "tv" in every command. Leave blank to use device hostname.`} value={ipcp.ipcpTvId} focused={focusIdx === ipcpStart + 5} />
-                </div>
-              </div>
-
-              <div className="h-px bg-border" />
-
-              {/* ── Simple IP Control ── */}
-              <div className="flex flex-col gap-3">
-                <h3 className="text-2xl font-semibold text-foreground/80">Simple IP Control</h3>
-                <p className="text-base text-muted-foreground">
-                  Sony TV network address for HDMI switching, AirPlay, Cast and Screen Off.
-                  Must be a reachable IP — never localhost.
-                </p>
-
-                <div ref={setRef(sicsStart + 0)} onClick={() => { setFocusIdx(sicsStart + 0); openEdit("sics-addr", "TV Address", sics.tvAddress, "text", "Sony TV IP address (e.g. 192.168.1.50). Never use localhost."); }}>
-                  <TextInputRow label="TV Address" hint="Sony TV IP address on your network (e.g. 192.168.1.50)" value={sics.tvAddress} focused={focusIdx === sicsStart + 0} />
-                </div>
-
-                <div ref={setRef(sicsStart + 1)} onClick={() => { setFocusIdx(sicsStart + 1); openEdit("sics-port", "Simple IP Control Port", String(sics.sicsPort), "number", "Default: 20060"); }}>
-                  <TextInputRow label="Port" hint="Default: 20060" value={String(sics.sicsPort)} focused={focusIdx === sicsStart + 1} type="number" />
+                  <TextInputRow
+                    label="TV Hostname"
+                    hint="Hostname sent with every command (e.g. its-sony-bz30l-01)"
+                    value={relay.tvHostname}
+                    focused={focusIdx === tvHostnameIdx}
+                  />
                 </div>
               </div>
 
