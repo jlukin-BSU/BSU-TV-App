@@ -4,7 +4,7 @@ const SETTINGS_KEY = "bsu_hub_settings";
 const RELAY_KEY    = "bsu_relay_settings";
 
 export const ALL_TILE_IDS = [
-  "signage", "livetv", "hdmi", "youtube", "poweron", "screenoff",
+  "signage", "livetv", "hdmi", "youtube", "screenoff",
   "cast", "airplay",
   "hulu", "netflix", "tubi",
 ] as const;
@@ -28,7 +28,6 @@ export const DEFAULT_TILE_VISIBILITY: Record<string, boolean> = {
   livetv:    true,
   hdmi:      true,
   youtube:   true,
-  poweron:   true,
   screenoff: true,
   cast:      true,
   airplay:   true,
