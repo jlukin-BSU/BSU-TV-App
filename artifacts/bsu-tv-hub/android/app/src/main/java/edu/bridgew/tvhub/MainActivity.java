@@ -15,6 +15,17 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ScreenOffPlugin.class);
         registerPlugin(SimpleIpControlPlugin.class);
         super.onCreate(savedInstanceState);
+
+        // DEV ONLY — accept self-signed certs from relay server. Remove before production.
+        android.webkit.WebView wv = getBridge().getWebView();
+        if (wv != null) {
+            wv.setWebViewClient(new android.webkit.WebViewClient() {
+                @Override
+                public void onReceivedSslError(android.webkit.WebView view, android.webkit.SslErrorHandler handler, android.net.http.SslError error) {
+                    handler.proceed();
+                }
+            });
+        }
     }
 
     // -------------------------------------------------------------------------
