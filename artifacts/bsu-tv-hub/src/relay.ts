@@ -1,4 +1,4 @@
-const RELAY_URL = "http://its-avctrl-bsu-av:3000/control";
+const RELAY_URL = "https://its-avctrl-bsu-av:3000/control";
 
 export async function sendRelayCommand(tvHostname: string, action: string): Promise<void> {
   if (!tvHostname || tvHostname.trim() === "") {

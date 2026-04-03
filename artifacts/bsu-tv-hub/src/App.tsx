@@ -66,6 +66,16 @@ const ALL_TILES: TileConfig[] = [
     ),
   },
   {
+    id: "poweron",
+    label: "Power On",
+    renderIcon: (focused) => (
+      <Power
+        className={`w-20 h-20 transition-all duration-300 ${focused ? "text-white opacity-100" : "text-white opacity-70"}`}
+        strokeWidth={2}
+      />
+    ),
+  },
+  {
     id: "screenoff",
     label: "Screen Off",
     renderIcon: (focused) => (
@@ -125,6 +135,7 @@ const EXTERNAL_APPS: Partial<Record<AppId, ExternalApp>> = {
 
 /** AppIds that send a relay command. Value is the action string sent to the relay server. */
 const RELAY_TILE_ACTIONS: Partial<Record<AppId, string>> = {
+  poweron:   "PWRON",
   screenoff: "PWROFF",
   cast:      "CAST",
   airplay:   "AIRPLAY",
