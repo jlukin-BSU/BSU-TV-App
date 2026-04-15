@@ -8,6 +8,7 @@ import { NetflixLogo, HuluLogo, TubiLogo } from "./components/StreamingLogos";
 import { TransitionOverlay, ActiveAppScreen, AppId } from "./components/AppScreens";
 import { AdminSettings } from "./components/AdminSettings";
 import { HdmiPicker } from "./components/HdmiPicker";
+import { SessionWarningModal, shouldShowSessionWarning } from "./components/SessionWarningModal";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
 import { useHubSettings, useRelaySettings } from "./hooks/use-hub-settings";
@@ -130,6 +131,19 @@ const RELAY_TILE_ACTIONS: Partial<Record<AppId, string>> = {
   airplay:   "AIRPLAY",
 };
 
+/**
+ * Apps that require the "accounts will be signed out" warning.
+ * Excludes: signage, tubi, hdmi (TV inputs), screenoff, cast, airplay.
+ */
+const SESSION_WARNING_APPS = new Set<AppId>(["livetv", "youtube", "hulu", "netflix"]);
+
+const SESSION_WARNING_NAMES: Partial<Record<AppId, string>> = {
+  livetv:  "Live TV",
+  youtube: "YouTube",
+  hulu:    "Hulu",
+  netflix: "Netflix",
+};
+
 /** Number of Back/Return key presses within the time window to open admin settings. */
 const ADMIN_CLICK_COUNT = 5;
 const ADMIN_CLICK_WINDOW_MS = 3000;
@@ -142,6 +156,7 @@ function HubScreen() {
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
   const [hdmiPickerOpen, setHdmiPickerOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [sessionWarning, setSessionWarning] = useState<{ appId: AppId; appName: string } | null>(null);
   const [topBarOpacity, setTopBarOpacity] = useState(1);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
@@ -239,29 +254,8 @@ function HubScreen() {
     }
   }, []);
 
-  const launchApp = useCallback(async (appId: AppId) => {
-    if (transitioningTo || activeApp || hdmiPickerOpen || adminOpen) return;
-
-    if (appId === "hdmi") {
-      setHdmiPickerOpen(true);
-      return;
-    }
-
-    // Relay tiles: screenoff, cast, airplay
-    const relayAction = RELAY_TILE_ACTIONS[appId];
-    if (relayAction) {
-      setLaunchError(null);
-      try {
-        await sendRelayCommand(relay.tvHostname, relayAction);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`Relay ${relayAction} failed:`, msg);
-        setLaunchError(msg);
-        setTimeout(() => setLaunchError(null), 5000);
-      }
-      return;
-    }
-
+  /** Performs the actual app launch without any warning check. */
+  const launchAppDirect = useCallback(async (appId: AppId) => {
     const externalApp = EXTERNAL_APPS[appId];
 
     if (externalApp) {
@@ -297,9 +291,41 @@ function HubScreen() {
       setActiveApp(appId);
       setTransitioningTo(null);
     }, 2500);
-  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen, relay]);
+  }, []);
 
-  const hubIsIdle = activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen;
+  const launchApp = useCallback(async (appId: AppId) => {
+    if (transitioningTo || activeApp || hdmiPickerOpen || adminOpen) return;
+
+    if (appId === "hdmi") {
+      setHdmiPickerOpen(true);
+      return;
+    }
+
+    // Relay tiles: screenoff, cast, airplay — no warning needed
+    const relayAction = RELAY_TILE_ACTIONS[appId];
+    if (relayAction) {
+      setLaunchError(null);
+      try {
+        await sendRelayCommand(relay.tvHostname, relayAction);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`Relay ${relayAction} failed:`, msg);
+        setLaunchError(msg);
+        setTimeout(() => setLaunchError(null), 5000);
+      }
+      return;
+    }
+
+    // Show session warning for applicable streaming/Android apps
+    if (SESSION_WARNING_APPS.has(appId) && shouldShowSessionWarning()) {
+      setSessionWarning({ appId, appName: SESSION_WARNING_NAMES[appId] ?? appId });
+      return;
+    }
+
+    await launchAppDirect(appId);
+  }, [transitioningTo, activeApp, hdmiPickerOpen, adminOpen, relay, launchAppDirect]);
+
+  const hubIsIdle = activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen && sessionWarning === null;
 
   useTvIdle(
     300000,
@@ -383,6 +409,17 @@ function HubScreen() {
           <AlertCircle className="shrink-0 w-8 h-8" />
           <span>{launchError}</span>
         </div>
+      )}
+
+      {sessionWarning && (
+        <SessionWarningModal
+          appName={sessionWarning.appName}
+          onProceed={() => {
+            const appId = sessionWarning.appId;
+            setSessionWarning(null);
+            launchAppDirect(appId);
+          }}
+        />
       )}
 
       <HdmiPicker
