@@ -42,10 +42,18 @@ export interface CommandEntry {
   enabledByDefault: boolean;
 }
 
-/** Mirrors INPUTS in the Capacitor app's HdmiPicker. */
+/**
+ * Wall labels vs. physical ports.
+ *
+ * The wall plates labelled "HDMI 1" and "HDMI 2" are wired to the display's
+ * physical HDMI 3 and HDMI 4. Confirmed against the old relay's tested mapping
+ * (SIMPLE IP `*SCINP:3#` / `*SCINP:4#` for HDMI1 / HDMI2) -- see
+ * /home/its/tv-relay/server.js on the NUC. So the REST `port` is 3/4, not 1/2,
+ * even though the button still reads "Wall HDMI 1/2".
+ */
 export const INPUTS: readonly InputEntry[] = [
-  { id: "hdmi1", label: "Wall HDMI 1", port: 1 },
-  { id: "hdmi2", label: "Wall HDMI 2", port: 2 },
+  { id: "hdmi1", label: "Wall HDMI 1", port: 3 },
+  { id: "hdmi2", label: "Wall HDMI 2", port: 4 },
 ] as const;
 
 /** Mirrors EXTERNAL_APPS in the Capacitor app's App.tsx. */
