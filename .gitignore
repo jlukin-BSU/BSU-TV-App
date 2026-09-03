@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# bravia-web: per-display PSKs, never commit
+artifacts/bravia-web/devices.json
+artifacts/bravia-web/.env
