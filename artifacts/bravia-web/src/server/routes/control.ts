@@ -144,7 +144,13 @@ router.post("/command", async (req, res) => {
   }
 
   const entry = findCommand(parsed.data.commandId);
-  if (!entry || !display.commands.includes(entry.id)) {
+  // "screenon" is the wake counterpart of "screenoff": whenever a display can be
+  // blanked it must be able to be woken, even if Screen On is not a visible tile.
+  const allowed =
+    entry &&
+    (display.commands.includes(entry.id) ||
+      (entry.id === "screenon" && display.commands.includes("screenoff")));
+  if (!entry || !allowed) {
     res.status(400).json({
       error: "unknown_command",
       message: `"${parsed.data.commandId}" is not a command available on ${display.hostname}.`,
