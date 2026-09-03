@@ -1,21 +1,21 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getConfig } from "../lib/api";
 import type { ClientConfig } from "../../shared/catalog";
 
-type State =
+export type ConfigState =
   | { status: "loading" }
   | { status: "ready"; config: ClientConfig }
   | { status: "error"; message: string };
 
 /**
- * Loads this display's config once. The server derives identity from the
- * request's source IP, so an unregistered display comes back as an error here
- * with a message naming its own address.
+ * Loads this display's config. The server derives identity from the request's
+ * source IP, so an unregistered display comes back as an error naming its own
+ * address. `reload` re-fetches after an admin change.
  */
-export function useConfig(): State {
-  const [state, setState] = useState<State>({ status: "loading" });
+export function useConfig(): { state: ConfigState; reload: () => void } {
+  const [state, setState] = useState<ConfigState>({ status: "loading" });
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     let cancelled = false;
     getConfig()
       .then((config) => {
@@ -23,10 +23,7 @@ export function useConfig(): State {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setState({
-            status: "error",
-            message: err instanceof Error ? err.message : String(err),
-          });
+          setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
         }
       });
     return () => {
@@ -34,5 +31,7 @@ export function useConfig(): State {
     };
   }, []);
 
-  return state;
+  useEffect(() => reload(), [reload]);
+
+  return { state, reload };
 }

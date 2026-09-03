@@ -6,6 +6,7 @@ import pinoHttp from "pino-http";
 import { createRouter } from "./routes";
 import { logger } from "./lib/logger";
 import type { AppConfig } from "./lib/config";
+import type { SettingsStore } from "./lib/settings";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,7 +17,7 @@ function publicDir(): string {
   return path.resolve(here, "public");
 }
 
-export function createApp(config: AppConfig): Express {
+export function createApp(config: AppConfig, store: SettingsStore): Express {
   const app: Express = express();
 
   /**
@@ -56,7 +57,7 @@ export function createApp(config: AppConfig): Express {
    * every request is authorised by its source IP -- opening the API up to
    * cross-origin callers would only widen what can reach the displays.
    */
-  app.use("/api", createRouter(config));
+  app.use("/api", createRouter(config, store));
 
   const uiDir = publicDir();
   if (fs.existsSync(uiDir)) {

@@ -4,14 +4,17 @@ import { normalizeIp } from "../lib/ip";
 import { resolveDevice } from "../middlewares/device";
 import { getWeather } from "../lib/weather";
 import { logger } from "../lib/logger";
+import type { SettingsStore } from "../lib/settings";
 import healthRouter from "./health";
-import controlRouter from "./control";
+import { createControlRouter } from "./control";
+import { createAdminRouter } from "./admin";
 
 /**
- * `/healthz` is open; everything else must be attributable to a known display,
- * so it sits behind `resolveDevice`.
+ * `/healthz`, `/whoami` and `/weather` are open. Everything else must be
+ * attributable to a known display, so it sits behind `resolveDevice`. The admin
+ * routes add their own password check on top.
  */
-export function createRouter(config: AppConfig): IRouter {
+export function createRouter(config: AppConfig, store: SettingsStore): IRouter {
   const router: IRouter = Router();
 
   router.use(healthRouter);
@@ -38,7 +41,10 @@ export function createRouter(config: AppConfig): IRouter {
     }
   });
 
-  router.use(resolveDevice(config), controlRouter);
+  // Everything below requires a known display.
+  router.use(resolveDevice(config));
+  router.use("/admin", createAdminRouter(store));
+  router.use(createControlRouter(store));
 
   return router;
 }

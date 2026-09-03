@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Power, AlertCircle } from "lucide-react";
+import { Power, AlertCircle, Settings } from "lucide-react";
 import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
@@ -8,11 +8,12 @@ import { NetflixLogo, HuluLogo, TubiLogo } from "./components/StreamingLogos";
 import { TransitionOverlay, ActiveAppScreen, type AppId } from "./components/AppScreens";
 import { HdmiPicker } from "./components/HdmiPicker";
 import { SessionWarningModal, shouldShowSessionWarning } from "./components/SessionWarningModal";
+import { AdminPanel } from "./components/AdminPanel";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
 import { useConfig } from "./hooks/use-config";
 import { launchApp as apiLaunchApp, sendCommand as apiSendCommand } from "./lib/api";
-import type { ClientConfig } from "../shared/catalog";
+import type { ClientConfig, ClientTile } from "../shared/catalog";
 
 import marketingIcon from "@assets/marketing_1774373576874.png";
 import tvIcon from "@assets/tv_1774374146860.png";
@@ -26,26 +27,21 @@ const iconClass = (focused: boolean) =>
 
 /**
  * A tile in the grid. `kind` decides what activating it does:
- *   app       -> POST /api/app {id}
- *   inputs    -> open the HDMI picker (which POSTs /api/input)
- *   command   -> POST /api/command {id}
+ *   app     -> POST /api/app {id}
+ *   inputs  -> open the HDMI picker (which POSTs /api/input)
+ *   command -> POST /api/command {id}
  */
 interface TileDef {
-  /** Local id used for focus/animation; equals the server id except for "inputs". */
   key: string;
   kind: "app" | "inputs" | "command";
-  /** Server-side id sent on the wire (unused for the inputs picker). */
   serverId?: string;
   label: string;
   logoOnly?: boolean;
-  /** AppScreens overlay id, for the transition/active overlays. */
   overlayId?: AppId;
   renderIcon: (focused: boolean) => React.ReactNode;
 }
 
-/** Streaming/Android apps that trigger the "accounts not saved" warning. */
 const SESSION_WARNING_IDS = new Set(["livetv", "youtube", "hulu", "netflix"]);
-
 const SESSION_WARNING_NAMES: Record<string, string> = {
   livetv: "Live TV",
   youtube: "YouTube",
@@ -53,7 +49,10 @@ const SESSION_WARNING_NAMES: Record<string, string> = {
   netflix: "Netflix",
 };
 
-/** Visual definitions for every app id the catalog can enable. */
+const powerIcon = (focused: boolean) => (
+  <Power className={`w-20 h-20 transition-all duration-300 ${focused ? "text-white opacity-100" : "text-white opacity-70"}`} strokeWidth={2} />
+);
+
 function appTile(id: string, label: string): TileDef {
   const base = { key: id, kind: "app" as const, serverId: id, label, overlayId: id as AppId };
   switch (id) {
@@ -74,71 +73,44 @@ function appTile(id: string, label: string): TileDef {
   }
 }
 
-const powerIcon = (focused: boolean) => (
-  <Power className={`w-20 h-20 transition-all duration-300 ${focused ? "text-white opacity-100" : "text-white opacity-70"}`} strokeWidth={2} />
-);
-
-/**
- * Build the grid from the server config, in a fixed visual order. The inputs
- * picker is folded into one "TV Inputs" tile placed after Live TV, matching the
- * Android hub's layout.
- */
-function buildTiles(config: ClientConfig): TileDef[] {
-  const appById = new Map(config.apps.map((a) => [a.id, a]));
-  const cmdById = new Map(config.commands.map((c) => [c.id, c]));
-  const tiles: TileDef[] = [];
-
-  const pushApp = (id: string) => {
-    const a = appById.get(id);
-    if (a) tiles.push(appTile(a.id, a.label));
-  };
-  const pushCmd = (id: string, overlayId?: AppId) => {
-    const c = cmdById.get(id);
-    if (c) {
-      tiles.push({
-        key: c.id,
-        kind: "command",
-        serverId: c.id,
-        label: c.label,
-        overlayId,
-        renderIcon: powerIcon,
-      });
+/** Map the server's ordered, enabled tiles to renderable tile defs. */
+function buildTiles(clientTiles: ClientTile[]): TileDef[] {
+  return clientTiles.map((t) => {
+    if (t.kind === "input") {
+      return {
+        key: t.key,
+        kind: "inputs",
+        label: t.label,
+        overlayId: "hdmi",
+        renderIcon: (f: boolean) => <img src={inputsIcon} alt="" className={iconClass(f)} />,
+      };
     }
-  };
-
-  pushApp("signage");
-  pushApp("livetv");
-  if (config.inputs.length > 0) {
-    tiles.push({
-      key: "inputs",
-      kind: "inputs",
-      label: "TV Inputs",
-      overlayId: "hdmi",
-      renderIcon: (f) => <img src={inputsIcon} alt="" className={iconClass(f)} />,
-    });
-  }
-  pushApp("youtube");
-  pushCmd("screenoff", "screenoff");
-  pushApp("hulu");
-  pushApp("netflix");
-  pushApp("tubi");
-  pushCmd("poweroff");
-  pushCmd("screenon");
-
-  return tiles;
+    if (t.kind === "command") {
+      return {
+        key: t.key,
+        kind: "command",
+        serverId: t.key,
+        label: t.label,
+        overlayId: t.key === "screenoff" ? ("screenoff" as AppId) : undefined,
+        renderIcon: powerIcon,
+      };
+    }
+    return appTile(t.key, t.label);
+  });
 }
 
 const ADMIN_CLICK_COUNT = 5;
 const ADMIN_CLICK_WINDOW_MS = 3000;
 const COLUMNS = 3;
 
-function HubScreen({ config }: { config: ClientConfig }) {
-  const tiles = useMemo(() => buildTiles(config), [config]);
+function HubScreen({ config, reload }: { config: ClientConfig; reload: () => void }) {
+  const tiles = useMemo(() => buildTiles(config.tiles), [config.tiles]);
 
   const [focusIndex, setFocusIndex] = useState(0);
   const [transitioningTo, setTransitioningTo] = useState<AppId | null>(null);
   const [activeApp, setActiveApp] = useState<AppId | null>(null);
   const [hdmiPickerOpen, setHdmiPickerOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [sessionWarning, setSessionWarning] = useState<{ tile: TileDef; appName: string } | null>(null);
   const [topBarOpacity, setTopBarOpacity] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
@@ -155,7 +127,6 @@ function HubScreen({ config }: { config: ClientConfig }) {
     window.setTimeout(() => setToast((cur) => (cur === msg ? null : cur)), ms);
   }, []);
 
-  /** Reset hub state when we come back into focus from a launched app. */
   useEffect(() => {
     const onVisibility = () => {
       if (!document.hidden) {
@@ -181,8 +152,13 @@ function HubScreen({ config }: { config: ClientConfig }) {
   }, [focusIndex]);
 
   const hubIsIdle =
-    activeApp === null && transitioningTo === null && !hdmiPickerOpen && sessionWarning === null;
+    activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen && sessionWarning === null;
 
+  const openAdmin = useCallback(() => {
+    if (config.adminEnabled) setAdminOpen(true);
+  }, [config.adminEnabled]);
+
+  /** Hidden trigger: 5x Back/Red/Esc, or the logo, opens admin (in addition to the gear). */
   const recordAdminPress = useCallback(() => {
     if (!hubIsIdle) return;
     const now = Date.now();
@@ -193,10 +169,9 @@ function HubScreen({ config }: { config: ClientConfig }) {
     adminKeyTimes.current = times;
     if (times.length >= ADMIN_CLICK_COUNT) {
       adminKeyTimes.current = [];
-      // Phase B: open the server-side admin panel here.
-      showToast("Admin settings are configured on the server (devices.json).", 4000);
+      openAdmin();
     }
-  }, [hubIsIdle, showToast]);
+  }, [hubIsIdle, openAdmin]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -213,17 +188,14 @@ function HubScreen({ config }: { config: ClientConfig }) {
     };
   }, [recordAdminPress]);
 
-  /** Perform the launch/command for a tile, no warning check. */
   const activateTile = useCallback(
     async (tile: TileDef) => {
       if (tile.kind === "inputs") {
         setHdmiPickerOpen(true);
         return;
       }
-
       if (tile.kind === "command") {
         if (tile.serverId === "screenoff") {
-          // Blank the panel and show the local black screen; waking restores it.
           try {
             await apiSendCommand("screenoff");
             setActiveApp("screenoff");
@@ -240,13 +212,9 @@ function HubScreen({ config }: { config: ClientConfig }) {
         }
         return;
       }
-
-      // app
       setTransitioningTo(tile.overlayId ?? null);
       try {
         await apiLaunchApp(tile.serverId!);
-        // The display switches to the Android app; our page backgrounds. The
-        // visibilitychange handler clears the overlay when we return.
       } catch (err) {
         setTransitioningTo(null);
         showToast(err instanceof Error ? err.message : String(err));
@@ -272,15 +240,21 @@ function HubScreen({ config }: { config: ClientConfig }) {
     [hubIsIdle, activateTile],
   );
 
-  /** When the screen is blanked, any interaction wakes it back up. */
   const wakeScreen = useCallback(() => {
     setActiveApp(null);
     apiSendCommand("screenon").catch(() => {
-      /* if the display cannot be woken via REST, the remote power key still works */
+      /* remote power key still works if REST wake is unavailable */
     });
   }, []);
 
-  useTvIdle(300000, () => onTileActivate(tiles.find((t) => t.key === "signage")!), hubIsIdle && signagePresent);
+  useTvIdle(
+    300000,
+    () => {
+      const signage = tiles.find((t) => t.key === "signage");
+      if (signage) onTileActivate(signage);
+    },
+    hubIsIdle && signagePresent && config.autoSignage,
+  );
 
   useDPad({
     isActive: hubIsIdle,
@@ -340,6 +314,18 @@ function HubScreen({ config }: { config: ClientConfig }) {
         </div>
       </div>
 
+      {/* Small settings gear -- mouse-reachable, so admin works in a normal browser. */}
+      {config.adminEnabled && (
+        <button
+          onClick={openAdmin}
+          aria-label="Admin settings"
+          className="fixed bottom-6 right-6 z-30 rounded-full p-3 text-white/40 hover:text-white transition-colors"
+          style={{ background: "rgba(255,255,255,0.06)" }}
+        >
+          <Settings className="w-7 h-7" />
+        </button>
+      )}
+
       {toast && (
         <div
           className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-8 py-5 rounded-2xl text-white text-xl font-medium shadow-2xl"
@@ -362,6 +348,7 @@ function HubScreen({ config }: { config: ClientConfig }) {
       )}
 
       <HdmiPicker open={hdmiPickerOpen} onClose={() => setHdmiPickerOpen(false)} inputs={config.inputs} />
+      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} onSaved={reload} />
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={wakeScreen} />
     </div>
@@ -369,7 +356,7 @@ function HubScreen({ config }: { config: ClientConfig }) {
 }
 
 function Gate() {
-  const state = useConfig();
+  const { state, reload } = useConfig();
 
   if (state.status === "loading") {
     return (
@@ -393,7 +380,7 @@ function Gate() {
     );
   }
 
-  return <HubScreen config={state.config} />;
+  return <HubScreen config={state.config} reload={reload} />;
 }
 
 export default function App() {

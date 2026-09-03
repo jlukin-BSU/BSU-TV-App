@@ -1,3 +1,6 @@
 # Real device config: contains per-display Pre-Shared Keys. Never commit.
 devices.json
 .env
+
+# Admin-written per-display settings (runtime state)
+overrides.json

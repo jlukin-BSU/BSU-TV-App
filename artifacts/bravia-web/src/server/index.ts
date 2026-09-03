@@ -1,5 +1,6 @@
 import { createApp } from "./app";
 import { loadConfig, resolveConfigPath } from "./lib/config";
+import { SettingsStore, resolveOverridesPath, adminEnabled } from "./lib/settings";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"] ?? "8080";
@@ -39,7 +40,14 @@ logger.info(
   "Device config loaded",
 );
 
-const app = createApp(config);
+const overridesPath = resolveOverridesPath();
+const store = new SettingsStore(overridesPath);
+logger.info(
+  { overridesPath, adminEnabled: adminEnabled() },
+  adminEnabled() ? "Admin enabled" : "Admin disabled (set ADMIN_PASSWORD to enable)",
+);
+
+const app = createApp(config, store);
 
 const server = app.listen(port, host, () => {
   logger.info({ port, host }, "bravia-web listening");

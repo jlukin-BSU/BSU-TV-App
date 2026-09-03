@@ -31,6 +31,8 @@ const DisplaySchema = z
     psk: z.string().default(""),
     /** Log the Sony call instead of sending it. Overrides the global setting. */
     dryRun: z.boolean().optional(),
+    /** Return to signage after idle. Admin can override per display at runtime. */
+    autoSignage: z.boolean().optional(),
     /** Optional per-display button overrides; omit to use catalog defaults. */
     inputs: z.array(z.enum(knownInputIds as [string, ...string[]])).optional(),
     apps: z.array(z.enum(knownAppIds as [string, ...string[]])).optional(),
@@ -73,6 +75,7 @@ export interface Display {
   label: string;
   psk: string;
   dryRun: boolean;
+  autoSignage: boolean;
   inputs: string[];
   apps: string[];
   commands: string[];
@@ -139,6 +142,7 @@ export function loadConfig(configPath = resolveConfigPath()): AppConfig {
     label: entry.label ?? entry.hostname,
     psk: entry.psk,
     dryRun: forcedDryRun || (entry.dryRun ?? globalDryRun),
+    autoSignage: entry.autoSignage ?? true,
     inputs: entry.inputs ?? INPUTS.map((i) => i.id),
     apps: entry.apps ?? APPS.filter((a) => a.enabledByDefault).map((a) => a.id),
     commands: entry.commands ?? COMMANDS.filter((c) => c.enabledByDefault).map((c) => c.id),

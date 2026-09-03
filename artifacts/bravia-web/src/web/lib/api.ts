@@ -66,3 +66,60 @@ export function launchApp(appId: string): Promise<void> {
 export function sendCommand(commandId: string): Promise<void> {
   return post("/api/command", { commandId });
 }
+
+// ---- Admin ----------------------------------------------------------------
+
+import type { TileKind } from "../../shared/catalog";
+
+export interface AdminTile {
+  key: string;
+  kind: TileKind;
+  label: string;
+  enabled: boolean;
+}
+
+export interface AdminSettings {
+  device: { hostname: string; label: string };
+  autoSignage: boolean;
+  tiles: AdminTile[];
+}
+
+export interface AdminSave {
+  enabled: Record<string, boolean>;
+  order: string[];
+  autoSignage: boolean;
+}
+
+async function adminRequest<T>(method: string, path: string, password: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Admin-Password": password,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  let parsed: unknown = {};
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    /* keep {} */
+  }
+  if (!res.ok) {
+    const message =
+      typeof parsed === "object" && parsed !== null && "message" in parsed
+        ? String((parsed as { message: unknown }).message)
+        : `HTTP ${res.status}`;
+    throw new ApiError(message, res.status);
+  }
+  return parsed as T;
+}
+
+export function adminGetSettings(password: string): Promise<AdminSettings> {
+  return adminRequest<AdminSettings>("GET", "/api/admin/settings", password);
+}
+
+export function adminSaveSettings(password: string, body: AdminSave): Promise<void> {
+  return adminRequest<void>("PUT", "/api/admin/settings", password, body);
+}

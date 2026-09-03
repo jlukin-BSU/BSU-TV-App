@@ -92,10 +92,66 @@ export function findCommand(id: string): CommandEntry | undefined {
   return COMMANDS.find((c) => c.id === id);
 }
 
+export type TileKind = "app" | "input" | "command";
+
+/**
+ * The grid, unified. Each tile is one of the app/input/command entries above.
+ * `key` is the app id, the command id, or the literal "inputs" for the HDMI
+ * picker (which fronts all INPUTS). This is the single source of truth for tile
+ * order and default visibility, shared by the admin panel and the hub.
+ */
+export interface TileMeta {
+  key: string;
+  kind: TileKind;
+  label: string;
+  defaultEnabled: boolean;
+}
+
+export const INPUTS_TILE_KEY = "inputs";
+
+export const TILES: readonly TileMeta[] = [
+  { key: "signage", kind: "app", label: "News & Announcements", defaultEnabled: true },
+  { key: "livetv", kind: "app", label: "Live TV", defaultEnabled: true },
+  { key: INPUTS_TILE_KEY, kind: "input", label: "TV Inputs", defaultEnabled: true },
+  { key: "youtube", kind: "app", label: "YouTube", defaultEnabled: true },
+  { key: "screenoff", kind: "command", label: "Screen Off", defaultEnabled: true },
+  { key: "hulu", kind: "app", label: "Hulu", defaultEnabled: false },
+  { key: "netflix", kind: "app", label: "Netflix", defaultEnabled: false },
+  { key: "tubi", kind: "app", label: "Tubi", defaultEnabled: false },
+  { key: "poweroff", kind: "command", label: "Power Off", defaultEnabled: false },
+] as const;
+
+export const DEFAULT_TILE_ORDER: string[] = TILES.map((t) => t.key);
+
+export function findTile(key: string): TileMeta | undefined {
+  return TILES.find((t) => t.key === key);
+}
+
+/** One tile as sent to the client: ordered and already filtered to enabled. */
+export interface ClientTile {
+  key: string;
+  kind: TileKind;
+  label: string;
+}
+
+/** Per-display settings the admin panel edits. */
+export interface DisplaySettings {
+  /** tile key -> shown. Missing keys fall back to the tile's default. */
+  enabled: Record<string, boolean>;
+  /** Tile keys in display order. */
+  order: string[];
+  /** Return to signage after 5 min idle. */
+  autoSignage: boolean;
+}
+
 /** Shape of GET /api/config -- what the UI needs to render itself. */
 export interface ClientConfig {
   device: { hostname: string; label: string; ip: string; dryRun: boolean };
+  /** Grid tiles, ordered and enabled. */
+  tiles: ClientTile[];
+  /** Full input list for the HDMI picker. */
   inputs: InputEntry[];
-  apps: Array<Pick<AppEntry, "id" | "label">>;
-  commands: Array<Pick<CommandEntry, "id" | "label">>;
+  autoSignage: boolean;
+  /** Whether an admin password is configured (controls the gear button). */
+  adminEnabled: boolean;
 }
