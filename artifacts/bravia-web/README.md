@@ -185,20 +185,43 @@ curl -s localhost:8080/api/apps
 `/api/apps` returns the display's real `getApplicationList` output. Use it to
 find the correct package name when adding an app to the catalog.
 
+## Admin panel
+
+A small **settings gear** (bottom-right of the hub) opens a per-display admin
+panel: show/hide tiles, reorder them, and toggle "return to signage when idle".
+The gear is mouse-reachable, so admin works in an ordinary browser, not only
+from a TV remote. The hidden trigger from the Android app also still opens it:
+five presses of Back/Red/Esc within three seconds, or clicking the BSU logo.
+
+- **Enable it** by setting `ADMIN_PASSWORD`. If unset, admin is disabled and the
+  gear is hidden.
+- **Auth** is that single shared password, sent in the `X-Admin-Password` header
+  and checked in constant time — appropriate for the controlled AV VLAN behind
+  HTTPS; there are no per-user accounts.
+- **Storage** is a separate `overrides.json` (path `ADMIN_OVERRIDES`, default
+  beside `devices.json`), keyed by hostname. It holds no secrets and is never
+  `devices.json`, so the PSK file is never rewritten by the app. `loadConfig`
+  stays the provisioning source; admin edits are merged on top per request, and
+  a hidden tile also cannot be driven through the control API.
+
 ## API
 
-All routes except `/api/healthz` and `/api/whoami` require the caller's IP to be
-registered.
+All routes except `/api/healthz`, `/api/whoami` and `/api/weather` require the
+caller's IP to be registered. The `/api/admin/*` routes additionally require the
+admin password.
 
 | Method | Path | Body | Purpose |
 |---|---|---|---|
 | GET | `/api/healthz` | — | Liveness. Open. |
 | GET | `/api/whoami` | — | Resolved source IP. Open. |
-| GET | `/api/config` | — | Which display this is, and its buttons. |
+| GET | `/api/weather` | — | Cached weather for the header. Open. |
+| GET | `/api/config` | — | Which display this is, its ordered tiles, autoSignage. |
 | POST | `/api/input` | `{"inputId":"hdmi1"}` | Switch HDMI input. |
 | POST | `/api/app` | `{"appId":"youtube"}` | Launch an app. |
 | POST | `/api/command` | `{"commandId":"screenoff"}` | Screen off / on / power off. |
 | GET | `/api/apps` | — | Raw installed-app list. |
+| GET | `/api/admin/settings` | — | Editable settings for this display (admin). |
+| PUT | `/api/admin/settings` | `{enabled,order,autoSignage}` | Save this display's settings (admin). |
 
 Failures from a display come back as `502` with a human-readable `message` — a
 wrong PSK, an unreachable display, and a Sony-level rejection are distinguished,
