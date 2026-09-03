@@ -83,6 +83,7 @@ One entry per display. `devices.json` is gitignored — it holds the PSKs.
 | Field | Required | Notes |
 |---|---|---|
 | `ip` | yes | The display's reserved/static address. This is its identity, so it must be unique. |
+| `controlIp` | no | Where commands are sent. Defaults to `ip`. Only for bench testing — see below. |
 | `hostname` | yes | Used in logs and error messages. |
 | `label` | no | Shown in the page header. Defaults to `hostname`. |
 | `psk` | yes | Per-display Pre-Shared Key. May be empty only when `dryRun` is on. |
@@ -141,6 +142,28 @@ Three options, in increasing bluntness:
 
 Dry-run logs the exact URL and JSON body that would have been sent and returns a
 plausible `getApplicationList` response, so app-URI resolution is exercised too.
+
+## Testing from your desk against a real display
+
+In production `ip` is both the identity and the target: the display that asks is
+the display that acts. That makes a bench test awkward, since a request from
+your laptop carries your laptop's address.
+
+`controlIp` splits the two. Put your workstation's address in `ip` and the
+display's in `controlIp`:
+
+```json
+{
+  "ip": "10.20.30.200",
+  "controlIp": "10.20.30.41",
+  "hostname": "bench-test",
+  "psk": "the-displays-psk"
+}
+```
+
+Now loading the page from your laptop drives the real panel. Delete the entry
+before going live — leave it in and that workstation keeps control of that
+display.
 
 Useful probes:
 

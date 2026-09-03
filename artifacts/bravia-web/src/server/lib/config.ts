@@ -12,6 +12,15 @@ const DisplaySchema = z
   .object({
     /** Reserved/static address of the display on the AV VLAN. */
     ip: z.string().min(1),
+    /**
+     * Where commands are actually sent. Defaults to `ip`, which is what you
+     * want in production: the display that asks is the display that acts.
+     *
+     * Set it only for bench testing -- put your workstation's address in `ip`
+     * and the display's in `controlIp`, and clicking from your desk drives the
+     * real panel.
+     */
+    controlIp: z.string().min(1).optional(),
     hostname: z.string().min(1),
     /** Human-friendly name for the UI header. Defaults to hostname. */
     label: z.string().min(1).optional(),
@@ -36,6 +45,13 @@ const DisplaySchema = z
         message: `"${display.ip}" is not a valid IP address. Displays are identified by source IP, so this must be the display's reserved address.`,
       });
     }
+    if (display.controlIp !== undefined && !isValidIp(display.controlIp)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["controlIp"],
+        message: `"${display.controlIp}" is not a valid IP address.`,
+      });
+    }
   });
 
 const ConfigSchema = z
@@ -49,7 +65,10 @@ const ConfigSchema = z
 export type DisplayConfigInput = z.infer<typeof DisplaySchema>;
 
 export interface Display {
+  /** Identity: the address the display sends requests from. */
   ip: string;
+  /** Target: where commands are sent. Equals `ip` unless overridden. */
+  controlIp: string;
   hostname: string;
   label: string;
   psk: string;
@@ -115,6 +134,7 @@ export function loadConfig(configPath = resolveConfigPath()): AppConfig {
 
   const displays: Display[] = result.data.displays.map((entry) => ({
     ip: normalizeIp(entry.ip),
+    controlIp: normalizeIp(entry.controlIp ?? entry.ip),
     hostname: entry.hostname,
     label: entry.label ?? entry.hostname,
     psk: entry.psk,

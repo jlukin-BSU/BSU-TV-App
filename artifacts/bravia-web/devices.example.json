@@ -21,12 +21,20 @@
       "commands": ["screenoff", "screenon"]
     },
     {
-      "//": "A fake display for testing without hardware. Add your workstation's IP here and set dryRun.",
+      "//": "No hardware needed. Loopback so requests from this machine resolve here.",
       "ip": "127.0.0.1",
       "hostname": "mock-display",
       "label": "Mock Display (dry run)",
       "psk": "",
       "dryRun": true
+    },
+    {
+      "//": "Bench testing against a real display. Identity is your workstation; commands go to controlIp. Delete for production.",
+      "ip": "10.20.30.200",
+      "controlIp": "10.20.30.41",
+      "hostname": "bench-test",
+      "label": "Bench Test -> Library 101",
+      "psk": "REPLACE_WITH_DISPLAY_PSK"
     }
   ]
 }

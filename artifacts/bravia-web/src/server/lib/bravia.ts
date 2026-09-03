@@ -50,7 +50,7 @@ function timeoutMs(): number {
  * swallows real errors. Both paths are handled here.
  */
 async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
-  const url = `http://${display.ip}/sony/${rpc.service}`;
+  const url = `http://${display.controlIp}/sony/${rpc.service}`;
   const body = {
     method: rpc.method,
     id: rpc.id,
@@ -85,7 +85,7 @@ async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
           ? err.message
           : String(err);
     throw new BraviaError(
-      `Could not reach ${display.hostname} (${display.ip}): ${reason}. Check the display is powered on and IP control is enabled.`,
+      `Could not reach ${display.hostname} (${display.controlIp}): ${reason}. Check the display is powered on and IP control is enabled.`,
     );
   }
 
@@ -186,8 +186,9 @@ interface CacheEntry {
 }
 
 /**
- * Per-display cache. Keyed by IP so simultaneous use by several displays never
- * shares state -- each display's installed-app list is its own.
+ * Per-display cache, keyed by the address we actually talk to, so simultaneous
+ * use by several displays never shares state -- each display's installed-app
+ * list is its own.
  */
 const appListCache = new Map<string, CacheEntry>();
 /** In-flight fetches, so rapid clicks on one display don't stampede it. */
@@ -195,22 +196,22 @@ const inFlight = new Map<string, Promise<InstalledApp[]>>();
 
 async function cachedApplicationList(display: Display): Promise<InstalledApp[]> {
   const now = Date.now();
-  const cached = appListCache.get(display.ip);
+  const cached = appListCache.get(display.controlIp);
   if (cached && cached.expires > now) return cached.apps;
 
-  const pending = inFlight.get(display.ip);
+  const pending = inFlight.get(display.controlIp);
   if (pending) return pending;
 
   const fetchPromise = getApplicationList(display)
     .then((apps) => {
-      appListCache.set(display.ip, { expires: Date.now() + APP_LIST_TTL_MS, apps });
+      appListCache.set(display.controlIp, { expires: Date.now() + APP_LIST_TTL_MS, apps });
       return apps;
     })
     .finally(() => {
-      inFlight.delete(display.ip);
+      inFlight.delete(display.controlIp);
     });
 
-  inFlight.set(display.ip, fetchPromise);
+  inFlight.set(display.controlIp, fetchPromise);
   return fetchPromise;
 }
 

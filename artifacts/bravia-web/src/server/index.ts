@@ -31,6 +31,8 @@ logger.info(
     displays: config.displays.map((d) => ({
       hostname: d.hostname,
       ip: d.ip,
+      // Only worth showing when it differs -- i.e. a bench-test entry.
+      ...(d.controlIp === d.ip ? {} : { controlIp: d.controlIp }),
       dryRun: d.dryRun,
     })),
   },
