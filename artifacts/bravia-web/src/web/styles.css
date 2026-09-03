@@ -1,0 +1,171 @@
+/*
+ * Sized for a wall display seen from across a room, and kept deliberately plain:
+ * the built-in browser on a BZ30L is an older Chromium, so no CSS nesting, no
+ * custom-property fallbacks that matter, no grid features beyond the basics.
+ */
+
+:root {
+  --bsu-red: rgb(196, 18, 48);
+  --bg: #141414;
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-border: rgba(255, 255, 255, 0.12);
+  --text: #f5f5f5;
+  --muted: rgba(245, 245, 245, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 3rem 4rem 6rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--panel-border);
+  margin-bottom: 2.5rem;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 3rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+  font-size: 1.25rem;
+}
+
+.badge {
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  background: #b58900;
+  color: #141414;
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.group {
+  margin-bottom: 3rem;
+}
+
+.group__title {
+  margin: 0 0 1.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.tile {
+  min-height: 9rem;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  border: 2px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.tile--focused {
+  background: var(--bsu-red);
+  border-color: var(--bsu-red);
+  transform: scale(1.04);
+  box-shadow: 0 8px 40px rgba(196, 18, 48, 0.4);
+}
+
+.tile:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+.panel {
+  padding: 3rem;
+  border-radius: 1.25rem;
+  border: 2px solid var(--panel-border);
+  background: var(--panel);
+}
+
+.panel--error {
+  border-color: var(--bsu-red);
+}
+
+.panel h1 {
+  margin: 0 0 1rem;
+  font-size: 2.5rem;
+}
+
+.panel p {
+  margin: 0;
+  font-size: 1.375rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 3rem;
+  transform: translateX(-50%);
+  max-width: 60rem;
+  padding: 1.25rem 2rem;
+  border-radius: 1rem;
+  font-size: 1.5rem;
+  font-weight: 500;
+  text-align: center;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+}
+
+.toast--pending {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text);
+}
+
+.toast--ok {
+  background: #1e7d3c;
+  color: #fff;
+}
+
+.toast--error {
+  background: var(--bsu-red);
+  color: #fff;
+}
