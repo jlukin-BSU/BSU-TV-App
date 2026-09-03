@@ -1,0 +1,32 @@
+{
+  "//": "Copy to devices.json (gitignored) and fill in one entry per display.",
+  "//dryRun": "Global default. true = log Sony calls instead of sending them.",
+  "dryRun": false,
+  "displays": [
+    {
+      "//": "ip is how the display is identified -- it must be the reserved/static address it sends requests from.",
+      "ip": "10.20.30.41",
+      "hostname": "bsu-av-tv-lib-101",
+      "label": "Library 101",
+      "//psk": "From the display: Settings > Network & Internet > Local network setup > IP control.",
+      "psk": "REPLACE_WITH_DISPLAY_PSK"
+    },
+    {
+      "ip": "10.20.30.42",
+      "hostname": "bsu-av-tv-lib-102",
+      "label": "Library 102",
+      "psk": "REPLACE_WITH_DISPLAY_PSK",
+      "//apps": "Optional per-display overrides. Omit to use the catalog defaults.",
+      "apps": ["signage", "livetv", "youtube", "netflix"],
+      "commands": ["screenoff", "screenon"]
+    },
+    {
+      "//": "A fake display for testing without hardware. Add your workstation's IP here and set dryRun.",
+      "ip": "127.0.0.1",
+      "hostname": "mock-display",
+      "label": "Mock Display (dry run)",
+      "psk": "",
+      "dryRun": true
+    }
+  ]
+}
