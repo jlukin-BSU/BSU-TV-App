@@ -21,14 +21,14 @@ interface LogoSpec {
 }
 
 const logos: Record<string, LogoSpec> = {
-  prime: { src: primeImg, width: "w-44" },
-  disneyplus: { src: disneyImg, width: "w-40" },
+  prime: { src: primeImg, width: "w-56" },
+  disneyplus: { src: disneyImg, width: "w-48" },
   max: { src: maxImg, width: "w-36" },
-  appletv: { src: appleImg, width: "w-28" },
-  peacock: { src: peacockImg, width: "w-40" },
-  paramount: { src: paramountImg, width: "w-48" },
+  appletv: { src: appleImg, width: "w-44" },
+  peacock: { src: peacockImg, width: "w-52" },
+  paramount: { src: paramountImg, width: "w-56" },
   pluto: { src: plutoImg, width: "w-36" },
-  cnn: { src: cnnImg, width: "w-28" },
+  cnn: { src: cnnImg, width: "w-36" },
 };
 
 export function hasBrandLogo(key: string): boolean {

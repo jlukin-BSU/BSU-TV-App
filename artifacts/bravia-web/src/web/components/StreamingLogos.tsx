@@ -23,7 +23,7 @@ export function HuluLogo({ focused }: LogoProps) {
     <img
       src={huluImg}
       alt="Hulu"
-      className="w-40 h-auto object-contain"
+      className="w-52 h-auto object-contain"
       style={{ opacity: focused ? 1 : 0.8 }}
       draggable={false}
     />
