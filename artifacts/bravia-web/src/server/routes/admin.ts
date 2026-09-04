@@ -20,6 +20,7 @@ const SaveRequest = z
     enabled: z.record(z.string(), z.boolean()),
     order: z.array(z.string()),
     autoSignage: z.boolean(),
+    idleSeconds: z.number(),
   })
   .strict();
 
@@ -34,6 +35,7 @@ export function createAdminRouter(store: SettingsStore): IRouter {
     res.json({
       device: { hostname: display.hostname, label: display.label },
       autoSignage: eff.settings.autoSignage,
+      idleSeconds: eff.settings.idleSeconds,
       // Every tile, in order, with its current enabled state -- so hidden tiles
       // can be turned back on.
       tiles: eff.settings.order
@@ -67,7 +69,12 @@ export function createAdminRouter(store: SettingsStore): IRouter {
     }
     const order = parsed.data.order.filter((k) => findTile(k));
 
-    store.set(display.hostname, { enabled, order, autoSignage: parsed.data.autoSignage });
+    store.set(display.hostname, {
+      enabled,
+      order,
+      autoSignage: parsed.data.autoSignage,
+      idleSeconds: parsed.data.idleSeconds,
+    });
     logger.info({ display: display.hostname }, "admin saved display settings");
 
     const eff = effectiveConfig(display, store.get(display.hostname));

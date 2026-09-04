@@ -81,6 +81,7 @@ export interface AdminTile {
 export interface AdminSettings {
   device: { hostname: string; label: string };
   autoSignage: boolean;
+  idleSeconds: number;
   tiles: AdminTile[];
 }
 
@@ -88,6 +89,7 @@ export interface AdminSave {
   enabled: Record<string, boolean>;
   order: string[];
   autoSignage: boolean;
+  idleSeconds: number;
 }
 
 async function adminRequest<T>(method: string, path: string, body?: unknown): Promise<T> {

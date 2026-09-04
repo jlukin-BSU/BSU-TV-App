@@ -3,6 +3,9 @@ import path from "node:path";
 import { z } from "zod";
 import {
   DEFAULT_TILE_ORDER,
+  IDLE_SECONDS_DEFAULT,
+  IDLE_SECONDS_MAX,
+  IDLE_SECONDS_MIN,
   INPUTS,
   INPUTS_TILE_KEY,
   TILES,
@@ -28,6 +31,7 @@ const OverrideSchema = z
     enabled: z.record(z.string(), z.boolean()).optional(),
     order: z.array(z.string()).optional(),
     autoSignage: z.boolean().optional(),
+    idleSeconds: z.number().optional(),
   })
   .strict();
 
@@ -117,6 +121,12 @@ export function effectiveConfig(display: Display, override?: DisplayOverride): E
 
   const autoSignage = override?.autoSignage ?? display.autoSignage;
 
+  const rawIdle = override?.idleSeconds ?? IDLE_SECONDS_DEFAULT;
+  const idleSeconds = Math.min(
+    IDLE_SECONDS_MAX,
+    Math.max(IDLE_SECONDS_MIN, Math.round(Number.isFinite(rawIdle) ? rawIdle : IDLE_SECONDS_DEFAULT)),
+  );
+
   const tiles: ClientTile[] = order
     .map((key) => findTile(key))
     .filter((t): t is NonNullable<typeof t> => !!t && enabled[t.key] === true)
@@ -127,7 +137,7 @@ export function effectiveConfig(display: Display, override?: DisplayOverride): E
   const inputIds = enabled[INPUTS_TILE_KEY] ? INPUTS.map((i) => i.id) : [];
 
   return {
-    settings: { enabled, order, autoSignage },
+    settings: { enabled, order, autoSignage, idleSeconds },
     tiles,
     appIds,
     inputIds,

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronUp, ChevronDown, Eye, EyeOff, Loader2 } from "lucide-react";
 import { adminGetSettings, adminSaveSettings, type AdminTile } from "../lib/api";
+import { IDLE_SECONDS_DEFAULT, IDLE_SECONDS_MAX, IDLE_SECONDS_MIN } from "../../shared/catalog";
 
 /**
  * Server-side admin panel for the calling display. Opened by the hidden gesture
@@ -24,6 +25,7 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
   const [deviceLabel, setDeviceLabel] = useState("");
   const [tiles, setTiles] = useState<AdminTile[]>([]);
   const [autoSignage, setAutoSignage] = useState(true);
+  const [idleSeconds, setIdleSeconds] = useState<number>(IDLE_SECONDS_DEFAULT);
 
   useEffect(() => {
     if (!open) return;
@@ -36,6 +38,7 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
         setDeviceLabel(s.device.label);
         setTiles(s.tiles);
         setAutoSignage(s.autoSignage);
+        setIdleSeconds(s.idleSeconds);
         setPhase("editing");
       })
       .catch((err: unknown) => {
@@ -68,7 +71,13 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
     try {
       const enabled: Record<string, boolean> = {};
       for (const t of tiles) enabled[t.key] = t.enabled;
-      await adminSaveSettings({ enabled, order: tiles.map((t) => t.key), autoSignage });
+      const clampedIdle = Math.min(IDLE_SECONDS_MAX, Math.max(IDLE_SECONDS_MIN, Math.round(idleSeconds)));
+      await adminSaveSettings({
+        enabled,
+        order: tiles.map((t) => t.key),
+        autoSignage,
+        idleSeconds: clampedIdle,
+      });
       onSaved();
       onClose();
     } catch (err) {
@@ -127,18 +136,34 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
                   </p>
                 </div>
 
-                <label
-                  className="flex items-center justify-between rounded-xl px-5 py-4 cursor-pointer"
-                  style={{ background: "rgba(255,255,255,0.05)" }}
-                >
-                  <span className="text-xl text-foreground">Return to signage when idle</span>
-                  <input
-                    type="checkbox"
-                    checked={autoSignage}
-                    onChange={(e) => setAutoSignage(e.target.checked)}
-                    className="w-6 h-6 accent-[rgb(196,18,48)]"
-                  />
-                </label>
+                <div className="flex flex-col gap-3 rounded-xl px-5 py-4" style={{ background: "rgba(255,255,255,0.05)" }}>
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-xl text-foreground">Return to signage when idle</span>
+                    <input
+                      type="checkbox"
+                      checked={autoSignage}
+                      onChange={(e) => setAutoSignage(e.target.checked)}
+                      className="w-6 h-6 accent-[rgb(196,18,48)]"
+                    />
+                  </label>
+                  <div
+                    className="flex items-center justify-between gap-4"
+                    style={{ opacity: autoSignage ? 1 : 0.4 }}
+                  >
+                    <span className="text-lg text-muted-foreground">After (seconds of inactivity)</span>
+                    <input
+                      type="number"
+                      min={IDLE_SECONDS_MIN}
+                      max={IDLE_SECONDS_MAX}
+                      step={30}
+                      disabled={!autoSignage}
+                      value={idleSeconds}
+                      onChange={(e) => setIdleSeconds(Number(e.target.value))}
+                      className="w-28 rounded-lg px-3 py-2 text-lg text-foreground text-right outline-none"
+                      style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
+                    />
+                  </div>
+                </div>
 
                 <div className="flex flex-col gap-2 overflow-y-auto" style={{ minHeight: 0 }}>
                   {tiles.map((tile, idx) => (

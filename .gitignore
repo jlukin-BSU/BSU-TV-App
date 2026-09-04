@@ -51,3 +51,4 @@ Thumbs.db
 # bravia-web: per-display PSKs, never commit
 artifacts/bravia-web/devices.json
 artifacts/bravia-web/.env
+artifacts/bravia-web/overrides.json

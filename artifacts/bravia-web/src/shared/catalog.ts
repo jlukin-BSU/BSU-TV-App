@@ -64,6 +64,21 @@ export const APPS: readonly AppEntry[] = [
   { id: "hulu", label: "Hulu", packageName: "com.hulu.livingroomplus", enabledByDefault: false },
   { id: "netflix", label: "Netflix", packageName: "com.netflix.ninja", enabledByDefault: false },
   { id: "tubi", label: "Tubi", packageName: "com.tubitv", enabledByDefault: false },
+
+  // Added 2026-09. Package names are best-guess Android-TV ids; VERIFY each
+  // against GET /api/apps on a real display -- setActiveApp launches by the
+  // exact reported URI, and resolveAppUri surfaces a clear error if unmatched.
+  { id: "prime", label: "Prime Video", packageName: "com.amazon.amazonvideo.livingroom", enabledByDefault: false },
+  { id: "disneyplus", label: "Disney+", packageName: "com.disney.disneyplus", enabledByDefault: false },
+  { id: "max", label: "Max", packageName: "com.wbd.stream", enabledByDefault: false },
+  { id: "appletv", label: "Apple TV+", packageName: "com.apple.atve.androidtv.appletv", enabledByDefault: false },
+  { id: "peacock", label: "Peacock", packageName: "com.peacocktv.peacockandroid", enabledByDefault: false },
+  { id: "paramount", label: "Paramount+", packageName: "com.cbs.ott", enabledByDefault: false },
+  { id: "pluto", label: "Pluto TV", packageName: "tv.pluto.android", enabledByDefault: false },
+  // Likely NOT present on a BRAVIA (Roku is a competing platform) -- confirm.
+  { id: "roku", label: "The Roku Channel", packageName: "com.roku.web.trc", enabledByDefault: false },
+  // Often no native Android-TV app -- confirm on the display.
+  { id: "cnn", label: "CNN", packageName: "com.cnn.mobile.android.phone", enabledByDefault: false },
 ] as const;
 
 /**
@@ -118,6 +133,15 @@ export const TILES: readonly TileMeta[] = [
   { key: "hulu", kind: "app", label: "Hulu", defaultEnabled: false },
   { key: "netflix", kind: "app", label: "Netflix", defaultEnabled: false },
   { key: "tubi", kind: "app", label: "Tubi", defaultEnabled: false },
+  { key: "prime", kind: "app", label: "Prime Video", defaultEnabled: false },
+  { key: "disneyplus", kind: "app", label: "Disney+", defaultEnabled: false },
+  { key: "max", kind: "app", label: "Max", defaultEnabled: false },
+  { key: "appletv", kind: "app", label: "Apple TV+", defaultEnabled: false },
+  { key: "peacock", kind: "app", label: "Peacock", defaultEnabled: false },
+  { key: "paramount", kind: "app", label: "Paramount+", defaultEnabled: false },
+  { key: "pluto", kind: "app", label: "Pluto TV", defaultEnabled: false },
+  { key: "roku", kind: "app", label: "The Roku Channel", defaultEnabled: false },
+  { key: "cnn", kind: "app", label: "CNN", defaultEnabled: false },
   { key: "poweroff", kind: "command", label: "Power Off", defaultEnabled: false },
 ] as const;
 
@@ -134,14 +158,21 @@ export interface ClientTile {
   label: string;
 }
 
+/** Idle-timeout bounds (seconds), shared by the admin UI and server validation. */
+export const IDLE_SECONDS_DEFAULT = 300;
+export const IDLE_SECONDS_MIN = 30;
+export const IDLE_SECONDS_MAX = 3600;
+
 /** Per-display settings the admin panel edits. */
 export interface DisplaySettings {
   /** tile key -> shown. Missing keys fall back to the tile's default. */
   enabled: Record<string, boolean>;
   /** Tile keys in display order. */
   order: string[];
-  /** Return to signage after 5 min idle. */
+  /** Return to signage when idle. */
   autoSignage: boolean;
+  /** Seconds of inactivity before returning to signage. */
+  idleSeconds: number;
 }
 
 /** Shape of GET /api/config -- what the UI needs to render itself. */
@@ -152,4 +183,6 @@ export interface ClientConfig {
   /** Full input list for the HDMI picker. */
   inputs: InputEntry[];
   autoSignage: boolean;
+  /** Idle timeout in milliseconds, for the client's idle watcher. */
+  idleMs: number;
 }

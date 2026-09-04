@@ -49,6 +49,7 @@ export function createControlRouter(store: SettingsStore): IRouter {
       tiles: eff.tiles,
       inputs: INPUTS.filter((i) => eff.inputIds.includes(i.id)).map((i) => ({ ...i })),
       autoSignage: eff.settings.autoSignage,
+      idleMs: eff.settings.idleSeconds * 1000,
     };
 
     res.json(payload);

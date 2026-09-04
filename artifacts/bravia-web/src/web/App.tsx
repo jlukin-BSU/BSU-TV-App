@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Power, AlertCircle } from "lucide-react";
+import { Power, AlertCircle, MonitorPlay } from "lucide-react";
 import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
 import { NetflixLogo, HuluLogo, TubiLogo } from "./components/StreamingLogos";
 import { TransitionOverlay, ActiveAppScreen, type AppId } from "./components/AppScreens";
+import { BrandLogo, hasBrandLogo } from "./components/BrandLogos";
 import { HdmiPicker } from "./components/HdmiPicker";
 import { SessionWarningModal, shouldShowSessionWarning } from "./components/SessionWarningModal";
 import { AdminPanel } from "./components/AdminPanel";
@@ -69,7 +70,21 @@ function appTile(id: string, label: string): TileDef {
     case "tubi":
       return { ...base, logoOnly: true, renderIcon: (f) => <TubiLogo focused={f} /> };
     default:
-      return { ...base, renderIcon: (f) => <img src={tvIcon} alt="" className={iconClass(f)} /> };
+      // Apps with an uploaded official logo (Prime, Disney+, Max, ...) render it
+      // on a chip; anything still lacking art falls back to a neutral glyph +
+      // label until its logo is added.
+      if (hasBrandLogo(id)) {
+        return { ...base, logoOnly: true, renderIcon: () => <BrandLogo appKey={id} /> };
+      }
+      return {
+        ...base,
+        renderIcon: (f) => (
+          <MonitorPlay
+            className={`w-16 h-16 transition-all duration-300 ${f ? "text-white opacity-100" : "text-white opacity-70"}`}
+            strokeWidth={1.5}
+          />
+        ),
+      };
   }
 }
 
@@ -246,7 +261,7 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
   }, []);
 
   useTvIdle(
-    300000,
+    config.idleMs,
     () => {
       const signage = tiles.find((t) => t.key === "signage");
       if (signage) onTileActivate(signage);
