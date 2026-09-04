@@ -1,6 +1,6 @@
 import { createApp } from "./app";
 import { loadConfig, resolveConfigPath } from "./lib/config";
-import { SettingsStore, resolveOverridesPath, adminEnabled } from "./lib/settings";
+import { SettingsStore, resolveOverridesPath } from "./lib/settings";
 import { logger } from "./lib/logger";
 
 const rawPort = process.env["PORT"] ?? "8080";
@@ -42,10 +42,7 @@ logger.info(
 
 const overridesPath = resolveOverridesPath();
 const store = new SettingsStore(overridesPath);
-logger.info(
-  { overridesPath, adminEnabled: adminEnabled() },
-  adminEnabled() ? "Admin enabled" : "Admin disabled (set ADMIN_PASSWORD to enable)",
-);
+logger.info({ overridesPath }, "Settings store ready");
 
 const app = createApp(config, store);
 

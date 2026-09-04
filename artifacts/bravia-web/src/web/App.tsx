@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Power, AlertCircle, Settings } from "lucide-react";
+import { Power, AlertCircle } from "lucide-react";
 import { TopBar } from "./components/TopBar";
 import { TvTile } from "./components/TvTile";
 import { YouTubeLogo } from "./components/YouTubeLogo";
@@ -154,11 +154,9 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
   const hubIsIdle =
     activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen && sessionWarning === null;
 
-  const openAdmin = useCallback(() => {
-    if (config.adminEnabled) setAdminOpen(true);
-  }, [config.adminEnabled]);
+  const openAdmin = useCallback(() => setAdminOpen(true), []);
 
-  /** Hidden trigger: 5x Back/Red/Esc, or the logo, opens admin (in addition to the gear). */
+  /** Hidden trigger: 5x D-pad Up at the top row, 5x Esc/Back, or the logo, opens admin. */
   const recordAdminPress = useCallback(() => {
     if (!hubIsIdle) return;
     const now = Date.now();
@@ -313,18 +311,6 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
           </div>
         </div>
       </div>
-
-      {/* Small settings gear -- mouse-reachable, so admin works in a normal browser. */}
-      {config.adminEnabled && (
-        <button
-          onClick={openAdmin}
-          aria-label="Admin settings"
-          className="fixed bottom-6 right-6 z-30 rounded-full p-3 text-white/40 hover:text-white transition-colors"
-          style={{ background: "rgba(255,255,255,0.06)" }}
-        >
-          <Settings className="w-7 h-7" />
-        </button>
-      )}
 
       {toast && (
         <div

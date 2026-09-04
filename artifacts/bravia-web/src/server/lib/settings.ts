@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { z } from "zod";
 import {
   DEFAULT_TILE_ORDER,
@@ -134,25 +133,4 @@ export function effectiveConfig(display: Display, override?: DisplayOverride): E
     inputIds,
     commandIds,
   };
-}
-
-// ---- Admin authentication -------------------------------------------------
-
-/** The admin password, from the environment. Empty string means admin is off. */
-export function adminPassword(): string {
-  return process.env["ADMIN_PASSWORD"] ?? "";
-}
-
-export function adminEnabled(): boolean {
-  return adminPassword().trim() !== "";
-}
-
-/** Constant-time comparison so a wrong password leaks no timing information. */
-export function checkAdminPassword(candidate: string): boolean {
-  const expected = adminPassword();
-  if (expected.trim() === "") return false;
-  const a = Buffer.from(candidate);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
 }

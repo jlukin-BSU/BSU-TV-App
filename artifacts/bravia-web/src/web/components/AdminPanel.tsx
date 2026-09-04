@@ -1,21 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronUp, ChevronDown, Eye, EyeOff, Lock, Loader2 } from "lucide-react";
-import {
-  adminGetSettings,
-  adminSaveSettings,
-  ApiError,
-  type AdminTile,
-} from "../lib/api";
+import { X, ChevronUp, ChevronDown, Eye, EyeOff, Loader2 } from "lucide-react";
+import { adminGetSettings, adminSaveSettings, type AdminTile } from "../lib/api";
 
 /**
- * Server-side admin panel for the calling display. Opened by the gear button.
- * Prompts for the shared admin password (remembered for the browser session),
- * then edits tile visibility, order and auto-signage -- all saved server-side,
- * keyed by this display's hostname.
+ * Server-side admin panel for the calling display. Opened by the hidden gesture
+ * (D-pad Up x5 at the top row, or Esc x5). No password: only a registered
+ * display IP can reach it, and the launch is deliberately obscure. Edits tile
+ * visibility, order and auto-signage, saved server-side keyed by hostname.
  */
-
-const PW_KEY = "bravia_admin_pw";
 
 interface Props {
   open: boolean;
@@ -23,57 +16,37 @@ interface Props {
   onSaved: () => void;
 }
 
-type Phase = "auth" | "loading" | "editing" | "saving";
+type Phase = "loading" | "editing" | "saving";
 
 export function AdminPanel({ open, onClose, onSaved }: Props) {
-  const [phase, setPhase] = useState<Phase>("auth");
-  const [password, setPassword] = useState("");
+  const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);
   const [deviceLabel, setDeviceLabel] = useState("");
   const [tiles, setTiles] = useState<AdminTile[]>([]);
   const [autoSignage, setAutoSignage] = useState(true);
 
-  const load = useCallback(async (pw: string) => {
-    setPhase("loading");
-    setError(null);
-    try {
-      const s = await adminGetSettings(pw);
-      setDeviceLabel(s.device.label);
-      setTiles(s.tiles);
-      setAutoSignage(s.autoSignage);
-      setPhase("editing");
-      try {
-        sessionStorage.setItem(PW_KEY, pw);
-      } catch {
-        /* sessionStorage may be unavailable; not fatal */
-      }
-    } catch (err) {
-      setPhase("auth");
-      if (err instanceof ApiError && err.status === 401) setError("Incorrect password.");
-      else if (err instanceof ApiError && err.status === 503)
-        setError("Admin is not configured on the server.");
-      else setError(err instanceof Error ? err.message : String(err));
-    }
-  }, []);
-
-  // On open, try a remembered password so the prompt is skipped when possible.
   useEffect(() => {
     if (!open) return;
+    let cancelled = false;
+    setPhase("loading");
     setError(null);
-    let remembered = "";
-    try {
-      remembered = sessionStorage.getItem(PW_KEY) ?? "";
-    } catch {
-      /* ignore */
-    }
-    if (remembered) {
-      setPassword(remembered);
-      void load(remembered);
-    } else {
-      setPhase("auth");
-      setPassword("");
-    }
-  }, [open, load]);
+    adminGetSettings()
+      .then((s) => {
+        if (cancelled) return;
+        setDeviceLabel(s.device.label);
+        setTiles(s.tiles);
+        setAutoSignage(s.autoSignage);
+        setPhase("editing");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : String(err));
+        setPhase("editing");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const move = (index: number, dir: -1 | 1) => {
     setTiles((prev) => {
@@ -95,11 +68,7 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
     try {
       const enabled: Record<string, boolean> = {};
       for (const t of tiles) enabled[t.key] = t.enabled;
-      await adminSaveSettings(password, {
-        enabled,
-        order: tiles.map((t) => t.key),
-        autoSignage,
-      });
+      await adminSaveSettings({ enabled, order: tiles.map((t) => t.key), autoSignage });
       onSaved();
       onClose();
     } catch (err) {
@@ -142,41 +111,6 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
             >
               <X className="w-8 h-8" />
             </button>
-
-            {phase === "auth" && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (password) void load(password);
-                }}
-                className="flex flex-col gap-6"
-              >
-                <div className="flex items-center gap-3">
-                  <Lock className="w-8 h-8 text-primary" />
-                  <h2 className="text-3xl font-bold text-foreground">Admin</h2>
-                </div>
-                <p className="text-lg text-muted-foreground">
-                  Enter the admin password to configure this display.
-                </p>
-                <input
-                  type="password"
-                  autoFocus
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  className="rounded-xl px-5 py-4 text-xl text-foreground outline-none"
-                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
-                />
-                {error && <p className="text-lg" style={{ color: "rgb(240,90,110)" }}>{error}</p>}
-                <button
-                  type="submit"
-                  className="rounded-xl px-6 py-4 text-xl font-semibold text-white"
-                  style={{ background: "rgb(196,18,48)" }}
-                >
-                  Unlock
-                </button>
-              </form>
-            )}
 
             {phase === "loading" && (
               <div className="flex items-center justify-center py-16">

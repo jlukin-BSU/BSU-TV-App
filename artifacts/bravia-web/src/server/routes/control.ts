@@ -16,7 +16,7 @@ import {
   setScreenState,
 } from "../lib/bravia";
 import { requireDisplay } from "../middlewares/device";
-import { effectiveConfig, adminEnabled, type SettingsStore } from "../lib/settings";
+import { effectiveConfig, type SettingsStore } from "../lib/settings";
 import { logger } from "../lib/logger";
 
 const InputRequest = z.object({ inputId: z.string().min(1) }).strict();
@@ -49,7 +49,6 @@ export function createControlRouter(store: SettingsStore): IRouter {
       tiles: eff.tiles,
       inputs: INPUTS.filter((i) => eff.inputIds.includes(i.id)).map((i) => ({ ...i })),
       autoSignage: eff.settings.autoSignage,
-      adminEnabled: adminEnabled(),
     };
 
     res.json(payload);

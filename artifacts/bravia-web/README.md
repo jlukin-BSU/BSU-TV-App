@@ -47,16 +47,17 @@ cookie, and no way for the client to name a display. The IP is looked up in
 `devices.json` to get that display's Pre-Shared Key, and the command goes to
 that display's address.
 
-Two pieces make this trustworthy, and both matter:
+What makes this trustworthy is that the service is exposed **directly** — Node
+binds the port itself, with no reverse proxy — so `req.ip` is the raw socket
+peer. `trust proxy` is **off**, so a client-supplied `X-Forwarded-For` is
+ignored and a display cannot forge its identity. (If a proxy is ever put in
+front, set `TRUST_PROXY` and make the proxy *overwrite* `X-Forwarded-For` with
+the real client address; append-style forwarding would reintroduce spoofing.)
 
-1. The service binds to **127.0.0.1** only (`HOST`), so nginx is the sole way in.
-2. nginx **overwrites** `X-Forwarded-For` with `$remote_addr` rather than
-   appending to it, and Express trusts only the loopback hop
-   (`app.set("trust proxy", "loopback")`).
-
-If you skip either one, a display can forge an `X-Forwarded-For` header and
-impersonate another display. Anything that can reach port 8080 directly is
-trusted, so do not expose it.
+There is no TLS. On the isolated AV VLAN nothing sensitive crosses the browser
+leg — commands are authorized by source IP, and PSKs only ever travel
+server→display (that Sony API is plain HTTP by design). See the note on HTTPS at
+the end.
 
 ## Configure
 
@@ -187,28 +188,31 @@ find the correct package name when adding an app to the catalog.
 
 ## Admin panel
 
-A small **settings gear** (bottom-right of the hub) opens a per-display admin
-panel: show/hide tiles, reorder them, and toggle "return to signage when idle".
-The gear is mouse-reachable, so admin works in an ordinary browser, not only
-from a TV remote. The hidden trigger from the Android app also still opens it:
-five presses of Back/Red/Esc within three seconds, or clicking the BSU logo.
+A per-display admin panel lets you show/hide tiles, reorder them, and toggle
+"return to signage when idle". It is **launched by a hidden gesture**, not a
+visible button:
 
-- **Enable it** by setting `ADMIN_PASSWORD`. If unset, admin is disabled and the
-  gear is hidden.
-- **Auth** is that single shared password, sent in the `X-Admin-Password` header
-  and checked in constant time — appropriate for the controlled AV VLAN behind
-  HTTPS; there are no per-user accounts.
-- **Storage** is a separate `overrides.json` (path `ADMIN_OVERRIDES`, default
-  beside `devices.json`), keyed by hostname. It holds no secrets and is never
-  `devices.json`, so the PSK file is never rewritten by the app. `loadConfig`
-  stays the provisioning source; admin edits are merged on top per request, and
-  a hidden tile also cannot be driven through the control API.
+- **On a TV remote:** press **D-pad Up five times** while on the top row.
+- **On a keyboard (testing):** the same (ArrowUp ×5 at the top row), or **Esc
+  ×5**. Clicking the BSU logo five times also works.
+
+There is **no password**. The protection is that only a **registered display
+IP** can reach the app at all (an unknown IP gets 403 before anything), and the
+launch is deliberately obscure. On the controlled AV VLAN that network position
+is the auth — configuring is gated by *where you are*, not a credential.
+Displays never enter anything; they just load the page and issue commands
+authorized by their source IP.
+
+Edits are stored in a separate `overrides.json` (path `ADMIN_OVERRIDES`, default
+beside `devices.json`), keyed by hostname. It holds **no secrets** and is never
+`devices.json`, so the PSK file is never rewritten by the app. `loadConfig`
+stays the provisioning source; admin edits merge on top per request, and a
+hidden tile also cannot be driven through the control API.
 
 ## API
 
 All routes except `/api/healthz`, `/api/whoami` and `/api/weather` require the
-caller's IP to be registered. The `/api/admin/*` routes additionally require the
-admin password.
+caller's IP to be registered — that includes the `/api/admin/*` routes.
 
 | Method | Path | Body | Purpose |
 |---|---|---|---|
@@ -220,41 +224,38 @@ admin password.
 | POST | `/api/app` | `{"appId":"youtube"}` | Launch an app. |
 | POST | `/api/command` | `{"commandId":"screenoff"}` | Screen off / on / power off. |
 | GET | `/api/apps` | — | Raw installed-app list. |
-| GET | `/api/admin/settings` | — | Editable settings for this display (admin). |
-| PUT | `/api/admin/settings` | `{enabled,order,autoSignage}` | Save this display's settings (admin). |
+| GET | `/api/admin/settings` | — | Editable settings for this display. |
+| PUT | `/api/admin/settings` | `{enabled,order,autoSignage}` | Save this display's settings. |
 
 Failures from a display come back as `502` with a human-readable `message` — a
 wrong PSK, an unreachable display, and a Sony-level rejection are distinguished,
 because Sony returns HTTP 200 with an `error` tuple in the body and that is easy
 to mistake for success.
 
-## Deploy (Ubuntu 22.04)
+## Deploy (Ubuntu, no nginx, no cert)
 
-Build on the NUC, or build elsewhere and copy `dist/`.
+The service runs directly as the `its` user from the repo clone, binding port 80
+itself (via `CAP_NET_BIND_SERVICE`), so displays load `http://its-avctrl-bsu-av/`
+with no port in the URL. There is no reverse proxy and no TLS.
+
+Build on the NUC (see the repo-level notes: Node 20 + pnpm in `~/.local`), then:
 
 ```bash
-sudo useradd --system --home /opt/bravia-web --shell /usr/sbin/nologin bravia
+sudo mkdir -p /etc/bravia-web
 ```
 
+Put the real config outside the repo (holds PSKs):
+
 ```bash
-sudo mkdir -p /opt/bravia-web /etc/bravia-web
+sudo cp ~/BSU-TV-App/artifacts/bravia-web/devices.json /etc/bravia-web/devices.json && sudo chmod 640 /etc/bravia-web/devices.json
 ```
 
-Copy `dist/` to `/opt/bravia-web/`, then the config:
+Create `/etc/bravia-web/bravia-web.env` from `.env.example` (`PORT=80`,
+`HOST=0.0.0.0`, `DEVICES_CONFIG=/etc/bravia-web/devices.json`,
+`ADMIN_OVERRIDES=/etc/bravia-web/overrides.json`), then install and start:
 
 ```bash
-sudo cp devices.json /etc/bravia-web/devices.json
-```
-
-```bash
-sudo chown root:bravia /etc/bravia-web/devices.json && sudo chmod 640 /etc/bravia-web/devices.json
-```
-
-Create `/etc/bravia-web/bravia-web.env` from `.env.example` (set
-`DEVICES_CONFIG=/etc/bravia-web/devices.json`), then:
-
-```bash
-sudo cp deploy/bravia-web.service /etc/systemd/system/bravia-web.service
+sudo cp ~/BSU-TV-App/artifacts/bravia-web/deploy/bravia-web.service /etc/systemd/system/bravia-web.service
 ```
 
 ```bash
@@ -265,54 +266,33 @@ sudo systemctl daemon-reload && sudo systemctl enable --now bravia-web
 sudo systemctl status bravia-web && sudo journalctl -u bravia-web -f
 ```
 
-The unit runs as `bravia` with `ProtectSystem=strict` and a read-only filesystem;
-nothing is written at runtime, and `devices.json` is read once at startup.
+Updating later is `git pull` + rebuild + `sudo systemctl restart bravia-web` —
+no file copying.
 
-### nginx + Let's Encrypt
+### If HTTPS turns out to be required
 
-```bash
-sudo apt install nginx certbot python3-certbot-nginx
-```
-
-```bash
-sudo cp deploy/nginx-bravia-web.conf /etc/nginx/sites-available/bravia-web
-```
-
-Replace `display-control.example.edu` with the real FQDN, then:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/bravia-web /etc/nginx/sites-enabled/
-```
-
-```bash
-sudo certbot --nginx -d display-control.example.edu
-```
-
-```bash
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-Two things to keep in mind:
-
-- **TLS 1.2 stays enabled.** The BZ30L's built-in browser does not reliably
-  negotiate TLS 1.3, and a 1.3-only config shows up as a blank page with no
-  useful error. The supplied config allows 1.2 and 1.3.
-- **The displays must resolve the certificate's FQDN to the NUC's VLAN
-  address.** If the AV VLAN has no inbound path from the internet, HTTP-01 will
-  not validate — use `certbot --dns-<provider>` for a DNS-01 challenge, and
-  point internal DNS at the NUC (split-horizon).
+Nothing here needs TLS, and the displays' identity/commands don't either. The
+only thing that could force it is Sony's "Initial input source" URL loader
+refusing a plain `http://` URL — verify by pointing one display at
+`http://its-avctrl-bsu-av/`. If it must be HTTPS, put nginx in front for TLS,
+set `TRUST_PROXY=loopback` and `HOST=127.0.0.1` `PORT=8080`, and use a **DNS-01**
+Let's Encrypt challenge with split-horizon DNS (an isolated AV VLAN usually
+can't validate HTTP-01). Keep TLS 1.2 enabled — the BZ30L browser may not
+negotiate 1.3.
 
 ## Layout
 
 ```
-src/shared/catalog.ts    inputs, apps and commands — shared by server and UI
-src/server/lib/config.ts devices.json loading and validation
-src/server/lib/bravia.ts Sony REST client, dry-run, package→URI resolution
-src/server/lib/ip.ts     source-IP normalisation
-src/server/middlewares/  device resolution from source IP
-src/server/routes/       /api/*
-src/web/                 the page the displays load
-deploy/                  systemd unit and nginx site
+src/shared/catalog.ts     inputs, apps, commands + tile model — shared by server and UI
+src/server/lib/config.ts  devices.json loading and validation
+src/server/lib/settings.ts admin overrides store + effective-config merge
+src/server/lib/bravia.ts  Sony REST client, dry-run, package→URI resolution
+src/server/lib/weather.ts server-side weather (cached)
+src/server/lib/ip.ts      source-IP normalisation
+src/server/middlewares/   device resolution from source IP
+src/server/routes/        /api/* (control + admin)
+src/web/                  the page the displays load
+deploy/                   systemd unit
 ```
 
 To add a button, edit `src/shared/catalog.ts` — the server validates against the

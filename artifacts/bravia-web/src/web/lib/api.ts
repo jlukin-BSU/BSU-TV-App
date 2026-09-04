@@ -90,13 +90,10 @@ export interface AdminSave {
   autoSignage: boolean;
 }
 
-async function adminRequest<T>(method: string, path: string, password: string, body?: unknown): Promise<T> {
+async function adminRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Admin-Password": password,
-    },
+    headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
@@ -116,10 +113,10 @@ async function adminRequest<T>(method: string, path: string, password: string, b
   return parsed as T;
 }
 
-export function adminGetSettings(password: string): Promise<AdminSettings> {
-  return adminRequest<AdminSettings>("GET", "/api/admin/settings", password);
+export function adminGetSettings(): Promise<AdminSettings> {
+  return adminRequest<AdminSettings>("GET", "/api/admin/settings");
 }
 
-export function adminSaveSettings(password: string, body: AdminSave): Promise<void> {
-  return adminRequest<void>("PUT", "/api/admin/settings", password, body);
+export function adminSaveSettings(body: AdminSave): Promise<void> {
+  return adminRequest<void>("PUT", "/api/admin/settings", body);
 }

@@ -152,6 +152,4 @@ export interface ClientConfig {
   /** Full input list for the HDMI picker. */
   inputs: InputEntry[];
   autoSignage: boolean;
-  /** Whether an admin password is configured (controls the gear button). */
-  adminEnabled: boolean;
 }

@@ -1,22 +1,18 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { TILES, findTile } from "../../shared/catalog";
 import { requireDisplay } from "../middlewares/device";
-import {
-  adminEnabled,
-  checkAdminPassword,
-  effectiveConfig,
-  type SettingsStore,
-} from "../lib/settings";
+import { effectiveConfig, type SettingsStore } from "../lib/settings";
 import { logger } from "../lib/logger";
 
 /**
  * Admin API. Edits the CALLING display's settings (the display is resolved from
- * the source IP upstream), stored server-side. Guarded by a shared admin
- * password sent in the X-Admin-Password header and checked in constant time.
+ * the source IP upstream), stored server-side.
  *
- * The whole surface sits on the controlled AV VLAN behind HTTPS, so a single
- * shared password is the right weight here -- no per-user accounts.
+ * No password: these routes sit behind the same source-IP check as everything
+ * else, so only a registered display can reach them, and the panel is launched
+ * by a hidden gesture. On a controlled AV VLAN that network position is the auth
+ * -- configuring is deliberately obscure, not credentialed.
  */
 
 const SaveRequest = z
@@ -27,26 +23,8 @@ const SaveRequest = z
   })
   .strict();
 
-function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (!adminEnabled()) {
-    res.status(503).json({
-      error: "admin_disabled",
-      message: "No admin password is configured (set ADMIN_PASSWORD).",
-    });
-    return;
-  }
-  const supplied = req.header("x-admin-password") ?? "";
-  if (!checkAdminPassword(supplied)) {
-    res.status(401).json({ error: "unauthorized", message: "Incorrect admin password." });
-    return;
-  }
-  next();
-}
-
 export function createAdminRouter(store: SettingsStore): IRouter {
   const router: IRouter = Router();
-
-  router.use(requireAdmin);
 
   /** Current editable settings for the calling display. */
   router.get("/settings", (req, res) => {

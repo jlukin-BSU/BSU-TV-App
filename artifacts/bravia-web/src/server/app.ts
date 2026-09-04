@@ -21,14 +21,19 @@ export function createApp(config: AppConfig, store: SettingsStore): Express {
   const app: Express = express();
 
   /**
-   * Only the loopback nginx hop is trusted. Combined with nginx *overwriting*
-   * X-Forwarded-For (see deploy/nginx-bravia-web.conf), this makes `req.ip` the
-   * display's real address and unspoofable from the client side.
+   * Source IP is the identity that selects which display is commanded and which
+   * PSK is used, so getting `req.ip` right is security-critical.
    *
-   * This matters more than usual here: source IP is the identity that selects
-   * which display gets commanded and which PSK is used.
+   * By default the service is exposed directly (Node on port 80, no proxy), so
+   * trust proxy is OFF: `req.ip` is the raw socket peer and any client-supplied
+   * X-Forwarded-For is ignored -- a display cannot forge its identity.
+   *
+   * If a reverse proxy is ever put in front, set TRUST_PROXY to its hop spec
+   * (e.g. "loopback") AND make that proxy OVERWRITE X-Forwarded-For with the
+   * real client address (append-style forwarding would reintroduce spoofing).
    */
-  app.set("trust proxy", "loopback");
+  const trustProxy = process.env["TRUST_PROXY"];
+  app.set("trust proxy", trustProxy && trustProxy.trim() !== "" ? trustProxy.trim() : false);
   app.disable("x-powered-by");
 
   app.use(

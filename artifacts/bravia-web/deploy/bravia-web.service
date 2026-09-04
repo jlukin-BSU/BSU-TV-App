@@ -6,18 +6,21 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=bravia
-Group=bravia
+User=its
+Group=its
 
-WorkingDirectory=/opt/bravia-web
-# PORT, HOST, DEVICES_CONFIG, LOG_LEVEL, NODE_ENV live here.
-# chmod 640 root:bravia -- it is not secret itself, but keep it tight.
+WorkingDirectory=/home/its/BSU-TV-App/artifacts/bravia-web
+# PORT, HOST, DEVICES_CONFIG, ADMIN_OVERRIDES, LOG_LEVEL, NODE_ENV live here.
 EnvironmentFile=/etc/bravia-web/bravia-web.env
-ExecStart=/usr/bin/node --enable-source-maps /opt/bravia-web/dist/index.mjs
+ExecStart=/home/its/.local/node20/bin/node --enable-source-maps /home/its/BSU-TV-App/artifacts/bravia-web/dist/index.mjs
+
+# Bind port 80 without running as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
 Restart=always
 RestartSec=3
-# Don't give up if the displays or DNS are slow to come back after a power event.
+# Don't give up if the network is slow to come back after a power event.
 StartLimitBurst=0
 
 StandardOutput=journal
@@ -27,28 +30,19 @@ SyslogIdentifier=bravia-web
 # --- Hardening ---------------------------------------------------------------
 NoNewPrivileges=yes
 PrivateTmp=yes
-PrivateDevices=yes
 ProtectSystem=strict
-ProtectHome=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
-ProtectClock=yes
-ProtectHostname=yes
 RestrictSUIDSGID=yes
-RestrictNamespaces=yes
 RestrictRealtime=yes
 LockPersonality=yes
-MemoryDenyWriteExecute=yes
-# The service only needs to talk IPv4/IPv6 TCP to the displays.
 RestrictAddressFamilies=AF_INET AF_INET6
 SystemCallArchitectures=native
-SystemCallFilter=@system-service
-SystemCallFilter=~@privileged @resources
 
-# ProtectSystem=strict makes everything read-only; nothing here needs to write.
-# devices.json is read at startup only.
-ReadOnlyPaths=/opt/bravia-web /etc/bravia-web
+# The app only reads its config and writes overrides.json under /etc/bravia-web.
+ReadOnlyPaths=/home/its/BSU-TV-App
+ReadWritePaths=/etc/bravia-web
 
 [Install]
 WantedBy=multi-user.target
