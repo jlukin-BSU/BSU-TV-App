@@ -1,10 +1,11 @@
 import primeImg from "@assets/brand/prime.png";
 import disneyImg from "@assets/brand/disney-plus.svg";
 import maxImg from "@assets/brand/max.svg";
-import appleImg from "@assets/brand/apple-tv.svg";
+import appleImg from "@assets/brand/apple-tv.png";
 import peacockImg from "@assets/brand/peacock.svg";
 import paramountImg from "@assets/brand/paramount.svg";
 import plutoImg from "@assets/brand/pluto.svg";
+import cnnImg from "@assets/brand/cnn.svg";
 
 /**
  * Official app logos (user-supplied, attached_assets/brand), rendered like the
@@ -27,6 +28,7 @@ const logos: Record<string, LogoSpec> = {
   peacock: { src: peacockImg, width: "w-40" },
   paramount: { src: paramountImg, width: "w-48" },
   pluto: { src: plutoImg, width: "w-36" },
+  cnn: { src: cnnImg, width: "w-28" },
 };
 
 export function hasBrandLogo(key: string): boolean {
