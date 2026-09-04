@@ -3,7 +3,7 @@ import { AlertTriangle } from "lucide-react";
 
 const STORAGE_KEY = "bsu_session_warning_last";
 const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
-const COUNTDOWN_S = 5;
+const COUNTDOWN_S = 8;
 
 export function shouldShowSessionWarning(): boolean {
   const raw = localStorage.getItem(STORAGE_KEY);
