@@ -76,8 +76,7 @@ export function SessionWarningModal({ appName, onProceed }: Props) {
             <span className="text-white font-semibold" style={{ opacity: 1 }}>
               {appName}
             </span>{" "}
-            will be signed out when the TV is turned off. Do not save passwords
-            or personal information on this device.
+            will be signed out when the TV is turned off.
           </p>
         </div>
 
