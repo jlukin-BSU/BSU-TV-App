@@ -8,7 +8,7 @@ import { NetflixLogo, HuluLogo, TubiLogo } from "./components/StreamingLogos";
 import { TransitionOverlay, ActiveAppScreen, type AppId } from "./components/AppScreens";
 import { BrandLogo, hasBrandLogo } from "./components/BrandLogos";
 import { HdmiPicker } from "./components/HdmiPicker";
-import { SessionWarningModal, shouldShowSessionWarning } from "./components/SessionWarningModal";
+import { SessionWarningModal } from "./components/SessionWarningModal";
 import { AdminPanel } from "./components/AdminPanel";
 import { useDPad } from "./hooks/use-dpad";
 import { useTvIdle } from "./hooks/use-idle";
@@ -42,13 +42,12 @@ interface TileDef {
   renderIcon: (focused: boolean) => React.ReactNode;
 }
 
-const SESSION_WARNING_IDS = new Set(["livetv", "youtube", "hulu", "netflix"]);
-const SESSION_WARNING_NAMES: Record<string, string> = {
-  livetv: "Live TV",
-  youtube: "YouTube",
-  hulu: "Hulu",
-  netflix: "Netflix",
-};
+/**
+ * Every streaming/Android app shows the "accounts not saved" warning on each
+ * open. Only signage (internal News & Announcements) is exempt among apps;
+ * inputs and screen commands never warn.
+ */
+const NO_WARNING_APP_IDS = new Set(["signage"]);
 
 const powerIcon = (focused: boolean) => (
   <Power className={`w-20 h-20 transition-all duration-300 ${focused ? "text-white opacity-100" : "text-white opacity-70"}`} strokeWidth={2} />
@@ -239,13 +238,8 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
   const onTileActivate = useCallback(
     (tile: TileDef) => {
       if (!hubIsIdle) return;
-      if (
-        tile.kind === "app" &&
-        tile.serverId &&
-        SESSION_WARNING_IDS.has(tile.serverId) &&
-        shouldShowSessionWarning()
-      ) {
-        setSessionWarning({ tile, appName: SESSION_WARNING_NAMES[tile.serverId] ?? tile.label });
+      if (tile.kind === "app" && tile.serverId && !NO_WARNING_APP_IDS.has(tile.serverId)) {
+        setSessionWarning({ tile, appName: tile.label });
         return;
       }
       void activateTile(tile);
