@@ -78,6 +78,24 @@ export function SessionWarningModal({ appName, onProceed }: Props) {
             </span>{" "}
             will be signed out when the TV is turned off.
           </p>
+
+          <div className="flex flex-col gap-1" style={{ marginTop: "1rem" }}>
+            <p className="text-white leading-snug" style={{ fontSize: "0.95rem", opacity: 0.55 }}>
+              By using this device, you agree to the Bridgewater State University
+              Responsible Use of Information Technology policy.
+            </p>
+            <p className="text-white" style={{ fontSize: "0.8rem", opacity: 0.45 }}>
+              Available at{" "}
+              <a
+                href="https://www.bridgew.edu"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "inherit", textDecoration: "underline" }}
+              >
+                www.bridgew.edu
+              </a>
+            </p>
+          </div>
         </div>
 
         {/* Countdown ring */}
