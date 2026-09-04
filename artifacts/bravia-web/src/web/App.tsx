@@ -74,7 +74,7 @@ function appTile(id: string, label: string): TileDef {
       // on a chip; anything still lacking art falls back to a neutral glyph +
       // label until its logo is added.
       if (hasBrandLogo(id)) {
-        return { ...base, logoOnly: true, renderIcon: () => <BrandLogo appKey={id} /> };
+        return { ...base, logoOnly: true, renderIcon: (f) => <BrandLogo appKey={id} focused={f} /> };
       }
       return {
         ...base,

@@ -7,41 +7,48 @@ import paramountImg from "@assets/brand/paramount.svg";
 import plutoImg from "@assets/brand/pluto.svg";
 
 /**
- * Official app logos supplied by the user (attached_assets/brand). Each renders
- * inside a light rounded chip so any logo colour -- dark wordmarks (Disney+),
- * full-colour marks (Peacock), single-colour (Paramount+/Pluto) -- stays legible
- * on the dark tiles, and the set looks consistent, like a real app grid.
+ * Official app logos (user-supplied, attached_assets/brand), rendered like the
+ * StreamingLogos: transparent, proportional, straight on the dark tile, dimmed
+ * slightly when unfocused. Per-logo width keeps each visually balanced despite
+ * different aspect ratios.
+ *
+ * `invert` forces a dark-only logo to solid white so it reads on the dark tile
+ * (same trick the utility icons use). Colour logos that already show on dark are
+ * left untouched.
  */
 
-const src: Record<string, string> = {
-  prime: primeImg,
-  disneyplus: disneyImg,
-  max: maxImg,
-  appletv: appleImg,
-  peacock: peacockImg,
-  paramount: paramountImg,
-  pluto: plutoImg,
+interface LogoSpec {
+  src: string;
+  /** Tailwind width class. */
+  width: string;
+  /** Force to white for logos that ship only in a dark-on-light variant. */
+  invert?: boolean;
+}
+
+const logos: Record<string, LogoSpec> = {
+  prime: { src: primeImg, width: "w-44", invert: true },
+  disneyplus: { src: disneyImg, width: "w-40", invert: true },
+  max: { src: maxImg, width: "w-36", invert: true },
+  appletv: { src: appleImg, width: "w-28", invert: true },
+  peacock: { src: peacockImg, width: "w-40" },
+  paramount: { src: paramountImg, width: "w-48" },
+  pluto: { src: plutoImg, width: "w-36" },
 };
 
 export function hasBrandLogo(key: string): boolean {
-  return key in src;
+  return key in logos;
 }
 
-export function BrandLogo({ appKey }: { appKey: string }) {
-  const img = src[appKey];
-  if (!img) return null;
+export function BrandLogo({ appKey, focused }: { appKey: string; focused: boolean }) {
+  const spec = logos[appKey];
+  if (!spec) return null;
   return (
-    <div
-      className="flex items-center justify-center rounded-2xl"
-      style={{
-        background: "#ffffff",
-        width: "12rem",
-        height: "6.5rem",
-        padding: "1rem 1.5rem",
-        boxShadow: "0 0.2rem 0.8rem rgba(0,0,0,0.25)",
-      }}
-    >
-      <img src={img} alt="" className="max-w-full max-h-full object-contain" draggable={false} />
-    </div>
+    <img
+      src={spec.src}
+      alt=""
+      draggable={false}
+      className={`${spec.width} h-auto object-contain ${spec.invert ? "brightness-0 invert" : ""}`}
+      style={{ opacity: focused ? 1 : 0.8 }}
+    />
   );
 }
