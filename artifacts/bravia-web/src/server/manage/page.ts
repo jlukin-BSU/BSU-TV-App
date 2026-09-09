@@ -3,8 +3,8 @@
  * management server on its own port. Plain HTML/CSS/JS -- no build step, and
  * intentionally separate from the display UI. Mobile-first for phone use.
  *
- * Auth: the password is held in sessionStorage for the tab and sent as the
- * X-Manage-Password header on each API call.
+ * Auth: the PIN is held in sessionStorage for the tab and sent as the
+ * X-Manage-Pin header on each API call.
  */
 export const managePage = /* html */ `<!doctype html>
 <html lang="en">
@@ -62,9 +62,9 @@ export const managePage = /* html */ `<!doctype html>
   <!-- Login -->
   <section id="login" class="card">
     <h2>Sign in</h2>
-    <p class="muted" style="margin:.5rem 0 0;">Enter the management password to register displays.</p>
-    <label for="pw">Password</label>
-    <input id="pw" type="password" autocomplete="current-password" />
+    <p class="muted" style="margin:.5rem 0 0;">Enter the PIN to register displays.</p>
+    <label for="pw">PIN</label>
+    <input id="pw" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
     <div style="margin-top:1rem;"><button id="loginBtn" class="primary">Unlock</button></div>
   </section>
 
@@ -99,7 +99,7 @@ export const managePage = /* html */ `<!doctype html>
 </main>
 <script>
 (function () {
-  var PW_KEY = "bsu_mgmt_pw";
+  var PW_KEY = "bsu_mgmt_pin";
   var editingIp = null;
   var $ = function (id) { return document.getElementById(id); };
   function pw() { try { return sessionStorage.getItem(PW_KEY) || ""; } catch (e) { return ""; } }
@@ -115,7 +115,7 @@ export const managePage = /* html */ `<!doctype html>
   async function api(method, path, body) {
     var res = await fetch("/api" + path, {
       method: method,
-      headers: { "Content-Type": "application/json", "X-Manage-Password": pw() },
+      headers: { "Content-Type": "application/json", "X-Manage-Pin": pw() },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     var text = await res.text();
@@ -153,7 +153,7 @@ export const managePage = /* html */ `<!doctype html>
       await refresh();
     } catch (e) {
       setPw("");
-      msg(e.message === "Incorrect management password." ? "Incorrect password." : e.message, "err");
+      msg(e.message === "Incorrect PIN." ? "Incorrect PIN." : e.message, "err");
     }
   }
 

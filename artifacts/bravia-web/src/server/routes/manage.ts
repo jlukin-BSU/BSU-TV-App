@@ -7,20 +7,20 @@ import {
   updateDevice,
   RegistryError,
 } from "../lib/registry";
-import { checkMgmtPassword } from "../lib/mgmt";
+import { checkMgmtPin } from "../lib/mgmt";
 import { logger } from "../lib/logger";
 
 /**
- * Management API: device-registry CRUD, guarded by the management password sent
- * in the X-Manage-Password header (constant-time check). Mutations go through
- * the registry helpers, which validate and persist devices.json and update the
- * live control config in place.
+ * Management API: device-registry CRUD, guarded by the management PIN sent in
+ * the X-Manage-Pin header (constant-time check). Mutations go through the
+ * registry helpers, which validate and persist devices.json and update the live
+ * control config in place.
  */
 
 function requireMgmt(req: Request, res: Response, next: NextFunction): void {
-  const supplied = req.header("x-manage-password") ?? "";
-  if (!checkMgmtPassword(supplied)) {
-    res.status(401).json({ error: "unauthorized", message: "Incorrect management password." });
+  const supplied = req.header("x-manage-pin") ?? "";
+  if (!checkMgmtPin(supplied)) {
+    res.status(401).json({ error: "unauthorized", message: "Incorrect PIN." });
     return;
   }
   next();
