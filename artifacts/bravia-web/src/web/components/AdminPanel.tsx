@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronUp, ChevronDown, Eye, EyeOff, Loader2 } from "lucide-react";
 import { adminGetSettings, adminSaveSettings, type AdminTile } from "../lib/api";
@@ -26,6 +26,9 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
   const [tiles, setTiles] = useState<AdminTile[]>([]);
   const [autoSignage, setAutoSignage] = useState(true);
   const [idleSeconds, setIdleSeconds] = useState<number>(IDLE_SECONDS_DEFAULT);
+
+  const autoSignageRef = useRef<HTMLInputElement>(null);
+  const tileListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -140,6 +143,7 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
                   <label className="flex items-center justify-between cursor-pointer">
                     <span className="text-xl text-foreground">Return to signage when idle</span>
                     <input
+                      ref={autoSignageRef}
                       type="checkbox"
                       checked={autoSignage}
                       onChange={(e) => setAutoSignage(e.target.checked)}
@@ -151,21 +155,38 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
                     style={{ opacity: autoSignage ? 1 : 0.4 }}
                   >
                     <span className="text-lg text-muted-foreground">After (seconds of inactivity)</span>
+                    {/*
+                      Text + inputmode=numeric, NOT type=number: on a TV remote,
+                      type=number makes D-pad Up/Down change the value and trap
+                      focus. Here Up/Down move focus out of the field instead, and
+                      the field brings up the on-screen number pad for entry.
+                    */}
                     <input
-                      type="number"
-                      min={IDLE_SECONDS_MIN}
-                      max={IDLE_SECONDS_MAX}
-                      step={30}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       disabled={!autoSignage}
                       value={idleSeconds}
-                      onChange={(e) => setIdleSeconds(Number(e.target.value))}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 4);
+                        setIdleSeconds(digits === "" ? 0 : Number(digits));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          tileListRef.current?.querySelector<HTMLElement>("button")?.focus();
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          autoSignageRef.current?.focus();
+                        }
+                      }}
                       className="w-28 rounded-lg px-3 py-2 text-lg text-foreground text-right outline-none"
                       style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 overflow-y-auto" style={{ minHeight: 0 }}>
+                <div ref={tileListRef} className="flex flex-col gap-2 overflow-y-auto" style={{ minHeight: 0 }}>
                   {tiles.map((tile, idx) => (
                     <div
                       key={tile.key}
