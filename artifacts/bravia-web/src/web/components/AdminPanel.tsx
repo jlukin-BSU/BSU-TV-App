@@ -174,7 +174,11 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
                       onKeyDown={(e) => {
                         if (e.key === "ArrowDown") {
                           e.preventDefault();
-                          tileListRef.current?.querySelector<HTMLElement>("button")?.focus();
+                          // First *enabled* control in the list (the top row's
+                          // move-up button is disabled and can't take focus).
+                          tileListRef.current
+                            ?.querySelector<HTMLElement>("button:not([disabled])")
+                            ?.focus();
                         } else if (e.key === "ArrowUp") {
                           e.preventDefault();
                           autoSignageRef.current?.focus();
