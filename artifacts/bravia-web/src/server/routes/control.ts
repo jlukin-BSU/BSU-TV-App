@@ -17,6 +17,7 @@ import {
 } from "../lib/bravia";
 import { requireDisplay } from "../middlewares/device";
 import { effectiveConfig, type SettingsStore } from "../lib/settings";
+import type { AppOverridesStore } from "../lib/app-overrides";
 import { logger } from "../lib/logger";
 
 const InputRequest = z.object({ inputId: z.string().min(1) }).strict();
@@ -31,7 +32,7 @@ function errorPayload(err: unknown): { error: string; message: string } {
   };
 }
 
-export function createControlRouter(store: SettingsStore): IRouter {
+export function createControlRouter(store: SettingsStore, appOverrides: AppOverridesStore): IRouter {
   const router: IRouter = Router();
 
   /** Who am I, and which tiles should I show? Derived from source IP + admin edits. */
@@ -104,10 +105,13 @@ export function createControlRouter(store: SettingsStore): IRouter {
     }
 
     try {
-      const uri = await resolveAppUri(display, entry.packageName);
+      // An admin can override the catalog package name / URI per app from the
+      // management page (e.g. to fix a wrong CNN target).
+      const launchValue = appOverrides.get(entry.id) ?? entry.packageName;
+      const uri = await resolveAppUri(display, launchValue);
       await setActiveApp(display, uri);
       logger.info(
-        { display: display.hostname, app: entry.id, package: entry.packageName, uri },
+        { display: display.hostname, app: entry.id, launchValue, uri },
         "Launched app",
       );
       res.json({ ok: true, app: entry.id, label: entry.label, uri });

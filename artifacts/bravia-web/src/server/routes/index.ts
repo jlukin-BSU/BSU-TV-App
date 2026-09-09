@@ -5,6 +5,7 @@ import { resolveDevice } from "../middlewares/device";
 import { getWeather } from "../lib/weather";
 import { logger } from "../lib/logger";
 import type { SettingsStore } from "../lib/settings";
+import type { AppOverridesStore } from "../lib/app-overrides";
 import healthRouter from "./health";
 import { createControlRouter } from "./control";
 import { createAdminRouter } from "./admin";
@@ -14,7 +15,7 @@ import { createAdminRouter } from "./admin";
  * attributable to a known display, so it sits behind `resolveDevice`. The admin
  * routes add their own password check on top.
  */
-export function createRouter(config: AppConfig, store: SettingsStore): IRouter {
+export function createRouter(config: AppConfig, store: SettingsStore, appOverrides: AppOverridesStore): IRouter {
   const router: IRouter = Router();
 
   router.use(healthRouter);
@@ -44,7 +45,7 @@ export function createRouter(config: AppConfig, store: SettingsStore): IRouter {
   // Everything below requires a known display.
   router.use(resolveDevice(config));
   router.use("/admin", createAdminRouter(store));
-  router.use(createControlRouter(store));
+  router.use(createControlRouter(store, appOverrides));
 
   return router;
 }

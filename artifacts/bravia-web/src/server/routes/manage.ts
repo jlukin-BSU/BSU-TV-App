@@ -7,6 +7,7 @@ import {
   updateDevice,
   RegistryError,
 } from "../lib/registry";
+import { z } from "zod";
 import { checkMgmtPin } from "../lib/mgmt";
 import {
   SettingsSaveSchema,
@@ -14,7 +15,10 @@ import {
   settingsViewFor,
   type SettingsStore,
 } from "../lib/settings";
+import type { AppOverridesStore } from "../lib/app-overrides";
 import type { Display } from "../lib/config";
+import { APPS } from "../../shared/catalog";
+import { getApplicationList, BraviaError } from "../lib/bravia";
 import { logger } from "../lib/logger";
 
 /**
@@ -33,7 +37,13 @@ function requireMgmt(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-export function createManageRouter(config: AppConfig, store: SettingsStore): IRouter {
+const AppTargetSchema = z.object({ value: z.string() }).strict();
+
+export function createManageRouter(
+  config: AppConfig,
+  store: SettingsStore,
+  appOverrides: AppOverridesStore,
+): IRouter {
   const router: IRouter = Router();
 
   const findDisplay = (hostname: string): Display | undefined => {
@@ -117,6 +127,58 @@ export function createManageRouter(config: AppConfig, store: SettingsStore): IRo
     const view = saveSettingsFor(display, store, parsed.data);
     logger.info({ display: display.hostname }, "settings saved via management page");
     res.json({ ok: true, ...view });
+  });
+
+  /** Editable launch target (package name / URI) for every app. */
+  router.get("/apps-config", (_req, res) => {
+    res.json({
+      apps: APPS.map((a) => {
+        const override = appOverrides.get(a.id);
+        return {
+          id: a.id,
+          label: a.label,
+          default: a.packageName,
+          override: override ?? null,
+          effective: override ?? a.packageName,
+        };
+      }),
+    });
+  });
+
+  /** Set (or clear, with an empty value) an app's launch target. */
+  router.put("/apps-config/:appId", (req, res) => {
+    const app = APPS.find((a) => a.id === req.params.appId);
+    if (!app) {
+      res.status(404).json({ error: "not_found", message: `Unknown app "${req.params.appId}".` });
+      return;
+    }
+    const parsed = AppTargetSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "bad_request", message: "Expected { value }." });
+      return;
+    }
+    appOverrides.set(app.id, parsed.data.value);
+    const override = appOverrides.get(app.id);
+    res.json({ ok: true, id: app.id, override: override ?? null, effective: override ?? app.packageName });
+  });
+
+  /**
+   * What a display actually reports as installed -- title + exact launch URI.
+   * Use it to find the correct value to paste into an app's launch target.
+   */
+  router.get("/devices/:hostname/installed-apps", async (req, res) => {
+    const display = findDisplay(req.params.hostname);
+    if (!display) {
+      res.status(404).json({ error: "not_found", message: `No display registered with hostname "${req.params.hostname}".` });
+      return;
+    }
+    try {
+      const apps = await getApplicationList(display);
+      res.json({ hostname: display.hostname, dryRun: display.dryRun, count: apps.length, apps });
+    } catch (err) {
+      const message = err instanceof BraviaError ? err.message : err instanceof Error ? err.message : String(err);
+      res.status(502).json({ error: "display_error", message });
+    }
   });
 
   return router;

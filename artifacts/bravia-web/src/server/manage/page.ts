@@ -53,6 +53,12 @@ export const managePage = /* html */ `<!doctype html>
   .titem button { padding:.35rem .6rem; background:rgba(255,255,255,.09); color:var(--text); font-size:.9rem; border-radius:8px; }
   .titem button:disabled { opacity:.3; }
   .titem .eye { min-width:4.6rem; }
+  .acrow { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding:.6rem .7rem; border-radius:10px; background:rgba(255,255,255,.05); margin-bottom:.5rem; }
+  .acrow .acname { flex-basis:100%; font-size:.95rem; font-weight:600; }
+  .acrow .acname .muted { font-weight:400; }
+  .acrow input { flex:1; min-width:8rem; }
+  .instrow { padding:.4rem .55rem; border-radius:8px; background:rgba(255,255,255,.05); margin-bottom:.3rem; font-size:.8rem; cursor:pointer; }
+  .instrow .u { color:var(--muted); word-break:break-all; }
 </style>
 </head>
 <body>
@@ -79,7 +85,10 @@ export const managePage = /* html */ `<!doctype html>
   <section id="app" class="hidden">
     <div class="toolbar">
       <h2>Displays (<span id="count">0</span>)</h2>
-      <button id="addBtn" class="primary small">+ Add display</button>
+      <div style="display:flex; gap:.5rem;">
+        <button id="appsCfgBtn" class="ghost small">App URIs</button>
+        <button id="addBtn" class="primary small">+ Add display</button>
+      </div>
     </div>
     <div id="list"></div>
   </section>
@@ -118,6 +127,24 @@ export const managePage = /* html */ `<!doctype html>
     <div class="row" style="margin-top:1.1rem; gap:.6rem;">
       <button id="s_saveBtn" class="primary">Save</button>
       <button id="s_cancelBtn" class="ghost">Cancel</button>
+    </div>
+  </section>
+
+  <!-- App launch targets (global) -->
+  <section id="appsCfg" class="card hidden">
+    <h2>App launch targets</h2>
+    <p class="muted" style="margin:.4rem 0 0;">The package name or URI used to launch each app. Leave blank to use the built-in default.</p>
+    <div id="ac_list" style="margin-top:.8rem;"></div>
+
+    <label style="margin-top:1.1rem;">Find the right value &mdash; installed apps on a display</label>
+    <div class="row" style="gap:.5rem;">
+      <select id="ac_display" style="flex:1; padding:.6rem .7rem; font-size:1rem; color:var(--text); background:#141414; border:1px solid var(--line); border-radius:10px;"></select>
+      <button id="ac_lookupBtn" class="ghost small">Look up</button>
+    </div>
+    <div id="ac_installed" style="margin-top:.6rem;"></div>
+
+    <div class="row" style="margin-top:1.1rem;">
+      <button id="ac_doneBtn" class="ghost">Done</button>
     </div>
   </section>
 </main>
@@ -164,7 +191,7 @@ export const managePage = /* html */ `<!doctype html>
     $("login").classList.toggle("hidden", on);
     $("app").classList.toggle("hidden", !on);
     $("logout").classList.toggle("hidden", !on);
-    if (!on) { $("editor").classList.add("hidden"); $("settings").classList.add("hidden"); }
+    if (!on) { $("editor").classList.add("hidden"); $("settings").classList.add("hidden"); $("appsCfg").classList.add("hidden"); }
   }
 
   async function login() {
@@ -316,6 +343,65 @@ export const managePage = /* html */ `<!doctype html>
     } catch (e) { msg(e.message, "err"); }
   }
 
+  // ---- App launch targets (global) ----
+  async function openAppsCfg() {
+    try {
+      var data = await api("GET", "/apps-config");
+      var list = $("ac_list");
+      list.innerHTML = (data.apps || []).map(function (a) {
+        return '<div class="acrow">' +
+          '<div class="acname">' + esc(a.label) + ' <span class="muted">default: ' + esc(a["default"]) + '</span></div>' +
+          '<input type="text" autocapitalize="none" autocorrect="off" data-app="' + esc(a.id) + '" value="' + esc(a.override || "") + '" placeholder="' + esc(a["default"]) + '" />' +
+          '<button class="ghost small" data-appsave="' + esc(a.id) + '">Save</button>' +
+          '</div>';
+      }).join("");
+      Array.prototype.forEach.call(list.querySelectorAll("[data-appsave]"), function (b) {
+        b.onclick = function () { saveAppTarget(b.getAttribute("data-appsave")); };
+      });
+      // Populate the display dropdown for the installed-apps lookup.
+      var devs = await api("GET", "/devices");
+      $("ac_display").innerHTML = (devs.displays || []).map(function (d) {
+        return '<option value="' + esc(d.hostname) + '">' + esc(d.label || d.hostname) + '</option>';
+      }).join("");
+      $("ac_installed").innerHTML = "";
+      $("appsCfg").classList.remove("hidden");
+      $("app").classList.add("hidden");
+      window.scrollTo(0, 0);
+    } catch (e) { msg(e.message, "err"); }
+  }
+
+  async function saveAppTarget(appId) {
+    var inp = $("ac_list").querySelector('[data-app="' + appId + '"]');
+    try {
+      await api("PUT", "/apps-config/" + encodeURIComponent(appId), { value: inp.value.trim() });
+      msg("Saved " + appId + ".", "ok");
+    } catch (e) { msg(e.message, "err"); }
+  }
+
+  async function lookupInstalled() {
+    var host = $("ac_display").value;
+    if (!host) return;
+    var box = $("ac_installed");
+    box.innerHTML = '<p class="muted">Looking up…</p>';
+    try {
+      var data = await api("GET", "/devices/" + encodeURIComponent(host) + "/installed-apps");
+      if (!data.apps || !data.apps.length) { box.innerHTML = '<p class="muted">No apps reported.</p>'; return; }
+      box.innerHTML = (data.dryRun ? '<p class="muted">(dry-run: sample list)</p>' : "") +
+        data.apps.map(function (a) {
+          return '<div class="instrow" data-uri="' + esc(a.uri) + '"><b>' + esc(a.title || "(untitled)") + '</b><br><span class="u">' + esc(a.uri) + '</span></div>';
+        }).join("");
+      Array.prototype.forEach.call(box.querySelectorAll(".instrow"), function (r) {
+        r.onclick = function () {
+          var uri = r.getAttribute("data-uri");
+          if (navigator.clipboard) { navigator.clipboard.writeText(uri).then(function () { msg("Copied URI to clipboard.", "ok"); }, function () { msg(uri, "ok"); }); }
+          else { msg(uri, "ok"); }
+        };
+      });
+    } catch (e) { box.innerHTML = '<p class="msg err">' + esc(e.message) + '</p>'; }
+  }
+
+  function closeAppsCfg() { $("appsCfg").classList.add("hidden"); $("app").classList.remove("hidden"); refresh(); }
+
   $("loginBtn").onclick = login;
   $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") login(); });
   $("logout").onclick = logout;
@@ -324,6 +410,9 @@ export const managePage = /* html */ `<!doctype html>
   $("cancelBtn").onclick = closeEditor;
   $("s_saveBtn").onclick = saveSettings;
   $("s_cancelBtn").onclick = closeSettings;
+  $("appsCfgBtn").onclick = openAppsCfg;
+  $("ac_lookupBtn").onclick = lookupInstalled;
+  $("ac_doneBtn").onclick = closeAppsCfg;
 
   // Auto-resume if a password is already stored for this tab.
   if (pw()) { api("POST", "/session").then(function () { showApp(true); return refresh(); }).catch(function () { setPw(""); showApp(false); }); }

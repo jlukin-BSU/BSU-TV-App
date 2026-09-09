@@ -2,6 +2,7 @@ import { createApp } from "./app";
 import { createManageApp } from "./manage-app";
 import { loadConfig, refreshResolution, resolveConfigPath } from "./lib/config";
 import { SettingsStore, resolveOverridesPath } from "./lib/settings";
+import { AppOverridesStore, resolveAppOverridesPath } from "./lib/app-overrides";
 import { mgmtEnabled, mgmtPort } from "./lib/mgmt";
 import { logger } from "./lib/logger";
 
@@ -58,9 +59,11 @@ setInterval(() => {
 
 const overridesPath = resolveOverridesPath();
 const store = new SettingsStore(overridesPath);
-logger.info({ overridesPath }, "Settings store ready");
+const appOverridesPath = resolveAppOverridesPath();
+const appOverrides = new AppOverridesStore(appOverridesPath);
+logger.info({ overridesPath, appOverridesPath }, "Stores ready");
 
-const app = createApp(config, store);
+const app = createApp(config, store, appOverrides);
 
 const server = app.listen(port, host, () => {
   logger.info({ port, host }, "bravia-web listening");
@@ -75,7 +78,7 @@ const server = app.listen(port, host, () => {
 let manageServer: ReturnType<typeof app.listen> | null = null;
 if (mgmtEnabled()) {
   const mport = mgmtPort();
-  const manageApp = createManageApp(config, store);
+  const manageApp = createManageApp(config, store, appOverrides);
   manageServer = manageApp.listen(mport, "0.0.0.0", () => {
     logger.info({ port: mport }, "management server listening (device registration)");
   });

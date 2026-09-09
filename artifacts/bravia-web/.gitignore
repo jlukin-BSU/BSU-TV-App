@@ -4,3 +4,6 @@ devices.json
 
 # Admin-written per-display settings (runtime state)
 overrides.json
+
+# App launch-target overrides (runtime state)
+app-overrides.json

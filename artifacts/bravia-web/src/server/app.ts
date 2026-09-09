@@ -7,6 +7,7 @@ import { createRouter } from "./routes";
 import { logger } from "./lib/logger";
 import type { AppConfig } from "./lib/config";
 import type { SettingsStore } from "./lib/settings";
+import type { AppOverridesStore } from "./lib/app-overrides";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +18,7 @@ function publicDir(): string {
   return path.resolve(here, "public");
 }
 
-export function createApp(config: AppConfig, store: SettingsStore): Express {
+export function createApp(config: AppConfig, store: SettingsStore, appOverrides: AppOverridesStore): Express {
   const app: Express = express();
 
   /**
@@ -62,7 +63,7 @@ export function createApp(config: AppConfig, store: SettingsStore): Express {
    * every request is authorised by its source IP -- opening the API up to
    * cross-origin callers would only widen what can reach the displays.
    */
-  app.use("/api", createRouter(config, store));
+  app.use("/api", createRouter(config, store, appOverrides));
 
   const uiDir = publicDir();
   if (fs.existsSync(uiDir)) {
