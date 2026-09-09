@@ -130,11 +130,25 @@ export const managePage = /* html */ `<!doctype html>
     </div>
   </section>
 
-  <!-- App launch targets (global) -->
+  <!-- Apps manager (global): add/remove apps, edit launch target + icon -->
   <section id="appsCfg" class="card hidden">
-    <h2>App launch targets</h2>
-    <p class="muted" style="margin:.4rem 0 0;">The package name or URI used to launch each app. Leave blank to use the built-in default.</p>
-    <div id="ac_list" style="margin-top:.8rem;"></div>
+    <div class="toolbar"><h2>Apps</h2><button id="ac_addToggle" class="primary small">+ Add app</button></div>
+
+    <div id="ac_addForm" class="card hidden" style="background:rgba(255,255,255,.04);">
+      <label for="na_label">Name</label>
+      <input id="na_label" type="text" placeholder="ESPN" />
+      <label for="na_launch">Launch value <span class="muted">(package name or URI)</span></label>
+      <input id="na_launch" type="text" autocapitalize="none" autocorrect="off" placeholder="com.espn.score_center" />
+      <label for="na_icon">Icon <span class="muted">(PNG/SVG/JPG, optional)</span></label>
+      <input id="na_icon" type="file" accept="image/*" style="font-size:.9rem;" />
+      <div class="row" style="margin-top:1rem; gap:.6rem;">
+        <button id="na_addBtn" class="primary">Add app</button>
+        <button id="na_cancelBtn" class="ghost">Cancel</button>
+      </div>
+    </div>
+
+    <p class="muted" style="margin:.2rem 0 .6rem;">Launch value = the package name or URI. Blank on a built-in reverts to its default.</p>
+    <div id="ac_list"></div>
 
     <label style="margin-top:1.1rem;">Find the right value &mdash; installed apps on a display</label>
     <div class="row" style="gap:.5rem;">
@@ -346,19 +360,8 @@ export const managePage = /* html */ `<!doctype html>
   // ---- App launch targets (global) ----
   async function openAppsCfg() {
     try {
-      var data = await api("GET", "/apps-config");
-      var list = $("ac_list");
-      list.innerHTML = (data.apps || []).map(function (a) {
-        return '<div class="acrow">' +
-          '<div class="acname">' + esc(a.label) + ' <span class="muted">default: ' + esc(a["default"]) + '</span></div>' +
-          '<input type="text" autocapitalize="none" autocorrect="off" data-app="' + esc(a.id) + '" value="' + esc(a.override || "") + '" placeholder="' + esc(a["default"]) + '" />' +
-          '<button class="ghost small" data-appsave="' + esc(a.id) + '">Save</button>' +
-          '</div>';
-      }).join("");
-      Array.prototype.forEach.call(list.querySelectorAll("[data-appsave]"), function (b) {
-        b.onclick = function () { saveAppTarget(b.getAttribute("data-appsave")); };
-      });
-      // Populate the display dropdown for the installed-apps lookup.
+      $("ac_addForm").classList.add("hidden");
+      await renderAppsCfg();
       var devs = await api("GET", "/devices");
       $("ac_display").innerHTML = (devs.displays || []).map(function (d) {
         return '<option value="' + esc(d.hostname) + '">' + esc(d.label || d.hostname) + '</option>';
@@ -370,11 +373,63 @@ export const managePage = /* html */ `<!doctype html>
     } catch (e) { msg(e.message, "err"); }
   }
 
+  async function renderAppsCfg() {
+    var data = await api("GET", "/apps-config");
+    var list = $("ac_list");
+    list.innerHTML = (data.apps || []).map(function (a) {
+      var hint = a.custom ? '<span class="muted">custom</span>' : '<span class="muted">default: ' + esc(a["default"]) + '</span>';
+      var icon = a.icon ? '<img src="' + esc(a.icon) + '" style="width:1.6rem;height:1.6rem;object-fit:contain;vertical-align:middle;margin-right:.35rem;">' : '';
+      var remove = a.custom ? '<button class="danger" data-apprm="' + esc(a.id) + '">Remove</button>' : '';
+      return '<div class="acrow">' +
+        '<div class="acname">' + icon + esc(a.label) + ' ' + hint + '</div>' +
+        '<input type="text" autocapitalize="none" autocorrect="off" data-app="' + esc(a.id) + '" value="' + esc(a.custom ? a.effective : (a.override || "")) + '" placeholder="' + esc(a["default"] || "package or URI") + '" />' +
+        '<button class="ghost small" data-appsave="' + esc(a.id) + '">Save</button>' + remove +
+        '</div>';
+    }).join("");
+    Array.prototype.forEach.call(list.querySelectorAll("[data-appsave]"), function (b) {
+      b.onclick = function () { saveAppTarget(b.getAttribute("data-appsave")); };
+    });
+    Array.prototype.forEach.call(list.querySelectorAll("[data-apprm]"), function (b) {
+      b.onclick = function () { removeApp(b.getAttribute("data-apprm")); };
+    });
+  }
+
   async function saveAppTarget(appId) {
     var inp = $("ac_list").querySelector('[data-app="' + appId + '"]');
     try {
       await api("PUT", "/apps-config/" + encodeURIComponent(appId), { value: inp.value.trim() });
-      msg("Saved " + appId + ".", "ok");
+      msg("Saved.", "ok");
+    } catch (e) { msg(e.message, "err"); }
+  }
+
+  async function removeApp(appId) {
+    if (!window.confirm("Remove this app?")) return;
+    try { await api("DELETE", "/apps-config/" + encodeURIComponent(appId)); await renderAppsCfg(); msg("Removed.", "ok"); }
+    catch (e) { msg(e.message, "err"); }
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = function () { reject(new Error("Could not read the file.")); };
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function addApp() {
+    var label = $("na_label").value.trim();
+    var launch = $("na_launch").value.trim();
+    if (!label || !launch) { msg("Name and launch value are required.", "err"); return; }
+    var body = { label: label, launchValue: launch };
+    var f = $("na_icon").files && $("na_icon").files[0];
+    try {
+      if (f) body.iconDataUrl = await readFileAsDataUrl(f);
+      await api("POST", "/apps-config", body);
+      $("na_label").value = ""; $("na_launch").value = ""; $("na_icon").value = "";
+      $("ac_addForm").classList.add("hidden");
+      await renderAppsCfg();
+      msg("App added.", "ok");
     } catch (e) { msg(e.message, "err"); }
   }
 
@@ -413,6 +468,9 @@ export const managePage = /* html */ `<!doctype html>
   $("appsCfgBtn").onclick = openAppsCfg;
   $("ac_lookupBtn").onclick = lookupInstalled;
   $("ac_doneBtn").onclick = closeAppsCfg;
+  $("ac_addToggle").onclick = function () { $("ac_addForm").classList.toggle("hidden"); };
+  $("na_addBtn").onclick = addApp;
+  $("na_cancelBtn").onclick = function () { $("ac_addForm").classList.add("hidden"); };
 
   // Auto-resume if a password is already stored for this tab.
   if (pw()) { api("POST", "/session").then(function () { showApp(true); return refresh(); }).catch(function () { setPw(""); showApp(false); }); }

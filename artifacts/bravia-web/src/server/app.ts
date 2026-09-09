@@ -8,6 +8,7 @@ import { logger } from "./lib/logger";
 import type { AppConfig } from "./lib/config";
 import type { SettingsStore } from "./lib/settings";
 import type { AppOverridesStore } from "./lib/app-overrides";
+import { resolveIconsDir } from "./lib/custom-apps";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -64,6 +65,9 @@ export function createApp(config: AppConfig, store: SettingsStore, appOverrides:
    * cross-origin callers would only widen what can reach the displays.
    */
   app.use("/api", createRouter(config, store, appOverrides));
+
+  // User-uploaded app icons (custom apps). Cached by the browser like any asset.
+  app.use("/icons", express.static(resolveIconsDir(), { immutable: true, maxAge: "7d" }));
 
   const uiDir = publicDir();
   if (fs.existsSync(uiDir)) {

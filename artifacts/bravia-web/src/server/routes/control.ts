@@ -2,11 +2,11 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import {
   INPUTS,
-  findApp,
   findCommand,
   findInput,
   type ClientConfig,
 } from "../../shared/catalog";
+import { findRuntimeApp } from "../lib/catalog-runtime";
 import {
   BraviaError,
   getApplicationList,
@@ -95,7 +95,7 @@ export function createControlRouter(store: SettingsStore, appOverrides: AppOverr
     }
 
     const eff = effectiveConfig(display, store.get(display.hostname));
-    const entry = findApp(parsed.data.appId);
+    const entry = findRuntimeApp(parsed.data.appId);
     if (!entry || !eff.appIds.includes(entry.id)) {
       res.status(400).json({
         error: "unknown_app",

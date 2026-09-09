@@ -109,6 +109,25 @@ function buildTiles(clientTiles: ClientTile[]): TileDef[] {
         renderIcon: powerIcon,
       };
     }
+    // A user-added app carries its own icon URL; built-ins use their coded icon.
+    if (t.icon) {
+      const iconUrl = t.icon;
+      return {
+        key: t.key,
+        kind: "app",
+        serverId: t.key,
+        label: t.label,
+        overlayId: t.key as AppId,
+        renderIcon: (f: boolean) => (
+          <img
+            src={iconUrl}
+            alt=""
+            className="w-20 h-20 object-contain transition-all duration-300"
+            style={{ opacity: f ? 1 : 0.8 }}
+          />
+        ),
+      };
+    }
     return appTile(t.key, t.label);
   });
 }

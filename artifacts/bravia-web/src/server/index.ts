@@ -3,6 +3,7 @@ import { createManageApp } from "./manage-app";
 import { loadConfig, refreshResolution, resolveConfigPath } from "./lib/config";
 import { SettingsStore, resolveOverridesPath } from "./lib/settings";
 import { AppOverridesStore, resolveAppOverridesPath } from "./lib/app-overrides";
+import { CustomAppsStore, resolveCustomAppsPath, resolveIconsDir } from "./lib/custom-apps";
 import { mgmtEnabled, mgmtPort } from "./lib/mgmt";
 import { logger } from "./lib/logger";
 
@@ -61,7 +62,11 @@ const overridesPath = resolveOverridesPath();
 const store = new SettingsStore(overridesPath);
 const appOverridesPath = resolveAppOverridesPath();
 const appOverrides = new AppOverridesStore(appOverridesPath);
-logger.info({ overridesPath, appOverridesPath }, "Stores ready");
+const customApps = new CustomAppsStore(resolveCustomAppsPath(), resolveIconsDir());
+logger.info(
+  { overridesPath, appOverridesPath, customApps: customApps.list().length, iconsDir: resolveIconsDir() },
+  "Stores ready",
+);
 
 const app = createApp(config, store, appOverrides);
 
@@ -78,7 +83,7 @@ const server = app.listen(port, host, () => {
 let manageServer: ReturnType<typeof app.listen> | null = null;
 if (mgmtEnabled()) {
   const mport = mgmtPort();
-  const manageApp = createManageApp(config, store, appOverrides);
+  const manageApp = createManageApp(config, store, appOverrides, customApps);
   manageServer = manageApp.listen(mport, "0.0.0.0", () => {
     logger.info({ port: mport }, "management server listening (device registration)");
   });

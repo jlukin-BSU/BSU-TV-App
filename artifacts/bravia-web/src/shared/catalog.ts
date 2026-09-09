@@ -156,6 +156,8 @@ export interface ClientTile {
   key: string;
   kind: TileKind;
   label: string;
+  /** Icon URL for a user-added app; built-in tiles use their coded icon. */
+  icon?: string;
 }
 
 /** Idle-timeout bounds (seconds), shared by the admin UI and server validation. */

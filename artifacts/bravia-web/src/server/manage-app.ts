@@ -3,6 +3,7 @@ import pinoHttp from "pino-http";
 import type { AppConfig } from "./lib/config";
 import type { SettingsStore } from "./lib/settings";
 import type { AppOverridesStore } from "./lib/app-overrides";
+import { CustomAppsStore, resolveIconsDir } from "./lib/custom-apps";
 import { createManageRouter } from "./routes/manage";
 import { managePage } from "./manage/page";
 import { logger } from "./lib/logger";
@@ -12,7 +13,12 @@ import { logger } from "./lib/logger";
  * the display control plane. Serves a self-contained page and a password-gated
  * CRUD API over the shared live registry.
  */
-export function createManageApp(config: AppConfig, store: SettingsStore, appOverrides: AppOverridesStore): Express {
+export function createManageApp(
+  config: AppConfig,
+  store: SettingsStore,
+  appOverrides: AppOverridesStore,
+  customApps: CustomAppsStore,
+): Express {
   const app: Express = express();
 
   // Trust nothing about forwarding here; there is no proxy in front.
@@ -33,9 +39,13 @@ export function createManageApp(config: AppConfig, store: SettingsStore, appOver
     }),
   );
 
-  app.use(express.json({ limit: "16kb" }));
+  // Larger than the control plane's: icon uploads arrive as base64 in JSON.
+  app.use(express.json({ limit: "8mb" }));
 
-  app.use("/api", createManageRouter(config, store, appOverrides));
+  // Serve uploaded icons here too, so the manager can preview them.
+  app.use("/icons", express.static(resolveIconsDir(), { maxAge: "1h" }));
+
+  app.use("/api", createManageRouter(config, store, appOverrides, customApps));
 
   app.get("/", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");

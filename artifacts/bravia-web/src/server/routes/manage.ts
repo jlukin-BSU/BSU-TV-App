@@ -16,6 +16,8 @@ import {
   type SettingsStore,
 } from "../lib/settings";
 import type { AppOverridesStore } from "../lib/app-overrides";
+import { CustomAppsStore, CustomAppsError } from "../lib/custom-apps";
+import { isCustomApp } from "../lib/catalog-runtime";
 import type { Display } from "../lib/config";
 import { APPS } from "../../shared/catalog";
 import { getApplicationList, BraviaError } from "../lib/bravia";
@@ -37,12 +39,27 @@ function requireMgmt(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-const AppTargetSchema = z.object({ value: z.string() }).strict();
+const AppTargetSchema = z
+  .object({
+    value: z.string().optional(),
+    label: z.string().optional(),
+    iconDataUrl: z.string().optional(),
+  })
+  .strict();
+
+const NewAppSchema = z
+  .object({
+    label: z.string().min(1),
+    launchValue: z.string().min(1),
+    iconDataUrl: z.string().optional(),
+  })
+  .strict();
 
 export function createManageRouter(
   config: AppConfig,
   store: SettingsStore,
   appOverrides: AppOverridesStore,
+  customApps: CustomAppsStore,
 ): IRouter {
   const router: IRouter = Router();
 
@@ -129,37 +146,92 @@ export function createManageRouter(
     res.json({ ok: true, ...view });
   });
 
-  /** Editable launch target (package name / URI) for every app. */
+  /** Every app -- built-in and custom -- with its launch target and icon. */
   router.get("/apps-config", (_req, res) => {
-    res.json({
-      apps: APPS.map((a) => {
-        const override = appOverrides.get(a.id);
-        return {
-          id: a.id,
-          label: a.label,
-          default: a.packageName,
-          override: override ?? null,
-          effective: override ?? a.packageName,
-        };
-      }),
+    const builtin = APPS.map((a) => {
+      const override = appOverrides.get(a.id);
+      return {
+        id: a.id,
+        label: a.label,
+        custom: false,
+        default: a.packageName,
+        effective: override ?? a.packageName,
+        override: override ?? null,
+        icon: null as string | null,
+      };
     });
+    const custom = customApps.list().map((a) => ({
+      id: a.id,
+      label: a.label,
+      custom: true,
+      default: null,
+      effective: a.launchValue,
+      override: a.launchValue,
+      icon: a.icon ? `/icons/${a.icon}` : null,
+    }));
+    res.json({ apps: [...builtin, ...custom] });
   });
 
-  /** Set (or clear, with an empty value) an app's launch target. */
-  router.put("/apps-config/:appId", (req, res) => {
-    const app = APPS.find((a) => a.id === req.params.appId);
-    if (!app) {
-      res.status(404).json({ error: "not_found", message: `Unknown app "${req.params.appId}".` });
+  /** Add a custom app (label + launch value + optional icon). */
+  router.post("/apps-config", (req, res) => {
+    const parsed = NewAppSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "bad_request", message: "Expected { label, launchValue, iconDataUrl? }." });
       return;
     }
+    try {
+      const app = customApps.add(parsed.data);
+      res.status(201).json({ ok: true, id: app.id, label: app.label });
+    } catch (err) {
+      respondError(res, err);
+    }
+  });
+
+  /**
+   * Edit an app. Built-in: sets/clears its launch override. Custom: updates its
+   * launch value, label and/or icon.
+   */
+  router.put("/apps-config/:appId", (req, res) => {
     const parsed = AppTargetSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "bad_request", message: "Expected { value }." });
+      res.status(400).json({ error: "bad_request", message: "Expected { value?, label?, iconDataUrl? }." });
       return;
     }
-    appOverrides.set(app.id, parsed.data.value);
-    const override = appOverrides.get(app.id);
-    res.json({ ok: true, id: app.id, override: override ?? null, effective: override ?? app.packageName });
+    const builtin = APPS.find((a) => a.id === req.params.appId);
+    if (builtin) {
+      appOverrides.set(builtin.id, parsed.data.value ?? "");
+      const override = appOverrides.get(builtin.id);
+      res.json({ ok: true, id: builtin.id, override: override ?? null, effective: override ?? builtin.packageName });
+      return;
+    }
+    if (isCustomApp(req.params.appId)) {
+      try {
+        const app = customApps.update(req.params.appId, {
+          launchValue: parsed.data.value,
+          label: parsed.data.label,
+          iconDataUrl: parsed.data.iconDataUrl,
+        });
+        res.json({ ok: true, id: app.id, effective: app.launchValue });
+      } catch (err) {
+        respondError(res, err);
+      }
+      return;
+    }
+    res.status(404).json({ error: "not_found", message: `Unknown app "${req.params.appId}".` });
+  });
+
+  /** Remove a custom app (built-in apps can't be deleted -- hide them per display). */
+  router.delete("/apps-config/:appId", (req, res) => {
+    if (APPS.some((a) => a.id === req.params.appId)) {
+      res.status(400).json({ error: "builtin", message: "Built-in apps can't be removed; hide them per display instead." });
+      return;
+    }
+    try {
+      customApps.remove(req.params.appId);
+      res.json({ ok: true });
+    } catch (err) {
+      respondError(res, err);
+    }
   });
 
   /**
@@ -185,7 +257,7 @@ export function createManageRouter(
 }
 
 function respondError(res: Response, err: unknown): void {
-  if (err instanceof RegistryError) {
+  if (err instanceof RegistryError || err instanceof CustomAppsError) {
     res.status(400).json({ error: "invalid", message: err.message });
     return;
   }

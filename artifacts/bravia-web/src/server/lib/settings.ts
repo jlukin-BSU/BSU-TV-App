@@ -2,18 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import {
-  DEFAULT_TILE_ORDER,
   IDLE_SECONDS_DEFAULT,
   IDLE_SECONDS_MAX,
   IDLE_SECONDS_MIN,
   INPUTS,
   INPUTS_TILE_KEY,
-  TILES,
-  findTile,
   type ClientTile,
   type DisplaySettings,
   type TileKind,
 } from "../../shared/catalog";
+import {
+  appIconUrl,
+  findRuntimeTile as findTile,
+  runtimeDefaultOrder,
+  runtimeTiles,
+} from "./catalog-runtime";
 import type { Display } from "./config";
 import { resolveConfigPath } from "./config";
 import { logger } from "./logger";
@@ -86,7 +89,7 @@ export class SettingsStore {
 /** Base tile visibility from devices.json / catalog defaults (before admin edits). */
 function baseEnabled(display: Display): Record<string, boolean> {
   const enabled: Record<string, boolean> = {};
-  for (const tile of TILES) {
+  for (const tile of runtimeTiles()) {
     if (tile.kind === "app") enabled[tile.key] = display.apps.includes(tile.key);
     else if (tile.kind === "command") enabled[tile.key] = display.commands.includes(tile.key);
     else if (tile.kind === "input") enabled[tile.key] = display.inputs.length > 0;
@@ -114,10 +117,10 @@ export function effectiveConfig(display: Display, override?: DisplayOverride): E
 
   // Order: start from the override (or default), then append any tiles it omits
   // so a new catalog tile never silently vanishes.
-  const requested = override?.order ?? DEFAULT_TILE_ORDER;
+  const requested = override?.order ?? runtimeDefaultOrder();
   const order = [
     ...requested.filter((k) => findTile(k)),
-    ...DEFAULT_TILE_ORDER.filter((k) => !requested.includes(k)),
+    ...runtimeDefaultOrder().filter((k) => !requested.includes(k)),
   ];
 
   const autoSignage = override?.autoSignage ?? display.autoSignage;
@@ -131,10 +134,10 @@ export function effectiveConfig(display: Display, override?: DisplayOverride): E
   const tiles: ClientTile[] = order
     .map((key) => findTile(key))
     .filter((t): t is NonNullable<typeof t> => !!t && enabled[t.key] === true)
-    .map((t) => ({ key: t.key, kind: t.kind, label: t.label }));
+    .map((t) => ({ key: t.key, kind: t.kind, label: t.label, ...(appIconUrl(t.key) ? { icon: appIconUrl(t.key) } : {}) }));
 
-  const appIds = TILES.filter((t) => t.kind === "app" && enabled[t.key]).map((t) => t.key);
-  const commandIds = TILES.filter((t) => t.kind === "command" && enabled[t.key]).map((t) => t.key);
+  const appIds = runtimeTiles().filter((t) => t.kind === "app" && enabled[t.key]).map((t) => t.key);
+  const commandIds = runtimeTiles().filter((t) => t.kind === "command" && enabled[t.key]).map((t) => t.key);
   const inputIds = enabled[INPUTS_TILE_KEY] ? INPUTS.map((i) => i.id) : [];
 
   return {
@@ -186,7 +189,7 @@ export function saveSettingsFor(
   input: z.infer<typeof SettingsSaveSchema>,
 ): SettingsView {
   const enabled: Record<string, boolean> = {};
-  for (const tile of TILES) {
+  for (const tile of runtimeTiles()) {
     if (tile.key in input.enabled) enabled[tile.key] = input.enabled[tile.key]!;
   }
   const order = input.order.filter((k) => findTile(k));
