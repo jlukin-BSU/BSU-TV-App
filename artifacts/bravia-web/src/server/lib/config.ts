@@ -8,7 +8,7 @@ const knownAppIds = APPS.map((a) => a.id);
 const knownInputIds = INPUTS.map((i) => i.id);
 const knownCommandIds = COMMANDS.map((c) => c.id);
 
-const DisplaySchema = z
+export const DisplaySchema = z
   .object({
     /** Reserved/static address of the display on the AV VLAN. */
     ip: z.string().min(1),
@@ -60,7 +60,7 @@ const ConfigSchema = z
   .object({
     /** Global default; individual displays can override. */
     dryRun: z.boolean().default(false),
-    displays: z.array(DisplaySchema).min(1),
+    displays: z.array(DisplaySchema),
   })
   .strict();
 
@@ -81,10 +81,22 @@ export interface Display {
   commands: string[];
 }
 
+/**
+ * The live registry. `displays` and `byIp` are the derived, effective view the
+ * control side reads; `rawEntries` is the source of truth that gets written
+ * back to devices.json. The management API mutates `rawEntries` then calls
+ * `materialize`, which rebuilds `displays`/`byIp` IN PLACE so anything holding
+ * this object (e.g. the resolveDevice middleware) sees the change with no
+ * restart.
+ */
 export interface AppConfig {
   displays: Display[];
   /** Normalised IP -> display. */
   byIp: Map<string, Display>;
+  rawEntries: DisplayConfigInput[];
+  globalDryRun: boolean;
+  forcedDryRun: boolean;
+  configPath: string;
 }
 
 function envFlag(name: string): boolean {
@@ -98,6 +110,53 @@ export function resolveConfigPath(): string {
   const fromEnv = process.env["DEVICES_CONFIG"];
   if (fromEnv && fromEnv.trim() !== "") return path.resolve(fromEnv.trim());
   return path.resolve(process.cwd(), "devices.json");
+}
+
+function buildDisplay(entry: DisplayConfigInput, globalDryRun: boolean, forcedDryRun: boolean): Display {
+  return {
+    ip: normalizeIp(entry.ip),
+    controlIp: normalizeIp(entry.controlIp ?? entry.ip),
+    hostname: entry.hostname,
+    label: entry.label ?? entry.hostname,
+    psk: entry.psk,
+    dryRun: forcedDryRun || (entry.dryRun ?? globalDryRun),
+    autoSignage: entry.autoSignage ?? true,
+    inputs: entry.inputs ?? INPUTS.map((i) => i.id),
+    apps: entry.apps ?? APPS.filter((a) => a.enabledByDefault).map((a) => a.id),
+    commands: entry.commands ?? COMMANDS.filter((c) => c.enabledByDefault).map((c) => c.id),
+  };
+}
+
+/**
+ * Recompute `displays` and `byIp` from `rawEntries`, in place. Throws on a
+ * duplicate IP or a missing PSK (blank PSK is only allowed under dry-run, and
+ * the effective dryRun depends on BRAVIA_DRY_RUN which the schema can't see).
+ */
+export function materialize(config: AppConfig): void {
+  const displays = config.rawEntries.map((e) => buildDisplay(e, config.globalDryRun, config.forcedDryRun));
+
+  const missingPsk = displays.filter((d) => !d.dryRun && d.psk.trim() === "");
+  if (missingPsk.length > 0) {
+    throw new Error(
+      `Missing a PSK for: ${missingPsk.map((d) => `"${d.hostname}"`).join(", ")}. Set each one from the display's IP control settings, or mark the entry dry-run.`,
+    );
+  }
+
+  const byIp = new Map<string, Display>();
+  for (const display of displays) {
+    const existing = byIp.get(display.ip);
+    if (existing) {
+      throw new Error(
+        `${display.ip} is listed twice ("${existing.hostname}" and "${display.hostname}"). Source IP is the identity, so it must be unique.`,
+      );
+    }
+    byIp.set(display.ip, display);
+  }
+
+  config.displays.length = 0;
+  config.displays.push(...displays);
+  config.byIp.clear();
+  for (const [k, v] of byIp) config.byIp.set(k, v);
 }
 
 export function loadConfig(configPath = resolveConfigPath()): AppConfig {
@@ -127,51 +186,20 @@ export function loadConfig(configPath = resolveConfigPath()): AppConfig {
     throw new Error(`${configPath} is invalid:\n${details}`);
   }
 
-  /**
-   * BRAVIA_DRY_RUN forces every display into dry-run, overriding both the
-   * file-level default and any per-display setting. It is the escape hatch for
-   * "test the whole path with no hardware attached".
-   */
-  const forcedDryRun = envFlag("BRAVIA_DRY_RUN");
-  const globalDryRun = result.data.dryRun;
+  const config: AppConfig = {
+    displays: [],
+    byIp: new Map(),
+    rawEntries: result.data.displays,
+    globalDryRun: result.data.dryRun,
+    forcedDryRun: envFlag("BRAVIA_DRY_RUN"),
+    configPath,
+  };
 
-  const displays: Display[] = result.data.displays.map((entry) => ({
-    ip: normalizeIp(entry.ip),
-    controlIp: normalizeIp(entry.controlIp ?? entry.ip),
-    hostname: entry.hostname,
-    label: entry.label ?? entry.hostname,
-    psk: entry.psk,
-    dryRun: forcedDryRun || (entry.dryRun ?? globalDryRun),
-    autoSignage: entry.autoSignage ?? true,
-    inputs: entry.inputs ?? INPUTS.map((i) => i.id),
-    apps: entry.apps ?? APPS.filter((a) => a.enabledByDefault).map((a) => a.id),
-    commands: entry.commands ?? COMMANDS.filter((c) => c.enabledByDefault).map((c) => c.id),
-  }));
-
-  /**
-   * A blank PSK is only meaningful when nothing will actually be sent. Checked
-   * here rather than in the schema because the effective dryRun value depends
-   * on BRAVIA_DRY_RUN, which the schema cannot see.
-   */
-  const missingPsk = displays.filter((d) => !d.dryRun && d.psk.trim() === "");
-  if (missingPsk.length > 0) {
-    throw new Error(
-      `${configPath} is missing a psk for: ${missingPsk
-        .map((d) => `"${d.hostname}"`)
-        .join(", ")}. Set each one from the display's Settings -> Network & Internet -> Local network setup -> IP control, or mark the entry "dryRun": true.`,
-    );
+  try {
+    materialize(config);
+  } catch (err) {
+    throw new Error(`${configPath} is invalid: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  const byIp = new Map<string, Display>();
-  for (const display of displays) {
-    const existing = byIp.get(display.ip);
-    if (existing) {
-      throw new Error(
-        `${configPath} lists ${display.ip} twice ("${existing.hostname}" and "${display.hostname}"). Source IP is the identity, so it must be unique.`,
-      );
-    }
-    byIp.set(display.ip, display);
-  }
-
-  return { displays, byIp };
+  return config;
 }
