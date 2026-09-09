@@ -80,15 +80,15 @@ export const managePage = /* html */ `<!doctype html>
   <!-- Editor -->
   <section id="editor" class="card hidden">
     <h2 id="editorTitle">Add display</h2>
-    <label for="f_ip">IP address <span class="muted">(the display's reserved address)</span></label>
-    <input id="f_ip" type="text" inputmode="decimal" placeholder="10.28.147.50" />
-    <label for="f_hostname">Hostname</label>
-    <input id="f_hostname" type="text" placeholder="bsu-av-tv-lib-101" />
+    <label for="f_hostname">Hostname <span class="muted">(the display's DNS name &mdash; the IP is resolved from this)</span></label>
+    <input id="f_hostname" type="text" autocapitalize="none" autocorrect="off" placeholder="bsu-av-tv-lib-101" />
     <label for="f_label">Label <span class="muted">(shown on the display)</span></label>
     <input id="f_label" type="text" placeholder="Library 101" />
     <label for="f_psk">Pre-Shared Key</label>
     <input id="f_psk" type="text" autocomplete="off" placeholder="from the display's IP control settings" />
-    <label for="f_controlip">Control IP <span class="muted">(optional; only for bench testing)</span></label>
+    <label for="f_ip">IP override <span class="muted">(optional; leave blank to resolve from the hostname)</span></label>
+    <input id="f_ip" type="text" inputmode="decimal" placeholder="usually blank" />
+    <label for="f_controlip">Control IP <span class="muted">(optional; bench testing only)</span></label>
     <input id="f_controlip" type="text" inputmode="decimal" placeholder="leave blank in production" />
     <div class="chk"><input id="f_dryrun" type="checkbox" /><label for="f_dryrun" style="margin:0;color:var(--text);">Dry-run (log commands, don't send &mdash; PSK optional)</label></div>
     <div class="row" style="margin-top:1.1rem; gap:.6rem;">
@@ -100,7 +100,7 @@ export const managePage = /* html */ `<!doctype html>
 <script>
 (function () {
   var PW_KEY = "bsu_mgmt_pin";
-  var editingIp = null;
+  var editingHost = null;
   var $ = function (id) { return document.getElementById(id); };
   function pw() { try { return sessionStorage.getItem(PW_KEY) || ""; } catch (e) { return ""; } }
   function setPw(v) { try { v ? sessionStorage.setItem(PW_KEY, v) : sessionStorage.removeItem(PW_KEY); } catch (e) {} }
@@ -168,16 +168,17 @@ export const managePage = /* html */ `<!doctype html>
     list.innerHTML = displays.map(function (d) {
       var dry = (data.forcedDryRun || d.dryRun) ? '<span class="tag dry">DRY&nbsp;RUN</span>' : "";
       var label = d.label || d.hostname;
+      var ip = d.ipOverride ? (esc(d.ipOverride) + " (fixed)") : (d.resolvedIps && d.resolvedIps.length ? esc(d.resolvedIps.join(", ")) : '<span style="color:#f0788a">not resolving</span>');
       return '<div class="card device">' +
         '<div class="meta"><div class="name">' + esc(label) + dry + '</div>' +
-        '<div class="addr">' + esc(d.ip) + ' &middot; ' + esc(d.hostname) + '</div></div>' +
+        '<div class="addr">' + esc(d.hostname) + ' &middot; ' + ip + '</div></div>' +
         '<div class="actions">' +
-        '<button class="ghost small" data-edit="' + esc(d.ip) + '">Edit</button>' +
-        '<button class="danger" data-del="' + esc(d.ip) + '">Delete</button>' +
+        '<button class="ghost small" data-edit="' + esc(d.hostname) + '">Edit</button>' +
+        '<button class="danger" data-del="' + esc(d.hostname) + '">Delete</button>' +
         '</div></div>';
     }).join("");
     Array.prototype.forEach.call(list.querySelectorAll("[data-edit]"), function (b) {
-      b.onclick = function () { openEditor(displays.find(function (x) { return x.ip === b.getAttribute("data-edit"); })); };
+      b.onclick = function () { openEditor(displays.find(function (x) { return x.hostname === b.getAttribute("data-edit"); })); };
     });
     Array.prototype.forEach.call(list.querySelectorAll("[data-del]"), function (b) {
       b.onclick = function () { del(b.getAttribute("data-del")); };
@@ -185,12 +186,12 @@ export const managePage = /* html */ `<!doctype html>
   }
 
   function openEditor(d) {
-    editingIp = d ? d.ip : null;
+    editingHost = d ? d.hostname : null;
     $("editorTitle").textContent = d ? "Edit display" : "Add display";
-    $("f_ip").value = d ? d.ip : "";
     $("f_hostname").value = d ? d.hostname : "";
     $("f_label").value = d && d.label ? d.label : "";
     $("f_psk").value = d && d.psk ? d.psk : "";
+    $("f_ip").value = d && d.ipOverride ? d.ipOverride : (d && d.ip ? d.ip : "");
     $("f_controlip").value = d && d.controlIp ? d.controlIp : "";
     $("f_dryrun").checked = !!(d && d.dryRun);
     $("editor").classList.remove("hidden");
@@ -202,15 +203,15 @@ export const managePage = /* html */ `<!doctype html>
 
   async function save() {
     var body = {
-      ip: $("f_ip").value.trim(),
       hostname: $("f_hostname").value.trim(),
       psk: $("f_psk").value,
       dryRun: $("f_dryrun").checked,
     };
     var label = $("f_label").value.trim(); if (label) body.label = label;
+    var ip = $("f_ip").value.trim(); if (ip) body.ip = ip;
     var cip = $("f_controlip").value.trim(); if (cip) body.controlIp = cip;
     try {
-      if (editingIp) await api("PUT", "/devices/" + encodeURIComponent(editingIp), body);
+      if (editingHost) await api("PUT", "/devices/" + encodeURIComponent(editingHost), body);
       else await api("POST", "/devices", body);
       closeEditor();
       await refresh();
@@ -218,9 +219,9 @@ export const managePage = /* html */ `<!doctype html>
     } catch (e) { msg(e.message, "err"); }
   }
 
-  async function del(ip) {
-    if (!window.confirm("Remove the display at " + ip + "?")) return;
-    try { await api("DELETE", "/devices/" + encodeURIComponent(ip)); await refresh(); msg("Removed.", "ok"); }
+  async function del(host) {
+    if (!window.confirm("Remove " + host + "?")) return;
+    try { await api("DELETE", "/devices/" + encodeURIComponent(host)); await refresh(); msg("Removed.", "ok"); }
     catch (e) { msg(e.message, "err"); }
   }
 

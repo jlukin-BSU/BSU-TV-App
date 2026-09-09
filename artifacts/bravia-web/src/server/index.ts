@@ -1,9 +1,12 @@
 import { createApp } from "./app";
 import { createManageApp } from "./manage-app";
-import { loadConfig, resolveConfigPath } from "./lib/config";
+import { loadConfig, refreshResolution, resolveConfigPath } from "./lib/config";
 import { SettingsStore, resolveOverridesPath } from "./lib/settings";
 import { mgmtEnabled, mgmtPort } from "./lib/mgmt";
 import { logger } from "./lib/logger";
+
+/** How often to re-resolve display hostnames to catch DHCP address changes. */
+const RESOLUTION_INTERVAL_MS = 60 * 1000;
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -33,14 +36,25 @@ logger.info(
     configPath,
     displays: config.displays.map((d) => ({
       hostname: d.hostname,
-      ip: d.ip,
-      // Only worth showing when it differs -- i.e. a bench-test entry.
-      ...(d.controlIp === d.ip ? {} : { controlIp: d.controlIp }),
+      ...(d.ipOverride ? { ipOverride: d.ipOverride } : {}),
       dryRun: d.dryRun,
     })),
   },
   "Device config loaded",
 );
+
+// Resolve every display's hostname before serving, then keep it fresh so a
+// display that changes DHCP address is picked up automatically.
+await refreshResolution(config);
+logger.info(
+  { displays: config.displays.map((d) => ({ hostname: d.hostname, ips: d.resolvedIps, target: d.targetIp })) },
+  "Initial hostname resolution complete",
+);
+setInterval(() => {
+  refreshResolution(config).catch((err) =>
+    logger.warn({ err: String(err) }, "hostname resolution refresh failed"),
+  );
+}, RESOLUTION_INTERVAL_MS).unref();
 
 const overridesPath = resolveOverridesPath();
 const store = new SettingsStore(overridesPath);

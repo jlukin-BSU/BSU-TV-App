@@ -43,7 +43,7 @@ export function createControlRouter(store: SettingsStore): IRouter {
       device: {
         hostname: display.hostname,
         label: display.label,
-        ip: display.ip,
+        ip: req.sourceIp ?? display.targetIp ?? "",
         dryRun: display.dryRun,
       },
       tiles: eff.tiles,

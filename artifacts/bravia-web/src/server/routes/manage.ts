@@ -36,35 +36,44 @@ export function createManageRouter(config: AppConfig): IRouter {
 
   router.use(requireMgmt);
 
-  /** List all registered displays. */
+  /** List all registered displays, with each one's currently-resolved IP. */
   router.get("/devices", (_req, res) => {
-    res.json({ dryRun: config.globalDryRun, forcedDryRun: config.forcedDryRun, displays: listEntries(config) });
+    const byHost = new Map(config.displays.map((d) => [d.hostname.trim().toLowerCase(), d]));
+    const displays = listEntries(config).map((entry) => {
+      const d = byHost.get(entry.hostname.trim().toLowerCase());
+      return {
+        ...entry,
+        resolvedIps: d?.resolvedIps ?? [],
+        targetIp: d?.targetIp ?? null,
+      };
+    });
+    res.json({ dryRun: config.globalDryRun, forcedDryRun: config.forcedDryRun, displays });
   });
 
   /** Add a display. */
-  router.post("/devices", (req, res) => {
+  router.post("/devices", async (req, res) => {
     try {
-      const added = addDevice(config, req.body);
+      const added = await addDevice(config, req.body);
       res.status(201).json({ ok: true, device: added });
     } catch (err) {
       respondError(res, err);
     }
   });
 
-  /** Update the display currently at :ip (the IP itself may change in the body). */
-  router.put("/devices/:ip", (req, res) => {
+  /** Update the display currently registered under :hostname (which may change in the body). */
+  router.put("/devices/:hostname", async (req, res) => {
     try {
-      const updated = updateDevice(config, req.params.ip, req.body);
+      const updated = await updateDevice(config, req.params.hostname, req.body);
       res.json({ ok: true, device: updated });
     } catch (err) {
       respondError(res, err);
     }
   });
 
-  /** Remove the display at :ip. */
-  router.delete("/devices/:ip", (req, res) => {
+  /** Remove the display registered under :hostname. */
+  router.delete("/devices/:hostname", async (req, res) => {
     try {
-      removeDevice(config, req.params.ip);
+      await removeDevice(config, req.params.hostname);
       res.json({ ok: true });
     } catch (err) {
       respondError(res, err);

@@ -1,40 +1,29 @@
 {
-  "//": "Copy to devices.json (gitignored) and fill in one entry per display.",
+  "//": "Copy to devices.json (gitignored) OR manage it from the registration page.",
   "//dryRun": "Global default. true = log Sony calls instead of sending them.",
   "dryRun": false,
   "displays": [
     {
-      "//": "ip is how the display is identified -- it must be the reserved/static address it sends requests from.",
-      "ip": "10.20.30.41",
+      "//": "Normal entry: identity + command target are resolved from hostname via DNS, so it survives a DHCP address change (needs dynamic DNS or a reservation).",
       "hostname": "bsu-av-tv-lib-101",
       "label": "Library 101",
       "//psk": "From the display: Settings > Network & Internet > Local network setup > IP control.",
       "psk": "REPLACE_WITH_DISPLAY_PSK"
     },
     {
-      "ip": "10.20.30.42",
+      "//": "Fixed-IP entry: set ip only when the display should NOT be resolved from DNS (no DNS record). ip is then used directly.",
       "hostname": "bsu-av-tv-lib-102",
       "label": "Library 102",
-      "psk": "REPLACE_WITH_DISPLAY_PSK",
-      "//apps": "Optional per-display overrides. Omit to use the catalog defaults.",
-      "apps": ["signage", "livetv", "youtube", "netflix"],
-      "commands": ["screenoff", "screenon"]
+      "ip": "10.28.147.42",
+      "psk": "REPLACE_WITH_DISPLAY_PSK"
     },
     {
-      "//": "No hardware needed. Loopback so requests from this machine resolve here.",
+      "//": "Local dry-run test: loopback, no PSK, nothing sent.",
+      "hostname": "nuc-local",
+      "label": "NUC (local test)",
       "ip": "127.0.0.1",
-      "hostname": "mock-display",
-      "label": "Mock Display (dry run)",
       "psk": "",
       "dryRun": true
-    },
-    {
-      "//": "Bench testing against a real display. Identity is your workstation; commands go to controlIp. Delete for production.",
-      "ip": "10.20.30.200",
-      "controlIp": "10.20.30.41",
-      "hostname": "bench-test",
-      "label": "Bench Test -> Library 101",
-      "psk": "REPLACE_WITH_DISPLAY_PSK"
     }
   ]
 }

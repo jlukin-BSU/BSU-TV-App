@@ -3,27 +3,27 @@ import { z } from "zod";
 import {
   DisplaySchema,
   materialize,
+  refreshResolution,
   type AppConfig,
   type DisplayConfigInput,
 } from "./config";
-import { normalizeIp } from "./ip";
+import { clearResolverCache } from "./resolver";
 import { logger } from "./logger";
 
 /**
  * Add / edit / remove displays in the live registry, and persist devices.json.
+ * Displays are addressed by hostname (the identity); the IP is resolved from it.
  *
  * All mutations are transactional against the in-memory registry: a change is
  * validated by re-materialising a trial copy of the entries first, and only if
- * that succeeds is it applied in place and written to disk. So a bad edit (dup
- * IP, missing PSK) is rejected without leaving the running service in a broken
- * state or corrupting the file.
+ * that succeeds is it applied in place, written to disk, and re-resolved. So a
+ * bad edit (dup hostname, missing PSK) is rejected without leaving the running
+ * service broken or corrupting the file.
  */
 
 export class RegistryError extends Error {}
 
-/** One entry as accepted from the management API (before schema defaults). */
 export const DeviceInput = DisplaySchema;
-export type DeviceInputT = z.input<typeof DeviceInput>;
 
 function persist(config: AppConfig): void {
   const payload = JSON.stringify(
@@ -37,12 +37,11 @@ function persist(config: AppConfig): void {
 }
 
 /**
- * Try a new set of entries: materialise a shallow clone to validate, and only
- * on success swap it into the live config, persist, and return. Throws
- * RegistryError with a readable message otherwise, leaving the live config
- * untouched.
+ * Validate a candidate set of entries against a trial materialise, then apply
+ * it live, persist, and re-resolve DNS. Throws RegistryError (leaving the live
+ * config untouched) on a validation failure.
  */
-function applyEntries(config: AppConfig, next: DisplayConfigInput[]): void {
+async function applyEntries(config: AppConfig, next: DisplayConfigInput[]): Promise<void> {
   const trial: AppConfig = { ...config, rawEntries: next, displays: [], byIp: new Map() };
   try {
     materialize(trial);
@@ -51,20 +50,24 @@ function applyEntries(config: AppConfig, next: DisplayConfigInput[]): void {
   }
 
   config.rawEntries = next;
-  materialize(config); // rebuild the live displays/byIp in place
+  materialize(config);
   try {
     persist(config);
   } catch (err) {
-    // Persist failed after an in-memory change; surface it but the live state
-    // already reflects the edit. The next successful write reconciles the file.
     logger.error({ err: String(err), path: config.configPath }, "failed to write devices.json");
     throw new RegistryError(`Saved in memory but could not write ${config.configPath}: ${err}`);
   }
+
+  await refreshResolution(config);
 }
 
-function findIndexByIp(config: AppConfig, ip: string): number {
-  const norm = normalizeIp(ip);
-  return config.rawEntries.findIndex((e) => normalizeIp(e.ip) === norm);
+function normHost(h: string): string {
+  return h.trim().toLowerCase();
+}
+
+function findIndexByHostname(config: AppConfig, hostname: string): number {
+  const key = normHost(hostname);
+  return config.rawEntries.findIndex((e) => normHost(e.hostname) === key);
 }
 
 /** Raw entries, for the management list view. */
@@ -72,42 +75,46 @@ export function listEntries(config: AppConfig): DisplayConfigInput[] {
   return config.rawEntries;
 }
 
-export function addDevice(config: AppConfig, input: unknown): DisplayConfigInput {
+export async function addDevice(config: AppConfig, input: unknown): Promise<DisplayConfigInput> {
   const parsed = DeviceInput.safeParse(input);
   if (!parsed.success) throw new RegistryError(firstIssue(parsed.error));
-  if (findIndexByIp(config, parsed.data.ip) !== -1) {
-    throw new RegistryError(`A display with IP ${parsed.data.ip} already exists.`);
+  if (findIndexByHostname(config, parsed.data.hostname) !== -1) {
+    throw new RegistryError(`A display with hostname "${parsed.data.hostname}" already exists.`);
   }
-  applyEntries(config, [...config.rawEntries, parsed.data]);
-  logger.info({ ip: parsed.data.ip, hostname: parsed.data.hostname }, "device added");
+  clearResolverCache(parsed.data.hostname);
+  await applyEntries(config, [...config.rawEntries, parsed.data]);
+  logger.info({ hostname: parsed.data.hostname }, "device added");
   return parsed.data;
 }
 
-export function updateDevice(config: AppConfig, originalIp: string, input: unknown): DisplayConfigInput {
-  const idx = findIndexByIp(config, originalIp);
-  if (idx === -1) throw new RegistryError(`No display registered at ${originalIp}.`);
+export async function updateDevice(config: AppConfig, originalHostname: string, input: unknown): Promise<DisplayConfigInput> {
+  const idx = findIndexByHostname(config, originalHostname);
+  if (idx === -1) throw new RegistryError(`No display registered with hostname "${originalHostname}".`);
   const parsed = DeviceInput.safeParse(input);
   if (!parsed.success) throw new RegistryError(firstIssue(parsed.error));
 
-  // If the IP changed, the new IP must not collide with a different entry.
-  const collision = findIndexByIp(config, parsed.data.ip);
+  // If the hostname changed, it must not collide with a different entry.
+  const collision = findIndexByHostname(config, parsed.data.hostname);
   if (collision !== -1 && collision !== idx) {
-    throw new RegistryError(`A different display already uses IP ${parsed.data.ip}.`);
+    throw new RegistryError(`A different display already uses hostname "${parsed.data.hostname}".`);
   }
 
   const next = [...config.rawEntries];
   next[idx] = parsed.data;
-  applyEntries(config, next);
-  logger.info({ ip: parsed.data.ip, hostname: parsed.data.hostname }, "device updated");
+  clearResolverCache(originalHostname);
+  clearResolverCache(parsed.data.hostname);
+  await applyEntries(config, next);
+  logger.info({ hostname: parsed.data.hostname }, "device updated");
   return parsed.data;
 }
 
-export function removeDevice(config: AppConfig, ip: string): void {
-  const idx = findIndexByIp(config, ip);
-  if (idx === -1) throw new RegistryError(`No display registered at ${ip}.`);
+export async function removeDevice(config: AppConfig, hostname: string): Promise<void> {
+  const idx = findIndexByHostname(config, hostname);
+  if (idx === -1) throw new RegistryError(`No display registered with hostname "${hostname}".`);
   const next = config.rawEntries.filter((_, i) => i !== idx);
-  applyEntries(config, next);
-  logger.info({ ip }, "device removed");
+  clearResolverCache(hostname);
+  await applyEntries(config, next);
+  logger.info({ hostname }, "device removed");
 }
 
 function firstIssue(error: z.ZodError): string {

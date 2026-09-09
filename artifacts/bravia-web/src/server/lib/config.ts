@@ -3,6 +3,8 @@ import path from "node:path";
 import { z } from "zod";
 import { APPS, COMMANDS, INPUTS } from "../../shared/catalog";
 import { isValidIp, normalizeIp } from "./ip";
+import { resolveHost } from "./resolver";
+import { logger } from "./logger";
 
 const knownAppIds = APPS.map((a) => a.id);
 const knownInputIds = INPUTS.map((i) => i.id);
@@ -10,18 +12,22 @@ const knownCommandIds = COMMANDS.map((c) => c.id);
 
 export const DisplaySchema = z
   .object({
-    /** Reserved/static address of the display on the AV VLAN. */
-    ip: z.string().min(1),
     /**
-     * Where commands are actually sent. Defaults to `ip`, which is what you
-     * want in production: the display that asks is the display that acts.
-     *
-     * Set it only for bench testing -- put your workstation's address in `ip`
-     * and the display's in `controlIp`, and clicking from your desk drives the
-     * real panel.
+     * Identity. Normally derived from `hostname` via DNS, so a display keeps
+     * working when its DHCP address changes. Registration is by hostname.
+     */
+    hostname: z.string().min(1),
+    /**
+     * Optional fixed-IP override. Set it only when a display should NOT be
+     * resolved from DNS (e.g. a loopback test entry, or a device with no DNS
+     * record). When set, it is used as the identity and command target directly.
+     */
+    ip: z.string().min(1).optional(),
+    /**
+     * Optional command-target override, for bench testing: identity resolves
+     * from `hostname` (or `ip`) as usual, but commands go here instead.
      */
     controlIp: z.string().min(1).optional(),
-    hostname: z.string().min(1),
     /** Human-friendly name for the UI header. Defaults to hostname. */
     label: z.string().min(1).optional(),
     /**
@@ -40,11 +46,11 @@ export const DisplaySchema = z
   })
   .strict()
   .superRefine((display, ctx) => {
-    if (!isValidIp(display.ip)) {
+    if (display.ip !== undefined && !isValidIp(display.ip)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["ip"],
-        message: `"${display.ip}" is not a valid IP address. Displays are identified by source IP, so this must be the display's reserved address.`,
+        message: `"${display.ip}" is not a valid IP address. Leave it blank to resolve the display from its hostname.`,
       });
     }
     if (display.controlIp !== undefined && !isValidIp(display.controlIp)) {
@@ -67,10 +73,6 @@ const ConfigSchema = z
 export type DisplayConfigInput = z.infer<typeof DisplaySchema>;
 
 export interface Display {
-  /** Identity: the address the display sends requests from. */
-  ip: string;
-  /** Target: where commands are sent. Equals `ip` unless overridden. */
-  controlIp: string;
   hostname: string;
   label: string;
   psk: string;
@@ -79,24 +81,43 @@ export interface Display {
   inputs: string[];
   apps: string[];
   commands: string[];
+  /** Explicit identity/target override from config, if any. */
+  ipOverride: string | null;
+  controlIpOverride: string | null;
+  /** Current identity IPs (the override, or resolved from hostname). */
+  resolvedIps: string[];
+  /** Where commands are sent right now (override, or first resolved IP). */
+  targetIp: string | null;
 }
 
 /**
- * The live registry. `displays` and `byIp` are the derived, effective view the
- * control side reads; `rawEntries` is the source of truth that gets written
- * back to devices.json. The management API mutates `rawEntries` then calls
- * `materialize`, which rebuilds `displays`/`byIp` IN PLACE so anything holding
- * this object (e.g. the resolveDevice middleware) sees the change with no
- * restart.
+ * The live registry. `displays` and `byIp` are the derived view the control
+ * side reads; `rawEntries` is the source of truth written back to devices.json.
+ * `materialize` rebuilds `displays` from `rawEntries` (sync validation), and
+ * `refreshResolution` fills in `resolvedIps`/`targetIp`/`byIp` from DNS -- both
+ * mutate in place so holders (e.g. resolveDevice) see changes with no restart.
  */
 export interface AppConfig {
   displays: Display[];
-  /** Normalised IP -> display. */
+  /** Normalised IP -> display, from resolution. */
   byIp: Map<string, Display>;
   rawEntries: DisplayConfigInput[];
   globalDryRun: boolean;
   forcedDryRun: boolean;
   configPath: string;
+}
+
+/** Recursively delete keys that start with "//" (JSON documentation comments). */
+function stripCommentKeys(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const item of value) stripCommentKeys(item);
+  } else if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of Object.keys(obj)) {
+      if (key.startsWith("//")) delete obj[key];
+      else stripCommentKeys(obj[key]);
+    }
+  }
 }
 
 function envFlag(name: string): boolean {
@@ -113,9 +134,9 @@ export function resolveConfigPath(): string {
 }
 
 function buildDisplay(entry: DisplayConfigInput, globalDryRun: boolean, forcedDryRun: boolean): Display {
+  const ipOverride = entry.ip ? normalizeIp(entry.ip) : null;
+  const controlIpOverride = entry.controlIp ? normalizeIp(entry.controlIp) : null;
   return {
-    ip: normalizeIp(entry.ip),
-    controlIp: normalizeIp(entry.controlIp ?? entry.ip),
     hostname: entry.hostname,
     label: entry.label ?? entry.hostname,
     psk: entry.psk,
@@ -124,13 +145,18 @@ function buildDisplay(entry: DisplayConfigInput, globalDryRun: boolean, forcedDr
     inputs: entry.inputs ?? INPUTS.map((i) => i.id),
     apps: entry.apps ?? APPS.filter((a) => a.enabledByDefault).map((a) => a.id),
     commands: entry.commands ?? COMMANDS.filter((c) => c.enabledByDefault).map((c) => c.id),
+    ipOverride,
+    controlIpOverride,
+    // Seed identity/target with the override; DNS resolution fills the rest.
+    resolvedIps: ipOverride ? [ipOverride] : [],
+    targetIp: controlIpOverride ?? ipOverride ?? null,
   };
 }
 
 /**
- * Recompute `displays` and `byIp` from `rawEntries`, in place. Throws on a
- * duplicate IP or a missing PSK (blank PSK is only allowed under dry-run, and
- * the effective dryRun depends on BRAVIA_DRY_RUN which the schema can't see).
+ * Rebuild `displays` from `rawEntries`, in place (sync). Validates unique
+ * hostname and a present PSK (blank PSK is only allowed under dry-run). Does
+ * NOT build `byIp` -- that needs DNS and is done by refreshResolution.
  */
 export function materialize(config: AppConfig): void {
   const displays = config.rawEntries.map((e) => buildDisplay(e, config.globalDryRun, config.forcedDryRun));
@@ -142,19 +168,51 @@ export function materialize(config: AppConfig): void {
     );
   }
 
-  const byIp = new Map<string, Display>();
-  for (const display of displays) {
-    const existing = byIp.get(display.ip);
-    if (existing) {
-      throw new Error(
-        `${display.ip} is listed twice ("${existing.hostname}" and "${display.hostname}"). Source IP is the identity, so it must be unique.`,
-      );
+  const seen = new Set<string>();
+  for (const d of displays) {
+    const key = d.hostname.trim().toLowerCase();
+    if (seen.has(key)) {
+      throw new Error(`Hostname "${d.hostname}" is listed twice. Each display must have a unique hostname.`);
     }
-    byIp.set(display.ip, display);
+    seen.add(key);
   }
 
   config.displays.length = 0;
   config.displays.push(...displays);
+}
+
+/**
+ * Resolve every display's hostname (unless it has an IP override), update each
+ * display's identity IPs and command target, and rebuild `byIp` in place. Safe
+ * to call on a timer and after registry changes.
+ */
+export async function refreshResolution(config: AppConfig): Promise<void> {
+  await Promise.all(
+    config.displays.map(async (d) => {
+      if (d.ipOverride) {
+        d.resolvedIps = [d.ipOverride];
+      } else {
+        d.resolvedIps = await resolveHost(d.hostname);
+      }
+      d.targetIp = d.controlIpOverride ?? d.ipOverride ?? d.resolvedIps[0] ?? null;
+    }),
+  );
+
+  const byIp = new Map<string, Display>();
+  for (const d of config.displays) {
+    for (const ip of d.resolvedIps) {
+      const existing = byIp.get(ip);
+      if (existing && existing !== d) {
+        logger.warn(
+          { ip, a: existing.hostname, b: d.hostname },
+          "two displays resolve to the same IP; keeping the first",
+        );
+        continue;
+      }
+      byIp.set(ip, d);
+    }
+  }
+
   config.byIp.clear();
   for (const [k, v] of byIp) config.byIp.set(k, v);
 }
@@ -165,7 +223,7 @@ export function loadConfig(configPath = resolveConfigPath()): AppConfig {
     raw = fs.readFileSync(configPath, "utf8");
   } catch {
     throw new Error(
-      `Could not read device config at ${configPath}. Copy devices.example.json to devices.json and fill in each display's IP, hostname and PSK (or set DEVICES_CONFIG to another path).`,
+      `Could not read device config at ${configPath}. Copy devices.example.json to devices.json and register displays (or set DEVICES_CONFIG to another path).`,
     );
   }
 
@@ -177,6 +235,11 @@ export function loadConfig(configPath = resolveConfigPath()): AppConfig {
       `${configPath} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+
+  // Allow "//"-prefixed documentation keys (JSON has no comments) so the
+  // annotated example file can be copied verbatim; strip them before the strict
+  // schema runs, which still catches genuine typos.
+  stripCommentKeys(parsedJson);
 
   const result = ConfigSchema.safeParse(parsedJson);
   if (!result.success) {

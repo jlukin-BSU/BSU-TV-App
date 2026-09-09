@@ -50,7 +50,6 @@ function timeoutMs(): number {
  * swallows real errors. Both paths are handled here.
  */
 async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
-  const url = `http://${display.controlIp}/sony/${rpc.service}`;
   const body = {
     method: rpc.method,
     id: rpc.id,
@@ -58,13 +57,23 @@ async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
     version: "1.0",
   };
 
+  const target = display.targetIp;
+
   if (display.dryRun) {
     logger.info(
-      { display: display.hostname, url, body, dryRun: true },
+      { display: display.hostname, url: `http://${target ?? "(unresolved)"}/sony/${rpc.service}`, body, dryRun: true },
       "DRY RUN -- Sony command not sent",
     );
     return dryRunResult(rpc);
   }
+
+  if (!target) {
+    throw new BraviaError(
+      `Could not resolve ${display.hostname} to an IP address. Check the display's DNS record / DHCP reservation, or set an IP override for it.`,
+    );
+  }
+
+  const url = `http://${target}/sony/${rpc.service}`;
 
   let res: Response;
   try {
@@ -85,7 +94,7 @@ async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
           ? err.message
           : String(err);
     throw new BraviaError(
-      `Could not reach ${display.hostname} (${display.controlIp}): ${reason}. Check the display is powered on and IP control is enabled.`,
+      `Could not reach ${display.hostname} (${target}): ${reason}. Check the display is powered on and IP control is enabled.`,
     );
   }
 
@@ -186,9 +195,9 @@ interface CacheEntry {
 }
 
 /**
- * Per-display cache, keyed by the address we actually talk to, so simultaneous
- * use by several displays never shares state -- each display's installed-app
- * list is its own.
+ * Per-display cache, keyed by hostname (stable across DHCP changes) so
+ * simultaneous use by several displays never shares state and the cache
+ * survives a display's IP moving.
  */
 const appListCache = new Map<string, CacheEntry>();
 /** In-flight fetches, so rapid clicks on one display don't stampede it. */
@@ -196,22 +205,22 @@ const inFlight = new Map<string, Promise<InstalledApp[]>>();
 
 async function cachedApplicationList(display: Display): Promise<InstalledApp[]> {
   const now = Date.now();
-  const cached = appListCache.get(display.controlIp);
+  const cached = appListCache.get(display.hostname);
   if (cached && cached.expires > now) return cached.apps;
 
-  const pending = inFlight.get(display.controlIp);
+  const pending = inFlight.get(display.hostname);
   if (pending) return pending;
 
   const fetchPromise = getApplicationList(display)
     .then((apps) => {
-      appListCache.set(display.controlIp, { expires: Date.now() + APP_LIST_TTL_MS, apps });
+      appListCache.set(display.hostname, { expires: Date.now() + APP_LIST_TTL_MS, apps });
       return apps;
     })
     .finally(() => {
-      inFlight.delete(display.controlIp);
+      inFlight.delete(display.hostname);
     });
 
-  inFlight.set(display.controlIp, fetchPromise);
+  inFlight.set(display.hostname, fetchPromise);
   return fetchPromise;
 }
 
