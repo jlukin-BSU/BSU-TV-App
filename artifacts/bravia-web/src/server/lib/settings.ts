@@ -12,6 +12,7 @@ import {
   findTile,
   type ClientTile,
   type DisplaySettings,
+  type TileKind,
 } from "../../shared/catalog";
 import type { Display } from "./config";
 import { resolveConfigPath } from "./config";
@@ -143,4 +144,57 @@ export function effectiveConfig(display: Display, override?: DisplayOverride): E
     inputIds,
     commandIds,
   };
+}
+
+// ---- Shared editable-settings view / save --------------------------------
+// Used by both the on-display admin panel and the management (phone) plane, so
+// they edit a display's settings identically.
+
+export const SettingsSaveSchema = z
+  .object({
+    enabled: z.record(z.string(), z.boolean()),
+    order: z.array(z.string()),
+    autoSignage: z.boolean(),
+    idleSeconds: z.number(),
+  })
+  .strict();
+
+export interface SettingsView {
+  autoSignage: boolean;
+  idleSeconds: number;
+  /** Every tile, in order, with its current enabled state. */
+  tiles: { key: string; kind: TileKind; label: string; enabled: boolean }[];
+}
+
+/** The editable settings for a display (all tiles, in order, with enabled flags). */
+export function settingsViewFor(display: Display, store: SettingsStore): SettingsView {
+  const eff = effectiveConfig(display, store.get(display.hostname));
+  return {
+    autoSignage: eff.settings.autoSignage,
+    idleSeconds: eff.settings.idleSeconds,
+    tiles: eff.settings.order
+      .map((key) => findTile(key))
+      .filter((t): t is NonNullable<typeof t> => !!t)
+      .map((t) => ({ key: t.key, kind: t.kind, label: t.label, enabled: eff.settings.enabled[t.key] === true })),
+  };
+}
+
+/** Validate-and-save a display's settings, dropping unknown tile keys. */
+export function saveSettingsFor(
+  display: Display,
+  store: SettingsStore,
+  input: z.infer<typeof SettingsSaveSchema>,
+): SettingsView {
+  const enabled: Record<string, boolean> = {};
+  for (const tile of TILES) {
+    if (tile.key in input.enabled) enabled[tile.key] = input.enabled[tile.key]!;
+  }
+  const order = input.order.filter((k) => findTile(k));
+  store.set(display.hostname, {
+    enabled,
+    order,
+    autoSignage: input.autoSignage,
+    idleSeconds: input.idleSeconds,
+  });
+  return settingsViewFor(display, store);
 }

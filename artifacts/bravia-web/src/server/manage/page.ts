@@ -38,7 +38,7 @@ export const managePage = /* html */ `<!doctype html>
   .device .addr { color:var(--muted); font-size:.85rem; margin-top:.15rem; }
   .tag { display:inline-block; font-size:.7rem; font-weight:700; letter-spacing:.05em; padding:.1rem .45rem; border-radius:999px; margin-left:.4rem; vertical-align:middle; }
   .tag.dry { background:#5a4b00; color:#ffd94a; }
-  .actions { display:flex; gap:.5rem; flex-shrink:0; }
+  .actions { display:flex; gap:.5rem; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
   .msg { padding:.7rem .9rem; border-radius:10px; font-size:.9rem; margin-bottom:.9rem; }
   .msg.err { background:rgba(196,18,48,.16); border:1px solid rgba(196,18,48,.5); color:#ff9aa8; }
   .msg.ok { background:rgba(30,125,60,.18); border:1px solid rgba(30,125,60,.5); color:#8ff0ad; }
@@ -46,6 +46,13 @@ export const managePage = /* html */ `<!doctype html>
   .hidden { display:none !important; }
   .toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:.9rem; }
   h2 { font-size:1.05rem; margin:.2rem 0 0; }
+  .titem { display:flex; align-items:center; gap:.5rem; padding:.5rem .6rem; border-radius:10px; background:rgba(255,255,255,.05); margin-bottom:.4rem; }
+  .titem.off { opacity:.5; }
+  .titem .tname { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.98rem; }
+  .titem .tkind { color:var(--muted); font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; }
+  .titem button { padding:.35rem .6rem; background:rgba(255,255,255,.09); color:var(--text); font-size:.9rem; border-radius:8px; }
+  .titem button:disabled { opacity:.3; }
+  .titem .eye { min-width:4.6rem; }
 </style>
 </head>
 <body>
@@ -96,11 +103,30 @@ export const managePage = /* html */ `<!doctype html>
       <button id="cancelBtn" class="ghost">Cancel</button>
     </div>
   </section>
+
+  <!-- Per-display settings editor -->
+  <section id="settings" class="card hidden">
+    <h2 id="settingsTitle">Configure</h2>
+    <div class="chk" style="margin-top:.8rem;">
+      <input id="s_auto" type="checkbox" />
+      <label for="s_auto" style="margin:0;color:var(--text);">Return to signage when idle</label>
+    </div>
+    <label for="s_idle">Idle timeout <span class="muted">(seconds)</span></label>
+    <input id="s_idle" type="number" min="30" max="3600" step="30" />
+    <label style="margin-top:1rem;">Tiles <span class="muted">(show/hide &amp; order)</span></label>
+    <div id="s_tiles"></div>
+    <div class="row" style="margin-top:1.1rem; gap:.6rem;">
+      <button id="s_saveBtn" class="primary">Save</button>
+      <button id="s_cancelBtn" class="ghost">Cancel</button>
+    </div>
+  </section>
 </main>
 <script>
 (function () {
   var PW_KEY = "bsu_mgmt_pin";
   var editingHost = null;
+  var settingsHost = null;
+  var settingsTiles = [];
   var $ = function (id) { return document.getElementById(id); };
   function pw() { try { return sessionStorage.getItem(PW_KEY) || ""; } catch (e) { return ""; } }
   function setPw(v) { try { v ? sessionStorage.setItem(PW_KEY, v) : sessionStorage.removeItem(PW_KEY); } catch (e) {} }
@@ -138,7 +164,7 @@ export const managePage = /* html */ `<!doctype html>
     $("login").classList.toggle("hidden", on);
     $("app").classList.toggle("hidden", !on);
     $("logout").classList.toggle("hidden", !on);
-    if (!on) $("editor").classList.add("hidden");
+    if (!on) { $("editor").classList.add("hidden"); $("settings").classList.add("hidden"); }
   }
 
   async function login() {
@@ -173,10 +199,14 @@ export const managePage = /* html */ `<!doctype html>
         '<div class="meta"><div class="name">' + esc(label) + dry + '</div>' +
         '<div class="addr">' + esc(d.hostname) + ' &middot; ' + ip + '</div></div>' +
         '<div class="actions">' +
+        '<button class="primary small" data-cfg="' + esc(d.hostname) + '">Configure</button>' +
         '<button class="ghost small" data-edit="' + esc(d.hostname) + '">Edit</button>' +
         '<button class="danger" data-del="' + esc(d.hostname) + '">Delete</button>' +
         '</div></div>';
     }).join("");
+    Array.prototype.forEach.call(list.querySelectorAll("[data-cfg]"), function (b) {
+      b.onclick = function () { openSettings(b.getAttribute("data-cfg")); };
+    });
     Array.prototype.forEach.call(list.querySelectorAll("[data-edit]"), function (b) {
       b.onclick = function () { openEditor(displays.find(function (x) { return x.hostname === b.getAttribute("data-edit"); })); };
     });
@@ -225,12 +255,75 @@ export const managePage = /* html */ `<!doctype html>
     catch (e) { msg(e.message, "err"); }
   }
 
+  // ---- Per-display settings (tiles / order / idle / auto-signage) ----
+  async function openSettings(host) {
+    try {
+      var s = await api("GET", "/devices/" + encodeURIComponent(host) + "/settings");
+      settingsHost = host;
+      settingsTiles = (s.tiles || []).map(function (t) { return { key: t.key, kind: t.kind, label: t.label, enabled: !!t.enabled }; });
+      $("settingsTitle").textContent = "Configure — " + (s.device.label || host);
+      $("s_auto").checked = !!s.autoSignage;
+      $("s_idle").value = s.idleSeconds;
+      renderSettingsTiles();
+      $("settings").classList.remove("hidden");
+      $("app").classList.add("hidden");
+      window.scrollTo(0, 0);
+    } catch (e) { msg(e.message, "err"); }
+  }
+
+  function renderSettingsTiles() {
+    var box = $("s_tiles");
+    box.innerHTML = settingsTiles.map(function (t, i) {
+      return '<div class="titem' + (t.enabled ? "" : " off") + '">' +
+        '<button data-up="' + i + '"' + (i === 0 ? " disabled" : "") + '>&uarr;</button>' +
+        '<button data-down="' + i + '"' + (i === settingsTiles.length - 1 ? " disabled" : "") + '>&darr;</button>' +
+        '<span class="tname">' + esc(t.label) + '</span>' +
+        '<span class="tkind">' + esc(t.kind) + '</span>' +
+        '<button class="eye" data-tog="' + i + '">' + (t.enabled ? "Shown" : "Hidden") + '</button>' +
+        '</div>';
+    }).join("");
+    Array.prototype.forEach.call(box.querySelectorAll("[data-up]"), function (b) {
+      b.onclick = function () { moveTile(Number(b.getAttribute("data-up")), -1); };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll("[data-down]"), function (b) {
+      b.onclick = function () { moveTile(Number(b.getAttribute("data-down")), 1); };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll("[data-tog]"), function (b) {
+      b.onclick = function () { var i = Number(b.getAttribute("data-tog")); settingsTiles[i].enabled = !settingsTiles[i].enabled; renderSettingsTiles(); };
+    });
+  }
+
+  function moveTile(i, dir) {
+    var j = i + dir;
+    if (j < 0 || j >= settingsTiles.length) return;
+    var tmp = settingsTiles[i]; settingsTiles[i] = settingsTiles[j]; settingsTiles[j] = tmp;
+    renderSettingsTiles();
+  }
+
+  function closeSettings() { $("settings").classList.add("hidden"); $("app").classList.remove("hidden"); settingsHost = null; }
+
+  async function saveSettings() {
+    var enabled = {}, order = [];
+    settingsTiles.forEach(function (t) { enabled[t.key] = t.enabled; order.push(t.key); });
+    var idle = parseInt($("s_idle").value, 10); if (isNaN(idle)) idle = 300;
+    idle = Math.max(30, Math.min(3600, idle));
+    try {
+      await api("PUT", "/devices/" + encodeURIComponent(settingsHost) + "/settings", {
+        enabled: enabled, order: order, autoSignage: $("s_auto").checked, idleSeconds: idle,
+      });
+      closeSettings();
+      msg("Settings saved.", "ok");
+    } catch (e) { msg(e.message, "err"); }
+  }
+
   $("loginBtn").onclick = login;
   $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") login(); });
   $("logout").onclick = logout;
   $("addBtn").onclick = function () { openEditor(null); };
   $("saveBtn").onclick = save;
   $("cancelBtn").onclick = closeEditor;
+  $("s_saveBtn").onclick = saveSettings;
+  $("s_cancelBtn").onclick = closeSettings;
 
   // Auto-resume if a password is already stored for this tab.
   if (pw()) { api("POST", "/session").then(function () { showApp(true); return refresh(); }).catch(function () { setPw(""); showApp(false); }); }

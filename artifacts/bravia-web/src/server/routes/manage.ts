@@ -8,6 +8,13 @@ import {
   RegistryError,
 } from "../lib/registry";
 import { checkMgmtPin } from "../lib/mgmt";
+import {
+  SettingsSaveSchema,
+  saveSettingsFor,
+  settingsViewFor,
+  type SettingsStore,
+} from "../lib/settings";
+import type { Display } from "../lib/config";
 import { logger } from "../lib/logger";
 
 /**
@@ -26,8 +33,13 @@ function requireMgmt(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-export function createManageRouter(config: AppConfig): IRouter {
+export function createManageRouter(config: AppConfig, store: SettingsStore): IRouter {
   const router: IRouter = Router();
+
+  const findDisplay = (hostname: string): Display | undefined => {
+    const key = hostname.trim().toLowerCase();
+    return config.displays.find((d) => d.hostname.trim().toLowerCase() === key);
+  };
 
   /** Password check for the login screen. */
   router.post("/session", requireMgmt, (_req, res) => {
@@ -78,6 +90,33 @@ export function createManageRouter(config: AppConfig): IRouter {
     } catch (err) {
       respondError(res, err);
     }
+  });
+
+  /** Editable per-display settings (tiles/order/idle/auto-signage) by hostname. */
+  router.get("/devices/:hostname/settings", (req, res) => {
+    const display = findDisplay(req.params.hostname);
+    if (!display) {
+      res.status(404).json({ error: "not_found", message: `No display registered with hostname "${req.params.hostname}".` });
+      return;
+    }
+    res.json({ device: { hostname: display.hostname, label: display.label }, ...settingsViewFor(display, store) });
+  });
+
+  /** Save per-display settings by hostname. */
+  router.put("/devices/:hostname/settings", (req, res) => {
+    const display = findDisplay(req.params.hostname);
+    if (!display) {
+      res.status(404).json({ error: "not_found", message: `No display registered with hostname "${req.params.hostname}".` });
+      return;
+    }
+    const parsed = SettingsSaveSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "bad_request", message: "Expected { enabled, order, autoSignage, idleSeconds }." });
+      return;
+    }
+    const view = saveSettingsFor(display, store, parsed.data);
+    logger.info({ display: display.hostname }, "settings saved via management page");
+    res.json({ ok: true, ...view });
   });
 
   return router;

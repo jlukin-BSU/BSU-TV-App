@@ -75,7 +75,7 @@ const server = app.listen(port, host, () => {
 let manageServer: ReturnType<typeof app.listen> | null = null;
 if (mgmtEnabled()) {
   const mport = mgmtPort();
-  const manageApp = createManageApp(config);
+  const manageApp = createManageApp(config, store);
   manageServer = manageApp.listen(mport, "0.0.0.0", () => {
     logger.info({ port: mport }, "management server listening (device registration)");
   });
