@@ -52,3 +52,6 @@ Thumbs.db
 artifacts/bravia-web/devices.json
 artifacts/bravia-web/.env
 artifacts/bravia-web/overrides.json
+artifacts/bravia-web/app-overrides.json
+artifacts/bravia-web/custom-apps.json
+artifacts/bravia-web/icons/
