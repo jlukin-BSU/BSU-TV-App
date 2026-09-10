@@ -1,12 +1,13 @@
 import type { Display } from "./config";
 
 /**
- * The building code is the leading run of letters in the hostname (3-4 letters
- * before the numbers), e.g. "RSU101" or "RSU-101" -> "RSU". Uppercased so it is
- * a stable group key. Anything without a leading letter run falls into "OTHER".
+ * The building code is the run of letters IMMEDIATELY BEFORE the numbers, e.g.
+ * "tv-rsu008-l" -> "RSU", "RSU101" -> "RSU". (Not the leading letters -- names
+ * may carry a "tv-" prefix.) Uppercased so it is a stable group key. A name with
+ * no letters-then-digit falls into "OTHER".
  */
 export function buildingOf(hostname: string): string {
-  const m = /^[^a-zA-Z0-9]*([a-zA-Z]+)/.exec(hostname);
+  const m = /([a-zA-Z]+)\d/.exec(hostname);
   return m ? m[1]!.toUpperCase() : "OTHER";
 }
 
