@@ -80,7 +80,13 @@ async function pollOne(display: Display): Promise<DisplayState> {
       state.mute = vol.value.mute;
     }
     if (content.status === "fulfilled" && content.value) {
+      // An external input (HDMI, etc.) reports here...
       state.source = labelForContent(content.value.uri, content.value.title);
+    } else {
+      // ...but Sony's getPlayingContentInfo has nothing to report when the panel
+      // is on an app or the HTML5 kiosk (it errors / returns empty), so show
+      // that rather than a blank.
+      state.source = "App / Home";
     }
     state.updatedAt = Date.now();
     return state;
