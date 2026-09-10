@@ -159,6 +159,9 @@ export const dashboardPage = /* html */ `<!doctype html>
     var powerBtn = (d.power === "on")
       ? '<button class="ghost small" data-act="power" data-val="off" data-h="' + esc(d.hostname) + '">Turn off</button>'
       : '<button class="ghost small" data-act="power" data-val="on" data-h="' + esc(d.hostname) + '">Turn on</button>';
+    var volSel = '<select data-vol="' + esc(d.hostname) + '"><option value="">Set\\u2026</option>';
+    for (var v = 0; v <= 100; v++) volSel += '<option value="' + v + '"' + (d.volume === v ? " selected" : "") + '>' + v + '</option>';
+    volSel += '</select>';
     return '<div class="card tv" data-card="' + esc(d.hostname) + '">' +
       '<div class="top"><div><div class="name">' + esc(d.label) + '</div><div class="host">' + esc(d.hostname) + (d.dryRun ? " &middot; dry-run" : "") + '</div></div>' + badge + '</div>' +
       '<div class="kv">Source: <b class="f-src">' + esc(src) + '</b></div>' +
@@ -167,6 +170,7 @@ export const dashboardPage = /* html */ `<!doctype html>
         powerBtn +
         '<button class="ghost small" data-act="voldown" data-h="' + esc(d.hostname) + '">Vol \\u2212</button>' +
         '<button class="ghost small" data-act="volup" data-h="' + esc(d.hostname) + '">Vol +</button>' +
+        volSel +
         '<button class="ghost small" data-act="mute" data-val="' + (d.mute ? "off" : "on") + '" data-h="' + esc(d.hostname) + '">' + (d.mute ? "Unmute" : "Mute") + '</button>' +
         '<button class="ghost small" data-act="screenoff" data-h="' + esc(d.hostname) + '">Screen off</button>' +
       '</div>' +
@@ -215,6 +219,12 @@ export const dashboardPage = /* html */ `<!doctype html>
         var parts = v.split(":");
         control(s.getAttribute("data-src"), parts[0], parts[1]);
         s.value = "";
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-vol]"), function (s) {
+      s.onchange = function () {
+        if (s.value === "") return;
+        control(s.getAttribute("data-vol"), "volume", s.value);
       };
     });
   }
