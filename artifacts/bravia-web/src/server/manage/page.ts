@@ -175,6 +175,14 @@ export const managePage = /* html */ `<!doctype html>
     <div id="dp_list" style="margin-top:.4rem;"></div>
     <div class="row" style="margin-top:1.1rem;"><button id="dp_doneBtn" class="ghost">Done</button></div>
   </section>
+
+  <footer style="margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.72rem; line-height:1.7;">
+    <div style="font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:.2rem;">URLs</div>
+    <div>Displays load &middot; <span id="u_display"></span></div>
+    <div>Registration (this page) &middot; <span id="u_reg"></span></div>
+    <div>Dashboard, all buildings &middot; <span id="u_dash"></span></div>
+    <div>Dashboard, one building &middot; <span id="u_dashb"></span></div>
+  </footer>
 </main>
 <script>
 (function () {
@@ -520,6 +528,15 @@ export const managePage = /* html */ `<!doctype html>
   $("dashCfgBtn").onclick = openDashCfg;
   $("dp_doneBtn").onclick = closeDashCfg;
   $("dp_master_save").onclick = async function () { try { await api("PUT", "/dash-pins/master", { pin: $("dp_master").value }); $("dp_master").value = ""; msg("Master PIN saved.", "ok"); await openDashCfg(); } catch (e) { msg(e.message, "err"); } };
+
+  // Fill the URL reference from whatever host this page was opened on.
+  (function () {
+    var host = location.hostname;
+    $("u_display").textContent = "http://" + host + "/";
+    $("u_reg").textContent = location.origin + "/";
+    $("u_dash").textContent = "http://" + host + ":8082/";
+    $("u_dashb").textContent = "http://" + host + ":8082/b/<BUILDING>";
+  })();
 
   // Auto-resume if a password is already stored for this tab.
   if (pw()) { api("POST", "/session").then(function () { showApp(true); return refresh(); }).catch(function () { setPw(""); showApp(false); }); }
