@@ -18,6 +18,8 @@ import {
 import type { AppOverridesStore } from "../lib/app-overrides";
 import { CustomAppsStore, CustomAppsError } from "../lib/custom-apps";
 import { isCustomApp } from "../lib/catalog-runtime";
+import type { DashPinStore } from "../lib/dash-auth";
+import { buildingsIn } from "../lib/building";
 import type { Display } from "../lib/config";
 import { APPS } from "../../shared/catalog";
 import { getApplicationList, BraviaError } from "../lib/bravia";
@@ -60,6 +62,7 @@ export function createManageRouter(
   store: SettingsStore,
   appOverrides: AppOverridesStore,
   customApps: CustomAppsStore,
+  dashPins: DashPinStore,
 ): IRouter {
   const router: IRouter = Router();
 
@@ -232,6 +235,26 @@ export function createManageRouter(
     } catch (err) {
       respondError(res, err);
     }
+  });
+
+  /** Dashboard PINs: which buildings exist and which have a PIN + master set. */
+  router.get("/dash-pins", (_req, res) => {
+    const status = dashPins.status();
+    res.json({ buildings: buildingsIn(config.displays), masterSet: status.masterSet, set: status.buildings });
+  });
+
+  /** Set (empty clears) the dashboard master PIN. */
+  router.put("/dash-pins/master", (req, res) => {
+    const pin = typeof req.body?.pin === "string" ? req.body.pin : "";
+    dashPins.setMaster(pin);
+    res.json({ ok: true });
+  });
+
+  /** Set (empty clears) a building's dashboard PIN. */
+  router.put("/dash-pins/building/:code", (req, res) => {
+    const pin = typeof req.body?.pin === "string" ? req.body.pin : "";
+    dashPins.setBuilding(req.params.code, pin);
+    res.json({ ok: true });
   });
 
   /**

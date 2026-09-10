@@ -85,7 +85,8 @@ export const managePage = /* html */ `<!doctype html>
   <section id="app" class="hidden">
     <div class="toolbar">
       <h2>Displays (<span id="count">0</span>)</h2>
-      <div style="display:flex; gap:.5rem;">
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap; justify-content:flex-end;">
+        <button id="dashCfgBtn" class="ghost small">Dashboard PINs</button>
         <button id="appsCfgBtn" class="ghost small">App URIs</button>
         <button id="addBtn" class="primary small">+ Add display</button>
       </div>
@@ -161,6 +162,19 @@ export const managePage = /* html */ `<!doctype html>
       <button id="ac_doneBtn" class="ghost">Done</button>
     </div>
   </section>
+
+  <!-- Dashboard PINs -->
+  <section id="dashCfg" class="card hidden">
+    <h2>Dashboard access PINs</h2>
+    <p class="muted" style="margin:.4rem 0 .8rem;">Building managers open the dashboard at <b>:8082/b/&lt;BUILDING&gt;</b> and enter that building's PIN. The master PIN (at <b>:8082/</b>) sees all buildings.</p>
+    <div class="acrow">
+      <div class="acname">Master <span class="muted">(all buildings)</span></div>
+      <input id="dp_master" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="unset" />
+      <button class="ghost small" id="dp_master_save">Save</button>
+    </div>
+    <div id="dp_list" style="margin-top:.4rem;"></div>
+    <div class="row" style="margin-top:1.1rem;"><button id="dp_doneBtn" class="ghost">Done</button></div>
+  </section>
 </main>
 <script>
 (function () {
@@ -205,7 +219,7 @@ export const managePage = /* html */ `<!doctype html>
     $("login").classList.toggle("hidden", on);
     $("app").classList.toggle("hidden", !on);
     $("logout").classList.toggle("hidden", !on);
-    if (!on) { $("editor").classList.add("hidden"); $("settings").classList.add("hidden"); $("appsCfg").classList.add("hidden"); }
+    if (!on) { $("editor").classList.add("hidden"); $("settings").classList.add("hidden"); $("appsCfg").classList.add("hidden"); $("dashCfg").classList.add("hidden"); }
   }
 
   async function login() {
@@ -457,6 +471,38 @@ export const managePage = /* html */ `<!doctype html>
 
   function closeAppsCfg() { $("appsCfg").classList.add("hidden"); $("app").classList.remove("hidden"); refresh(); }
 
+  // ---- Dashboard PINs ----
+  async function openDashCfg() {
+    try {
+      var data = await api("GET", "/dash-pins");
+      $("dp_master").value = "";
+      $("dp_master").placeholder = data.masterSet ? "\\u2022\\u2022\\u2022\\u2022 (set)" : "unset";
+      var buildings = data.buildings || [];
+      var set = data.set || {};
+      $("dp_list").innerHTML = buildings.length
+        ? buildings.map(function (b) {
+            return '<div class="acrow"><div class="acname">' + esc(b) + '</div>' +
+              '<input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-bpin="' + esc(b) + '" placeholder="' + (set[b] ? "\\u2022\\u2022\\u2022\\u2022 (set)" : "unset") + '" />' +
+              '<button class="ghost small" data-bsave="' + esc(b) + '">Save</button></div>';
+          }).join("")
+        : '<p class="muted">No buildings yet (add displays first).</p>';
+      Array.prototype.forEach.call($("dp_list").querySelectorAll("[data-bsave]"), function (btn) {
+        btn.onclick = function () { saveBuildingPin(btn.getAttribute("data-bsave")); };
+      });
+      $("dashCfg").classList.remove("hidden");
+      $("app").classList.add("hidden");
+      window.scrollTo(0, 0);
+    } catch (e) { msg(e.message, "err"); }
+  }
+
+  async function saveBuildingPin(code) {
+    var inp = $("dp_list").querySelector('[data-bpin="' + code + '"]');
+    try { await api("PUT", "/dash-pins/building/" + encodeURIComponent(code), { pin: inp.value }); inp.value = ""; msg("Saved " + code + ".", "ok"); await openDashCfg(); }
+    catch (e) { msg(e.message, "err"); }
+  }
+
+  function closeDashCfg() { $("dashCfg").classList.add("hidden"); $("app").classList.remove("hidden"); }
+
   $("loginBtn").onclick = login;
   $("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") login(); });
   $("logout").onclick = logout;
@@ -471,6 +517,9 @@ export const managePage = /* html */ `<!doctype html>
   $("ac_addToggle").onclick = function () { $("ac_addForm").classList.toggle("hidden"); };
   $("na_addBtn").onclick = addApp;
   $("na_cancelBtn").onclick = function () { $("ac_addForm").classList.add("hidden"); };
+  $("dashCfgBtn").onclick = openDashCfg;
+  $("dp_doneBtn").onclick = closeDashCfg;
+  $("dp_master_save").onclick = async function () { try { await api("PUT", "/dash-pins/master", { pin: $("dp_master").value }); $("dp_master").value = ""; msg("Master PIN saved.", "ok"); await openDashCfg(); } catch (e) { msg(e.message, "err"); } };
 
   // Auto-resume if a password is already stored for this tab.
   if (pw()) { api("POST", "/session").then(function () { showApp(true); return refresh(); }).catch(function () { setPw(""); showApp(false); }); }

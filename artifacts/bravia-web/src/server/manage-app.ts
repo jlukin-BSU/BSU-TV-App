@@ -4,6 +4,7 @@ import type { AppConfig } from "./lib/config";
 import type { SettingsStore } from "./lib/settings";
 import type { AppOverridesStore } from "./lib/app-overrides";
 import { CustomAppsStore, resolveIconsDir } from "./lib/custom-apps";
+import type { DashPinStore } from "./lib/dash-auth";
 import { createManageRouter } from "./routes/manage";
 import { managePage } from "./manage/page";
 import { logger } from "./lib/logger";
@@ -18,6 +19,7 @@ export function createManageApp(
   store: SettingsStore,
   appOverrides: AppOverridesStore,
   customApps: CustomAppsStore,
+  dashPins: DashPinStore,
 ): Express {
   const app: Express = express();
 
@@ -45,7 +47,7 @@ export function createManageApp(
   // Serve uploaded icons here too, so the manager can preview them.
   app.use("/icons", express.static(resolveIconsDir(), { maxAge: "1h" }));
 
-  app.use("/api", createManageRouter(config, store, appOverrides, customApps));
+  app.use("/api", createManageRouter(config, store, appOverrides, customApps, dashPins));
 
   app.get("/", (_req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");

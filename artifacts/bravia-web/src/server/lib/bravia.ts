@@ -30,7 +30,7 @@ interface SonyEnvelope {
 }
 
 interface RpcCall {
-  service: "avContent" | "appControl" | "system";
+  service: "avContent" | "appControl" | "system" | "audio";
   method: string;
   id: number;
   params?: unknown[];
@@ -147,6 +147,13 @@ function dryRunResult(rpc: RpcCall): unknown[] {
         { title: "Tubi", uri: "com.tubitv.MainActivity", icon: "" },
       ],
     ];
+  }
+  if (rpc.method === "getPowerStatus") return [{ status: "active" }];
+  if (rpc.method === "getVolumeInformation") {
+    return [[{ target: "speaker", volume: 12, mute: false, minVolume: 0, maxVolume: 100 }]];
+  }
+  if (rpc.method === "getPlayingContentInfo") {
+    return [{ uri: "extInput:hdmi?port=3", title: "HDMI 3", source: "extInput:hdmi" }];
   }
   return [];
 }
@@ -298,4 +305,86 @@ export async function setScreenState(
     id: 52,
     params: [{ mode: kind === "pictureOff" ? "pictureOff" : "off" }],
   });
+}
+
+// ---- Read + control, for the monitoring dashboard -------------------------
+
+/** "active" (on), "standby" (off), or "unknown" if it couldn't be read. */
+export async function getPowerStatus(display: Display): Promise<"active" | "standby" | "unknown"> {
+  const result = await call(display, { service: "system", method: "getPowerStatus", id: 50 });
+  const first = result[0] as { status?: unknown } | undefined;
+  const status = typeof first?.status === "string" ? first.status : "";
+  if (status === "active") return "active";
+  if (status === "standby") return "standby";
+  return "unknown";
+}
+
+/** Turn the display fully on or off (standby). */
+export async function setPower(display: Display, on: boolean): Promise<void> {
+  await call(display, { service: "system", method: "setPowerStatus", id: 55, params: [{ status: on }] });
+}
+
+export interface VolumeInfo {
+  volume: number;
+  mute: boolean;
+  min: number;
+  max: number;
+}
+
+/** Speaker volume/mute, or null if the display didn't report it. */
+export async function getVolume(display: Display): Promise<VolumeInfo | null> {
+  const result = await call(display, { service: "audio", method: "getVolumeInformation", id: 33 });
+  const arr = Array.isArray(result[0]) ? (result[0] as Array<Record<string, unknown>>) : [];
+  const speaker = arr.find((t) => t["target"] === "speaker") ?? arr[0];
+  if (!speaker || typeof speaker["volume"] !== "number") return null;
+  return {
+    volume: speaker["volume"] as number,
+    mute: speaker["mute"] === true,
+    min: typeof speaker["minVolume"] === "number" ? (speaker["minVolume"] as number) : 0,
+    max: typeof speaker["maxVolume"] === "number" ? (speaker["maxVolume"] as number) : 100,
+  };
+}
+
+/** Set an absolute speaker volume. */
+export async function setVolume(display: Display, volume: number): Promise<void> {
+  await call(display, {
+    service: "audio",
+    method: "setAudioVolume",
+    id: 601,
+    params: [{ target: "speaker", volume: String(Math.round(volume)) }],
+  });
+}
+
+/** Nudge the volume up or down (relative), which the API expresses as "+1"/"-3". */
+export async function stepVolume(display: Display, delta: number): Promise<void> {
+  const sign = delta >= 0 ? "+" : "-";
+  await call(display, {
+    service: "audio",
+    method: "setAudioVolume",
+    id: 601,
+    params: [{ target: "speaker", volume: `${sign}${Math.abs(Math.round(delta))}` }],
+  });
+}
+
+export async function setMute(display: Display, mute: boolean): Promise<void> {
+  await call(display, { service: "audio", method: "setAudioMute", id: 601, params: [{ status: mute }] });
+}
+
+export interface PlayingContent {
+  /** e.g. "extInput:hdmi?port=3" or an app uri. */
+  uri: string;
+  title: string;
+  source: string;
+}
+
+/** What the display is currently showing, or null (e.g. it's in standby). */
+export async function getPlayingContent(display: Display): Promise<PlayingContent | null> {
+  const result = await call(display, { service: "avContent", method: "getPlayingContentInfo", id: 103 });
+  const first = result[0] as { uri?: unknown; title?: unknown; source?: unknown } | undefined;
+  if (!first || typeof first.uri !== "string") return null;
+  return {
+    uri: first.uri,
+    title: typeof first.title === "string" ? first.title : "",
+    source: typeof first.source === "string" ? first.source : "",
+  };
 }

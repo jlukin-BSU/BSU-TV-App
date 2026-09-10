@@ -11,3 +11,6 @@ app-overrides.json
 # Custom apps + uploaded icons (runtime state)
 custom-apps.json
 icons/
+
+# Dashboard PINs (runtime state)
+dash-pins.json
