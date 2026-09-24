@@ -1,6 +1,7 @@
 package edu.bridgew.tvkiosk
 
 import android.content.Context
+import android.content.SharedPreferences
 
 /**
  * The hub server URL.
@@ -25,10 +26,13 @@ object Config {
         !prefs(ctx).getString(KEY_SERVER, null).isNullOrBlank()
 
     fun setServerUrl(ctx: Context, url: String?) {
-        prefs(ctx).edit().apply {
-            if (url.isNullOrBlank()) remove(KEY_SERVER) else putString(KEY_SERVER, url.trim())
+        prefs(ctx).edit().also { e ->
+            if (url.isNullOrBlank()) e.remove(KEY_SERVER) else e.putString(KEY_SERVER, url.trim())
         }.apply()
     }
+
+    private fun prefs(ctx: Context): SharedPreferences =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun defaultServerUrl(): String = normalize(BuildConfig.DEFAULT_SERVER_URL)
 
