@@ -298,3 +298,20 @@ deploy/                   systemd unit
 To add a button, edit `src/shared/catalog.ts` — the server validates against the
 same list the UI renders from, so the two cannot drift. Get the package name from
 `/api/apps` on a real display.
+
+## Tests
+
+```
+pnpm test
+```
+
+Characterisation tests for the Sony driver and the building-code parser, written
+before the display/streamer/controller refactor to pin current behaviour. They
+cover the wire contract (URL, PSK header, JSON-RPC body) and the error handling
+that is easiest to lose in a refactor -- in particular that a Sony `error` tuple
+inside an **HTTP 200** body is a failure, not a success.
+
+**Runs on Linux only.** `pnpm-workspace.yaml` strips every platform binary except
+Linux x64, so `tsx` (and therefore the test runner) has no esbuild binary on
+Windows or macOS. This is the same constraint as the build: run tests on the NUC,
+not on a Windows workstation.
