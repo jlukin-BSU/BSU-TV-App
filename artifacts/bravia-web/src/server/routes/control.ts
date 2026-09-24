@@ -7,14 +7,7 @@ import {
   type ClientConfig,
 } from "../../shared/catalog";
 import { findRuntimeApp } from "../lib/catalog-runtime";
-import {
-  BraviaError,
-  getApplicationList,
-  resolveAppUri,
-  setActiveApp,
-  setInput,
-  setScreenState,
-} from "../lib/bravia";
+import { appsFor, driverFor, DriverError } from "../drivers";
 import { requireDisplay } from "../middlewares/device";
 import { effectiveConfig, type SettingsStore } from "../lib/settings";
 import type { AppOverridesStore } from "../lib/app-overrides";
@@ -25,7 +18,7 @@ const AppRequest = z.object({ appId: z.string().min(1) }).strict();
 const CommandRequest = z.object({ commandId: z.string().min(1) }).strict();
 
 function errorPayload(err: unknown): { error: string; message: string } {
-  if (err instanceof BraviaError) return { error: "display_error", message: err.message };
+  if (err instanceof DriverError) return { error: "display_error", message: err.message };
   return {
     error: "internal_error",
     message: err instanceof Error ? err.message : String(err),
@@ -76,7 +69,7 @@ export function createControlRouter(store: SettingsStore, appOverrides: AppOverr
     }
 
     try {
-      await setInput(display, entry.port);
+      await driverFor(display).setInput(display, entry.port);
       logger.info({ display: display.hostname, input: entry.id, port: entry.port }, "Switched input");
       res.json({ ok: true, input: entry.id, label: entry.label });
     } catch (err) {
@@ -108,8 +101,8 @@ export function createControlRouter(store: SettingsStore, appOverrides: AppOverr
       // An admin can override the catalog package name / URI per app from the
       // management page (e.g. to fix a wrong CNN target).
       const launchValue = appOverrides.get(entry.id) ?? entry.packageName;
-      const uri = await resolveAppUri(display, launchValue);
-      await setActiveApp(display, uri);
+      const uri = await appsFor(display).resolveUri(display, launchValue);
+      await appsFor(display).setActive(display, uri);
       logger.info(
         { display: display.hostname, app: entry.id, launchValue, uri },
         "Launched app",
@@ -147,7 +140,7 @@ export function createControlRouter(store: SettingsStore, appOverrides: AppOverr
     }
 
     try {
-      await setScreenState(display, entry.kind);
+      await driverFor(display).setScreenState(display, entry.kind);
       logger.info({ display: display.hostname, command: entry.id, kind: entry.kind }, "Sent screen command");
       res.json({ ok: true, command: entry.id, label: entry.label });
     } catch (err) {
@@ -160,7 +153,7 @@ export function createControlRouter(store: SettingsStore, appOverrides: AppOverr
   router.get("/apps", async (req, res) => {
     const display = requireDisplay(req);
     try {
-      const apps = await getApplicationList(display);
+      const apps = await appsFor(display).list(display);
       res.json({ display: display.hostname, count: apps.length, apps });
     } catch (err) {
       res.status(502).json(errorPayload(err));

@@ -1,12 +1,7 @@
 import type { Display } from "./config";
 import { INPUTS } from "../../shared/catalog";
 import { runtimeApps } from "./catalog-runtime";
-import {
-  getPlayingContent,
-  getPowerStatus,
-  getVolume,
-  BraviaError,
-} from "./bravia";
+import { driverFor, DriverError } from "../drivers";
 import { buildingOf } from "./building";
 import { logger } from "./logger";
 
@@ -65,7 +60,8 @@ function baseState(display: Display): DisplayState {
 async function pollOne(display: Display): Promise<DisplayState> {
   const state = baseState(display);
   try {
-    const power = await getPowerStatus(display);
+    const driver = driverFor(display);
+    const power = await driver.getPowerStatus(display);
     if (power === "standby") {
       state.power = "off";
       state.updatedAt = Date.now();
@@ -74,7 +70,10 @@ async function pollOne(display: Display): Promise<DisplayState> {
     state.power = power === "active" ? "on" : "unknown";
 
     // Volume and current content are only meaningful when on.
-    const [vol, content] = await Promise.allSettled([getVolume(display), getPlayingContent(display)]);
+    const [vol, content] = await Promise.allSettled([
+      driver.getVolume(display),
+      driver.getPlayingContent(display),
+    ]);
     if (vol.status === "fulfilled" && vol.value) {
       state.volume = vol.value.volume;
       state.mute = vol.value.mute;
@@ -93,7 +92,7 @@ async function pollOne(display: Display): Promise<DisplayState> {
   } catch (err) {
     // A network failure/timeout means the panel is unreachable (off at the wall,
     // or network-standby disabled). Sony's "display is off" error also lands here.
-    if (err instanceof BraviaError) {
+    if (err instanceof DriverError) {
       state.power = "offline";
     } else {
       state.power = "offline";

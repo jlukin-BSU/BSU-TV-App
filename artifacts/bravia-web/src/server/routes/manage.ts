@@ -22,7 +22,7 @@ import type { DashPinStore } from "../lib/dash-auth";
 import { buildingsIn } from "../lib/building";
 import type { Display } from "../lib/config";
 import { APPS } from "../../shared/catalog";
-import { getApplicationList, BraviaError } from "../lib/bravia";
+import { appsFor, DriverError } from "../drivers";
 import { logger } from "../lib/logger";
 
 /**
@@ -268,10 +268,10 @@ export function createManageRouter(
       return;
     }
     try {
-      const apps = await getApplicationList(display);
+      const apps = await appsFor(display).list(display);
       res.json({ hostname: display.hostname, dryRun: display.dryRun, count: apps.length, apps });
     } catch (err) {
-      const message = err instanceof BraviaError ? err.message : err instanceof Error ? err.message : String(err);
+      const message = err instanceof DriverError ? err.message : err instanceof Error ? err.message : String(err);
       res.status(502).json({ error: "display_error", message });
     }
   });

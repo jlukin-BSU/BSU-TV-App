@@ -7,17 +7,7 @@ import { buildingOf, buildingsIn, displaysInBuilding } from "../lib/building";
 import { refresh, statesFor } from "../lib/dash-state";
 import { INPUTS, findInput } from "../../shared/catalog";
 import { findRuntimeApp, runtimeApps } from "../lib/catalog-runtime";
-import {
-  BraviaError,
-  resolveAppUri,
-  setActiveApp,
-  setInput,
-  setMute,
-  setPower,
-  setScreenState,
-  setVolume,
-  stepVolume,
-} from "../lib/bravia";
+import { appsFor, driverFor, DriverError } from "../drivers";
 import { logger } from "../lib/logger";
 
 /**
@@ -119,7 +109,7 @@ export function createDashboardRouter(
       await refresh([display]).catch(() => undefined);
       res.json({ ok: true, state: statesFor([display])[0] });
     } catch (err) {
-      const message = err instanceof BraviaError ? err.message : err instanceof Error ? err.message : String(err);
+      const message = err instanceof DriverError ? err.message : err instanceof Error ? err.message : String(err);
       res.status(502).json({ error: "display_error", message });
     }
   });
@@ -130,42 +120,42 @@ export function createDashboardRouter(
 async function runAction(display: Display, action: string, value: string | undefined, appOverrides: AppOverridesStore): Promise<void> {
   switch (action) {
     case "power":
-      await setPower(display, value === "on");
+      await driverFor(display).setPower(display, value === "on");
       return;
     case "volup":
-      await stepVolume(display, 1);
+      await driverFor(display).stepVolume(display, 1);
       return;
     case "voldown":
-      await stepVolume(display, -1);
+      await driverFor(display).stepVolume(display, -1);
       return;
     case "volume":
-      await setVolume(display, Number(value ?? "0"));
+      await driverFor(display).setVolume(display, Number(value ?? "0"));
       return;
     case "mute":
-      await setMute(display, value !== "off");
+      await driverFor(display).setMute(display, value !== "off");
       return;
     case "screenoff":
-      await setScreenState(display, "pictureOff");
+      await driverFor(display).setScreenState(display, "pictureOff");
       return;
     case "screenon":
-      await setScreenState(display, "pictureOn");
+      await driverFor(display).setScreenState(display, "pictureOn");
       return;
     case "input": {
       const input = findInput(value ?? "");
-      if (!input) throw new BraviaError(`Unknown input "${value}".`);
-      await setInput(display, input.port);
+      if (!input) throw new DriverError(`Unknown input "${value}".`);
+      await driverFor(display).setInput(display, input.port);
       return;
     }
     case "app": {
       const app = findRuntimeApp(value ?? "");
-      if (!app) throw new BraviaError(`Unknown app "${value}".`);
+      if (!app) throw new DriverError(`Unknown app "${value}".`);
       const launch = appOverrides.get(app.id) ?? app.packageName;
-      const uri = await resolveAppUri(display, launch);
-      await setActiveApp(display, uri);
+      const uri = await appsFor(display).resolveUri(display, launch);
+      await appsFor(display).setActive(display, uri);
       return;
     }
     default:
-      throw new BraviaError(`Unknown action "${action}".`);
+      throw new DriverError(`Unknown action "${action}".`);
   }
 }
 

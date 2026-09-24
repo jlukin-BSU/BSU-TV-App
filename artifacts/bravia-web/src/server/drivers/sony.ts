@@ -1,5 +1,14 @@
-import { logger } from "./logger";
-import type { Display } from "./config";
+import { logger } from "../lib/logger";
+import type { Display } from "../lib/config";
+import { DriverError } from "./types";
+import type {
+  DisplayDriver,
+  InstalledApp,
+  PlayingContent,
+  PowerStatus,
+  ScreenState,
+  VolumeInfo,
+} from "./types";
 
 /**
  * Client for the Sony BRAVIA Professional Display REST API.
@@ -12,16 +21,6 @@ import type { Display } from "./config";
 const DEFAULT_TIMEOUT_MS = 5000;
 /** How long a display's resolved application list stays cached. */
 const APP_LIST_TTL_MS = 10 * 60 * 1000;
-
-export class BraviaError extends Error {
-  constructor(
-    message: string,
-    readonly code?: number,
-  ) {
-    super(message);
-    this.name = "BraviaError";
-  }
-}
 
 interface SonyEnvelope {
   result?: unknown[];
@@ -68,7 +67,7 @@ async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
   }
 
   if (!target) {
-    throw new BraviaError(
+    throw new DriverError(
       `Could not resolve ${display.hostname} to an IP address. Check the display's DNS record / DHCP reservation, or set an IP override for it.`,
     );
   }
@@ -93,7 +92,7 @@ async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
         : err instanceof Error
           ? err.message
           : String(err);
-    throw new BraviaError(
+    throw new DriverError(
       `Could not reach ${display.hostname} (${target}): ${reason}. Check the display is powered on and IP control is enabled.`,
     );
   }
@@ -101,14 +100,14 @@ async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
   const text = await res.text();
 
   if (res.status === 403) {
-    throw new BraviaError(
+    throw new DriverError(
       `${display.hostname} rejected the Pre-Shared Key (HTTP 403). Confirm the PSK in devices.json matches the display's Settings -> Network & Internet -> Local network setup -> IP control.`,
       403,
     );
   }
 
   if (!res.ok) {
-    throw new BraviaError(
+    throw new DriverError(
       `${display.hostname} returned HTTP ${res.status} ${res.statusText} for ${rpc.method}.`,
       res.status,
     );
@@ -118,14 +117,14 @@ async function call(display: Display, rpc: RpcCall): Promise<unknown[]> {
   try {
     envelope = JSON.parse(text) as SonyEnvelope;
   } catch {
-    throw new BraviaError(
+    throw new DriverError(
       `${display.hostname} returned a non-JSON response to ${rpc.method}: ${text.slice(0, 200)}`,
     );
   }
 
   if (envelope.error) {
     const [code, message] = envelope.error;
-    throw new BraviaError(
+    throw new DriverError(
       `${display.hostname} rejected ${rpc.method}: ${message} (Sony error ${code}).`,
       code,
     );
@@ -159,7 +158,7 @@ function dryRunResult(rpc: RpcCall): unknown[] {
 }
 
 /** Switch the display to an HDMI port. */
-export async function setInput(display: Display, port: number): Promise<void> {
+async function setInput(display: Display, port: number): Promise<void> {
   await call(display, {
     service: "avContent",
     method: "setPlayContent",
@@ -168,13 +167,8 @@ export async function setInput(display: Display, port: number): Promise<void> {
   });
 }
 
-export interface InstalledApp {
-  title: string;
-  uri: string;
-}
-
 /** Raw `getApplicationList` for a display. */
-export async function getApplicationList(display: Display): Promise<InstalledApp[]> {
+async function getApplicationList(display: Display): Promise<InstalledApp[]> {
   const result = await call(display, {
     service: "appControl",
     method: "getApplicationList",
@@ -231,7 +225,7 @@ async function cachedApplicationList(display: Display): Promise<InstalledApp[]> 
   return fetchPromise;
 }
 
-export function clearAppListCache(ip?: string): void {
+function clearAppListCache(ip?: string): void {
   if (ip) appListCache.delete(ip);
   else appListCache.clear();
 }
@@ -243,7 +237,7 @@ export function clearAppListCache(ip?: string): void {
  * intent from on-device. `setActiveApp` cannot -- it needs a URI out of
  * `getApplicationList` -- so we look it up and cache it per display.
  */
-export async function resolveAppUri(
+async function resolveAppUri(
   display: Display,
   packageName: string,
 ): Promise<string> {
@@ -260,7 +254,7 @@ export async function resolveAppUri(
   const contains = apps.find((a) => a.uri.includes(packageName));
   if (contains) return contains.uri;
 
-  throw new BraviaError(
+  throw new DriverError(
     `${display.hostname} has no installed app matching "${packageName}". Installed URIs: ${
       apps.length ? apps.map((a) => a.uri).join(", ") : "(none reported)"
     }`,
@@ -268,7 +262,7 @@ export async function resolveAppUri(
 }
 
 /** Launch an app by the URI the display reported. */
-export async function setActiveApp(display: Display, uri: string): Promise<void> {
+async function setActiveApp(display: Display, uri: string): Promise<void> {
   await call(display, {
     service: "appControl",
     method: "setActiveApp",
@@ -285,9 +279,9 @@ export async function setActiveApp(display: Display, uri: string): Promise<void>
  * running and can turn it back on. `standby` is a genuine power-off and will
  * tear down the browser session along with everything else.
  */
-export async function setScreenState(
+async function setScreenState(
   display: Display,
-  kind: "pictureOff" | "pictureOn" | "standby",
+  kind: ScreenState,
 ): Promise<void> {
   if (kind === "standby") {
     await call(display, {
@@ -310,7 +304,7 @@ export async function setScreenState(
 // ---- Read + control, for the monitoring dashboard -------------------------
 
 /** "active" (on), "standby" (off), or "unknown" if it couldn't be read. */
-export async function getPowerStatus(display: Display): Promise<"active" | "standby" | "unknown"> {
+async function getPowerStatus(display: Display): Promise<PowerStatus> {
   const result = await call(display, { service: "system", method: "getPowerStatus", id: 50 });
   const first = result[0] as { status?: unknown } | undefined;
   const status = typeof first?.status === "string" ? first.status : "";
@@ -320,19 +314,12 @@ export async function getPowerStatus(display: Display): Promise<"active" | "stan
 }
 
 /** Turn the display fully on or off (standby). */
-export async function setPower(display: Display, on: boolean): Promise<void> {
+async function setPower(display: Display, on: boolean): Promise<void> {
   await call(display, { service: "system", method: "setPowerStatus", id: 55, params: [{ status: on }] });
 }
 
-export interface VolumeInfo {
-  volume: number;
-  mute: boolean;
-  min: number;
-  max: number;
-}
-
 /** Speaker volume/mute, or null if the display didn't report it. */
-export async function getVolume(display: Display): Promise<VolumeInfo | null> {
+async function getVolume(display: Display): Promise<VolumeInfo | null> {
   const result = await call(display, { service: "audio", method: "getVolumeInformation", id: 33 });
   const arr = Array.isArray(result[0]) ? (result[0] as Array<Record<string, unknown>>) : [];
   const speaker = arr.find((t) => t["target"] === "speaker") ?? arr[0];
@@ -346,7 +333,7 @@ export async function getVolume(display: Display): Promise<VolumeInfo | null> {
 }
 
 /** Set an absolute speaker volume. */
-export async function setVolume(display: Display, volume: number): Promise<void> {
+async function setVolume(display: Display, volume: number): Promise<void> {
   await call(display, {
     service: "audio",
     method: "setAudioVolume",
@@ -356,7 +343,7 @@ export async function setVolume(display: Display, volume: number): Promise<void>
 }
 
 /** Nudge the volume up or down (relative), which the API expresses as "+1"/"-3". */
-export async function stepVolume(display: Display, delta: number): Promise<void> {
+async function stepVolume(display: Display, delta: number): Promise<void> {
   const sign = delta >= 0 ? "+" : "-";
   await call(display, {
     service: "audio",
@@ -366,19 +353,12 @@ export async function stepVolume(display: Display, delta: number): Promise<void>
   });
 }
 
-export async function setMute(display: Display, mute: boolean): Promise<void> {
+async function setMute(display: Display, mute: boolean): Promise<void> {
   await call(display, { service: "audio", method: "setAudioMute", id: 601, params: [{ status: mute }] });
 }
 
-export interface PlayingContent {
-  /** e.g. "extInput:hdmi?port=3" or an app uri. */
-  uri: string;
-  title: string;
-  source: string;
-}
-
 /** What the display is currently showing, or null (e.g. it's in standby). */
-export async function getPlayingContent(display: Display): Promise<PlayingContent | null> {
+async function getPlayingContent(display: Display): Promise<PlayingContent | null> {
   const result = await call(display, { service: "avContent", method: "getPlayingContentInfo", id: 103 });
   const first = result[0] as { uri?: unknown; title?: unknown; source?: unknown } | undefined;
   if (!first || typeof first.uri !== "string") return null;
@@ -388,3 +368,28 @@ export async function getPlayingContent(display: Display): Promise<PlayingConten
     source: typeof first.source === "string" ? first.source : "",
   };
 }
+
+/**
+ * Sony BRAVIA Professional. Runs the streaming apps itself, so `apps` is
+ * present -- on these installs no separate streaming device is needed.
+ */
+export const sonyDriver: DisplayDriver = {
+  id: "sony-bravia",
+
+  getPowerStatus,
+  setPower,
+  getVolume,
+  setVolume,
+  stepVolume,
+  setMute,
+  setInput,
+  setScreenState,
+  getPlayingContent,
+
+  apps: {
+    list: getApplicationList,
+    resolveUri: resolveAppUri,
+    setActive: setActiveApp,
+    clearCache: clearAppListCache,
+  },
+};
