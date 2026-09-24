@@ -129,7 +129,9 @@
   .gbtn:hover{background:rgba(255,255,255,.12);transform:translateY(-2px);
               box-shadow:0 .8rem 1.8rem rgba(0,0,0,.45), 0 0 1.6rem .3rem rgba(220,40,65,.18)}
   .gbtn:active{transform:translateY(0)}
-  .gbtn svg{width:1.25rem;height:1.25rem;fill:currentColor}
+  .gbtn svg{width:1.25rem;height:1.25rem;fill:currentColor;display:block}
+  /* fixed-size icon buttons must not inherit the global button padding */
+  .gbtn,.dpad button,.dpad .ok,.volstack button{padding:0}
   .circ{width:2.9rem;height:2.9rem;border-radius:50%}
   .btnwrap{display:grid;justify-items:center;gap:.25rem}
   .blab{font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.55)}
@@ -141,7 +143,7 @@
   .dpad button{position:absolute;border:none;background:transparent;color:#fff;cursor:pointer;
                width:2.9rem;height:2.9rem;display:grid;place-items:center;border-radius:.8rem}
   .dpad button:hover{background:rgba(255,255,255,.10)}
-  .dpad button svg{width:1.5rem;height:1.5rem;fill:currentColor}
+  .dpad button svg{width:1.5rem;height:1.5rem;fill:currentColor;display:block}
   .dpad .up{top:.35rem;left:50%;transform:translateX(-50%)}
   .dpad .down{bottom:.35rem;left:50%;transform:translateX(-50%)}
   .dpad .left{left:.35rem;top:50%;transform:translateY(-50%)}
@@ -156,7 +158,7 @@
   .volstack button{width:2.9rem;height:2.7rem;border:none;background:transparent;color:#fff;cursor:pointer;
                    display:grid;place-items:center}
   .volstack button:hover{background:rgba(255,255,255,.12)}
-  .volstack svg{width:1.25rem;height:1.25rem;fill:currentColor}
+  .volstack svg{width:1.25rem;height:1.25rem;fill:currentColor;display:block}
   .volsep{height:1px;background:rgba(255,255,255,.12)}
 
   .sidenote{flex:1;min-width:17rem;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
