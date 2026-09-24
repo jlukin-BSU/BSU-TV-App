@@ -96,7 +96,10 @@
          background:rgba(255,255,255,.05);margin-bottom:.4rem}
   .titem .tname{flex:1;font-size:.95rem}
   .titem .how{color:var(--muted);font-size:.75rem;font-family:ui-monospace,Consolas,monospace}
+  .titem.na{opacity:.5}
   .titem.na .tname{color:var(--muted)}
+  .titem .sw{flex:0 0 1.2rem;display:grid;place-items:center}
+  .titem .req{display:block;width:.4rem;height:.4rem;border-radius:50%;background:rgba(255,255,255,.22)}
 
   /* options — .chk from the management page */
   .chk{display:flex;align-items:flex-start;gap:.6rem;margin-top:.9rem;font-size:.95rem}
@@ -139,7 +142,10 @@
                width:2.9rem;height:2.9rem;display:grid;place-items:center;border-radius:.8rem}
   .dpad button:hover{background:rgba(255,255,255,.10)}
   .dpad button svg{width:1.5rem;height:1.5rem;fill:currentColor}
-  .dpad .up{top:.25rem}.dpad .down{bottom:.25rem}.dpad .left{left:.25rem}.dpad .right{right:.25rem}
+  .dpad .up{top:.35rem;left:50%;transform:translateX(-50%)}
+  .dpad .down{bottom:.35rem;left:50%;transform:translateX(-50%)}
+  .dpad .left{left:.35rem;top:50%;transform:translateY(-50%)}
+  .dpad .right{right:.35rem;top:50%;transform:translateY(-50%)}
   .dpad .ok{position:relative;width:4.4rem;height:4.4rem;border-radius:50%;
             background:rgba(255,255,255,.12);box-shadow:0 0 0 1px rgba(255,255,255,.14);
             font-family:inherit;font-weight:600;font-size:.82rem;letter-spacing:.08em;color:#fff}
@@ -224,7 +230,9 @@
     <div class="stage">
       <div class="remote" id="remote"></div>
       <div class="sidenote">
-        <h2 style="font-size:.95rem;margin-bottom:.5rem">Key map</h2>
+        <div class="toolbar" style="margin-bottom:.5rem">
+          <h2 style="font-size:.95rem">Key map</h2><span class="muted">show / hide</span>
+        </div>
         <div id="keymap"></div>
       </div>
     </div>
@@ -253,19 +261,22 @@ const SYSTEMS = [
   { id:'rsu008l', name:'RSU 008 — Left', shape:'All-in-one',
     note:'Existing install. Unchanged by the new model — it registers as a single-device system.',
     display:{model:'Sony BRAVIA FW-55BZ30L',driver:'sony-bravia',addr:'tv-rsu008-l',detail:'REST + X-Auth-PSK',status:'ok'},
-    streamer:null, controllers:[], opts:{cast:true,inputsBtn:true}, castAvailable:true },
+    streamer:null, controllers:[], opts:{cast:true}, castAvailable:true,
+    buttons:{power:true,volume:true,mute:true,play:true,input:true} },
   { id:'rsu012', name:'RSU 012 — Lecture Hall', shape:'TV + streamer',
     note:'New install. The LG panel takes IP control but is not Google-compatible, so the streamer is broken out.',
     display:{model:'LG 86UR340C9UD',driver:'lg-commercial',addr:'tv-rsu012',detail:'ASCII command set over IP',status:'ok'},
     streamer:{model:'Google TV Streamer 4K',driver:'google-tv-adb',addr:'gtv-rsu012',detail:'ADB · HDMI 1',status:'ok'},
-    controllers:[], opts:{cast:false,inputsBtn:true}, castAvailable:false },
+    controllers:[], opts:{cast:false}, castAvailable:false,
+    buttons:{power:true,volume:true,mute:true,play:true,input:true} },
   { id:'max210', name:'MAX 210 — Studio', shape:'TV + streamer + controllers',
     note:'Full shape. Two wall controllers, each mapped to this system by source IP.',
     display:{model:'Sony BRAVIA FW-65BZ30L',driver:'sony-bravia',addr:'tv-max210',detail:'REST + X-Auth-PSK',status:'ok'},
     streamer:{model:'Google TV Streamer 4K',driver:'google-tv-adb',addr:'gtv-max210',detail:'ADB · HDMI 2',status:'ok'},
     controllers:[{model:'Wall panel — entry',addr:'ctl-max210-a',detail:'paired',status:'ok'},
                  {model:'Wall panel — booth',addr:'ctl-max210-b',detail:'awaiting pairing code',status:'warn'}],
-    opts:{cast:true,inputsBtn:false}, castAvailable:true }
+    opts:{cast:true}, castAvailable:true,
+    buttons:{power:true,volume:true,mute:false,play:true,input:false} }
 ];
 let current = SYSTEMS[0].id;
 const sysById = id => SYSTEMS.find(s => s.id === id);
@@ -342,10 +353,6 @@ function renderDetail(){
         ${noCast?'<span class="d">Not reported by this panel.</span>':''}
       </span>
     </label>
-    <label class="chk">
-      <input type="checkbox" ${s.opts.inputsBtn?'checked':''} onchange="toggle('inputsBtn')">
-      <span>Show Inputs button on the remote</span>
-    </label>
     <div class="optrow">
       <span>Hub host</span>
       <select>
@@ -379,14 +386,35 @@ function syncRemoteSelect(){
   renderRemote();
 }
 
+function toggleBtn(k){
+  const sel = document.getElementById('remote-sys');
+  sysById(sel.value || current).buttons[k] = !sysById(sel.value || current).buttons[k];
+  renderRemote();
+}
+
 function renderRemote(){
   const sel = document.getElementById('remote-sys');
   const s = sysById(sel.value || current);
+  const B = s.buttons;
   const b = (icon,label,cls='') =>
     `<span class="btnwrap"><button class="gbtn circ ${cls}">${ic(icon)}</button><span class="blab">${label}</span></span>`;
 
+  const topRow = [B.power?b('power','Power','pwr'):'', b('home','Home'), b('back','Back')].join('');
+
+  const stack = [B.mute?b('mute','Mute'):'', B.play?b('play','Play'):''].filter(Boolean).join('');
+  const volBlock = B.volume ? `<span class="btnwrap">
+        <span class="volstack">
+          <button title="Volume up">${ic('volUp')}</button>
+          <span class="volsep"></span>
+          <button title="Volume down">${ic('volDn')}</button>
+        </span>
+        <span class="blab">Volume</span>
+      </span>` : '';
+  const stackBlock = stack ? `<span style="display:grid;gap:.6rem">${stack}</span>` : '';
+  const midRow = (volBlock||stackBlock) ? `<div class="rrow">${volBlock}${stackBlock}</div>` : '';
+
   document.getElementById('remote').innerHTML = `
-    <div class="rrow">${b('power','Power','pwr')}${b('home','Home')}${b('back','Back')}</div>
+    <div class="rrow">${topRow}</div>
     <div class="dpad">
       <button class="up">${ic('up')}</button>
       <button class="left">${ic('left')}</button>
@@ -394,34 +422,28 @@ function renderRemote(){
       <button class="right">${ic('right')}</button>
       <button class="down">${ic('down')}</button>
     </div>
-    <div class="rrow">
-      <span class="btnwrap">
-        <span class="volstack">
-          <button title="Volume up">${ic('volUp')}</button>
-          <span class="volsep"></span>
-          <button title="Volume down">${ic('volDn')}</button>
-        </span>
-        <span class="blab">Volume</span>
-      </span>
-      <span style="display:grid;gap:.6rem">${b('mute','Mute')}${b('play','Play')}</span>
-    </div>
-    ${s.opts.inputsBtn ? `<div class="rrow">${b('input','Inputs')}</div>`
-      : `<div class="blab" style="opacity:.5">Inputs button off for this system</div>`}`;
+    ${midRow}
+    ${B.input ? `<div class="rrow">${b('input','Inputs')}</div>` : ''}`;
 
-  const hasS = !!s.streamer;
+  const hasS = !!s.streamer, sony = s.display.driver==='sony-bravia';
   const TV = '<span class="chip c-tv">TV</span>', ST = '<span class="chip c-str">Streamer</span>';
   const keys = [
-    ['Power',      TV,          s.display.driver==='sony-bravia'?'setPowerStatus':'ka'],
-    ['Home',       hasS?ST:TV,  hasS?'am start — shell':'reload kiosk URL'],
-    ['Back',       hasS?ST:TV,  'keyevent BACK'],
-    ['D-pad / OK', hasS?ST:TV,  'keyevent DPAD_*'],
-    ['Volume',     TV,          s.display.driver==='sony-bravia'?'setAudioVolume':'kf'],
-    ['Mute',       TV,          s.display.driver==='sony-bravia'?'setAudioMute':'ke'],
-    ['Play',       hasS?ST:TV,  'keyevent MEDIA_PLAY_PAUSE'],
-    ['Inputs',     TV,          s.opts.inputsBtn ? (s.display.driver==='sony-bravia'?'setPlayContent':'xb') : 'hidden']
+    ['power', 'Power',      TV,         sony?'setPowerStatus':'ka'],
+    ['',      'Home',       hasS?ST:TV, hasS?'am start — shell':'reload kiosk URL'],
+    ['',      'Back',       hasS?ST:TV, 'keyevent BACK'],
+    ['',      'D-pad / OK', hasS?ST:TV, 'keyevent DPAD_*'],
+    ['volume','Volume',     TV,         sony?'setAudioVolume':'kf'],
+    ['mute',  'Mute',       TV,         sony?'setAudioMute':'ke'],
+    ['play',  'Play',       hasS?ST:TV, 'keyevent MEDIA_PLAY_PAUSE'],
+    ['input', 'Inputs',     TV,         sony?'setPlayContent':'xb']
   ];
-  document.getElementById('keymap').innerHTML = keys.map(([k,t,c])=>`
-    <div class="titem"><span class="tname">${k}</span>${t}<span class="how">${c}</span></div>`).join('');
+  document.getElementById('keymap').innerHTML = keys.map(([id,k,t,c])=>`
+    <div class="titem ${id && !B[id] ? 'na' : ''}">
+      <span class="sw">${id
+        ? `<input type="checkbox" class="pick" ${B[id]?'checked':''} onchange="toggleBtn('${id}')" title="Show on remote">`
+        : `<span class="req" title="Always shown"></span>`}</span>
+      <span class="tname">${k}</span>${t}<span class="how">${c}</span>
+    </div>`).join('');
 }
 
 function showTab(w){
