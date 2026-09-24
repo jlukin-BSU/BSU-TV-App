@@ -2,6 +2,7 @@ import { logger } from "../lib/logger";
 import type { Display } from "../lib/config";
 import { DriverError } from "./types";
 import type {
+  Capability,
   DisplayDriver,
   InstalledApp,
   PlayingContent,
@@ -370,11 +371,13 @@ async function getPlayingContent(display: Display): Promise<PlayingContent | nul
 }
 
 /**
- * Sony BRAVIA Professional. Runs the streaming apps itself, so `apps` is
- * present -- on these installs no separate streaming device is needed.
+ * Sony BRAVIA Professional. Capable of running the streaming apps itself, so
+ * it declares the "apps" capability -- but an installation that pairs one with
+ * a streaming device sets appSource "streamer" and leaves that unused.
  */
 export const sonyDriver: DisplayDriver = {
   id: "sony-bravia",
+  supports: new Set<Capability>(["power", "input", "volume", "mute", "screen", "apps"]),
 
   getPowerStatus,
   setPower,

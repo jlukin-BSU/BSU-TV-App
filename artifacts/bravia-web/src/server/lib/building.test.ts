@@ -19,6 +19,7 @@ function display(hostname: string): Display {
     psk: "",
     dryRun: true,
     autoSignage: true,
+    appSource: null,
     inputs: [],
     apps: [],
     commands: [],

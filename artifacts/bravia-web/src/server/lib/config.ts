@@ -39,6 +39,16 @@ export const DisplaySchema = z
     dryRun: z.boolean().optional(),
     /** Return to signage after idle. Admin can override per display at runtime. */
     autoSignage: z.boolean().optional(),
+    /**
+     * Which device launches apps for this installation.
+     *
+     * Independent of what the panel is capable of. A Sony paired with a
+     * streaming device sets "streamer" even though the panel could do it
+     * itself; a panel with no app platform is "streamer" regardless. Omitted
+     * means "display when the panel supports apps, streamer otherwise", which
+     * is what every existing Sony-only entry resolves to.
+     */
+    appSource: z.enum(["display", "streamer"]).optional(),
     /** Optional per-display button overrides; omit to use catalog defaults. */
     inputs: z.array(z.enum(knownInputIds as [string, ...string[]])).optional(),
     apps: z.array(z.enum(knownAppIds as [string, ...string[]])).optional(),
@@ -78,6 +88,8 @@ export interface Display {
   psk: string;
   dryRun: boolean;
   autoSignage: boolean;
+  /** Which device launches apps here; null means "derive from driver support". */
+  appSource: "display" | "streamer" | null;
   inputs: string[];
   apps: string[];
   commands: string[];
@@ -142,6 +154,7 @@ function buildDisplay(entry: DisplayConfigInput, globalDryRun: boolean, forcedDr
     psk: entry.psk,
     dryRun: forcedDryRun || (entry.dryRun ?? globalDryRun),
     autoSignage: entry.autoSignage ?? true,
+    appSource: entry.appSource ?? null,
     inputs: entry.inputs ?? INPUTS.map((i) => i.id),
     apps: entry.apps ?? APPS.filter((a) => a.enabledByDefault).map((a) => a.id),
     commands: entry.commands ?? COMMANDS.filter((c) => c.enabledByDefault).map((c) => c.id),

@@ -1,5 +1,5 @@
 import type { Display } from "../lib/config";
-import type { AppControl, DisplayDriver } from "./types";
+import type { AppControl, Capability, DisplayDriver } from "./types";
 import { DriverError as DriverErrorClass } from "./types";
 import { sonyDriver } from "./sony";
 
@@ -39,12 +39,37 @@ export function driverFor(_display: Display): DisplayDriver {
  */
 export function appsFor(display: Display): AppControl {
   const driver = driverFor(display);
+
   if (!driver.apps) {
     throw new DriverErrorClass(
       `${display.hostname} is a ${driver.id} panel, which has no app platform of its own. App launch for this display belongs to its streaming device.`,
     );
   }
+  if (display.appSource === "streamer") {
+    throw new DriverErrorClass(
+      `${display.hostname} is configured to launch apps on its streaming device, not on the panel. Change appSource to "display" to drive the panel's own apps.`,
+    );
+  }
   return driver.apps;
+}
+
+/**
+ * Whether this installation launches apps on the panel or on a streaming device.
+ *
+ * Capability and configuration are deliberately separate. A Sony BZ30L supports
+ * apps, but paired with a streamer it should be set to "streamer" so the panel's
+ * app platform goes unused. A Sony model that drops the app platform, or an LG
+ * that gains one, only changes what the driver declares -- no room's config has
+ * to be revisited, and no caller grows a check on the make.
+ */
+export function appSourceFor(display: Display): "display" | "streamer" {
+  if (display.appSource) return display.appSource;
+  return supports(display, "apps") ? "display" : "streamer";
+}
+
+/** Whether the panel in this installation is capable of a given thing. */
+export function supports(display: Display, capability: Capability): boolean {
+  return driverFor(display).supports.has(capability);
 }
 
 /** Look a driver up by id, for config validation and the management UI. */

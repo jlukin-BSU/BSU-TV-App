@@ -21,6 +21,7 @@ function display(over: Partial<Display> = {}): Display {
     psk: "secret-psk",
     dryRun: false,
     autoSignage: true,
+    appSource: null,
     inputs: [],
     apps: [],
     commands: [],

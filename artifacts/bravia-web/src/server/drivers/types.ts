@@ -16,6 +16,19 @@ import type { Display } from "../lib/config";
  * without hard-coding a list of models.
  */
 
+/**
+ * Something a panel may be able to do.
+ *
+ * This is a statement about the model and firmware, NOT about how a given
+ * installation is wired. A Sony BZ30L supports `apps`, but if it is paired with
+ * a streaming device then the streamer should own app launch even though the
+ * panel could do it. Equally, a Sony model that drops the app platform, or an
+ * LG that gains one, changes what is *supported* without changing how any
+ * existing room is configured. Keep the two separate: drivers declare support,
+ * device config decides ownership.
+ */
+export type Capability = "power" | "input" | "volume" | "mute" | "screen" | "apps";
+
 export type PowerStatus = "active" | "standby" | "unknown";
 
 export interface VolumeInfo {
@@ -71,6 +84,12 @@ export interface DisplayDriver {
   /** Stable id, matching the `driver` value used in device config. */
   readonly id: string;
 
+  /**
+   * What this model can do. Declared, never inferred from the make elsewhere in
+   * the codebase -- nothing above this layer should contain "if Sony".
+   */
+  readonly supports: ReadonlySet<Capability>;
+
   getPowerStatus(display: Display): Promise<PowerStatus>;
   setPower(display: Display, on: boolean): Promise<void>;
 
@@ -84,6 +103,10 @@ export interface DisplayDriver {
   setScreenState(display: Display, kind: ScreenState): Promise<void>;
   getPlayingContent(display: Display): Promise<PlayingContent | null>;
 
-  /** Absent when the panel has no app platform of its own. */
+  /**
+   * How to drive the panel's apps. Present iff `supports` includes "apps" --
+   * that is, iff the model is capable. Whether a given installation actually
+   * uses it is a separate question, answered by appsFor().
+   */
   readonly apps?: AppControl;
 }
