@@ -49,6 +49,13 @@
   select{font-family:inherit;font-size:.9rem;color:var(--text);background:#141414;
          border:1px solid var(--line);border-radius:10px;padding:.5rem .6rem;outline:none}
   select:focus{border-color:var(--red)}
+  input[type=text]{font-family:inherit;width:100%;padding:.6rem .75rem;font-size:.95rem;color:var(--text);
+         background:#141414;border:1px solid var(--line);border-radius:10px;outline:none}
+  input[type=text]:focus{border-color:var(--red)}
+  .pick{width:1.2rem;height:1.2rem;accent-color:var(--red);flex:0 0 auto;margin-right:.1rem}
+  .groupbar{display:flex;gap:.6rem;align-items:center;margin-top:.9rem}
+  .groupbar input{flex:1}
+  .groupbar button{flex:0 0 auto;white-space:nowrap}
 
   /* device / system rows — .device from the management page */
   .device{display:flex;align-items:center;justify-content:space-between;gap:.8rem;
@@ -170,7 +177,7 @@
 <div id="view-reg">
 <main>
   <div class="card">
-    <div class="toolbar"><h2>Registered systems</h2><button class="ghost small">Add system</button></div>
+    <div class="toolbar"><h2>Systems</h2><span class="muted">a system = 1 TV + optional streamer + controllers</span></div>
     <div id="syslist"></div>
   </div>
 
@@ -190,10 +197,18 @@
   </div>
 
   <div class="card">
-    <div class="toolbar"><h2>Add a system — discovery</h2><button class="ghost small">Rescan</button></div>
+    <div class="toolbar"><h2>Unassigned devices</h2>
+      <span style="display:flex;gap:.4rem">
+        <button class="ghost small">Add manually</button>
+        <button class="ghost small">Rescan</button>
+      </span>
+    </div>
     <div id="found"></div>
-    <p class="muted" style="margin:.8rem 0">Roles are pre-filled from the probe and require confirmation.</p>
-    <button class="primary">Create system from selected</button>
+    <p class="muted" style="margin:.8rem 0 0">Roles are pre-filled from the probe and require confirmation.</p>
+    <div class="groupbar">
+      <input type="text" placeholder="System name — e.g. BUR 104">
+      <button class="primary">Group selected into a system</button>
+    </div>
   </div>
 </main>
 </div>
@@ -351,7 +366,8 @@ const FOUND = [
 function renderFound(){
   document.getElementById('found').innerHTML = FOUND.map(f=>`
     <div class="device" style="cursor:default">
-      <span class="meta"><span class="name">${f.m1}</span><span class="addr">${f.m2}</span></span>
+      <input type="checkbox" class="pick" checked>
+      <span class="meta" style="flex:1"><span class="name">${f.m1}</span><span class="addr">${f.m2}</span></span>
       <select><option>${f.role}</option><option>Display / TV</option><option>Streaming device</option>
               <option>Controller</option><option>Ignore</option></select>
     </div>`).join('');
