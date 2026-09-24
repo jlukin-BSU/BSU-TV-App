@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { buildingOf, buildingsIn, displaysInBuilding } from "./building";
-import type { Display } from "./config";
+import { makeDisplay } from "../testing/make-display";
 
 /**
  * Characterisation tests for the building-code parser.
@@ -12,23 +12,7 @@ import type { Display } from "./config";
  * so the prefix cases below are regressions, not hypotheticals.
  */
 
-function display(hostname: string): Display {
-  return {
-    hostname,
-    label: hostname,
-    psk: "",
-    dryRun: true,
-    autoSignage: true,
-    appSource: null,
-    inputs: [],
-    apps: [],
-    commands: [],
-    ipOverride: null,
-    controlIpOverride: null,
-    resolvedIps: [],
-    targetIp: null,
-  };
-}
+const display = (hostname: string) => makeDisplay({ hostname, label: hostname, psk: "" });
 
 describe("buildingOf", () => {
   test("takes the letters immediately before the digits, not the leading letters", () => {

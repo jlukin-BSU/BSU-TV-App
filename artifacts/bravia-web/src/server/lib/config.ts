@@ -4,6 +4,7 @@ import { z } from "zod";
 import { APPS, COMMANDS, INPUTS } from "../../shared/catalog";
 import { isValidIp, normalizeIp } from "./ip";
 import { resolveHost } from "./resolver";
+import { driverById, driverIds } from "../drivers";
 import { logger } from "./logger";
 
 const knownAppIds = APPS.map((a) => a.id);
@@ -31,6 +32,19 @@ export const DisplaySchema = z
     /** Human-friendly name for the UI header. Defaults to hostname. */
     label: z.string().min(1).optional(),
     /**
+     * Which control protocol this panel speaks. Defaults to Sony, which is what
+     * every entry predating multi-vendor support is.
+     */
+    driver: z.string().min(1).optional(),
+    /**
+     * Set ID for protocols that address several panels on one link (LG). The
+     * factory default is 1; only change it if the panel was configured to
+     * something else.
+     */
+    setId: z.number().int().min(0).max(999).optional(),
+    /** Control port override. Each driver has a sensible default (LG: 9761). */
+    controlPort: z.number().int().min(1).max(65535).optional(),
+    /**
      * Pre-Shared Key from the display's own
      * Settings -> Network & Internet -> Local network setup -> IP control.
      */
@@ -56,6 +70,13 @@ export const DisplaySchema = z
   })
   .strict()
   .superRefine((display, ctx) => {
+    if (display.driver !== undefined && !driverById(display.driver)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["driver"],
+        message: `"${display.driver}" is not a driver this server knows. Available: ${driverIds().join(", ")}.`,
+      });
+    }
     if (display.ip !== undefined && !isValidIp(display.ip)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -85,6 +106,12 @@ export type DisplayConfigInput = z.infer<typeof DisplaySchema>;
 export interface Display {
   hostname: string;
   label: string;
+  /** Driver id; see src/server/drivers. */
+  driver: string;
+  /** Protocol-level set id (LG). Unused by drivers that do not address panels. */
+  setId: number;
+  /** Control port override, or null for the driver's default. */
+  controlPort: number | null;
   psk: string;
   dryRun: boolean;
   autoSignage: boolean;
@@ -151,6 +178,9 @@ function buildDisplay(entry: DisplayConfigInput, globalDryRun: boolean, forcedDr
   return {
     hostname: entry.hostname,
     label: entry.label ?? entry.hostname,
+    driver: entry.driver ?? "sony-bravia",
+    setId: entry.setId ?? 1,
+    controlPort: entry.controlPort ?? null,
     psk: entry.psk,
     dryRun: forcedDryRun || (entry.dryRun ?? globalDryRun),
     autoSignage: entry.autoSignage ?? true,
@@ -174,7 +204,11 @@ function buildDisplay(entry: DisplayConfigInput, globalDryRun: boolean, forcedDr
 export function materialize(config: AppConfig): void {
   const displays = config.rawEntries.map((e) => buildDisplay(e, config.globalDryRun, config.forcedDryRun));
 
-  const missingPsk = displays.filter((d) => !d.dryRun && d.psk.trim() === "");
+  // Only some protocols authenticate. Asking the driver keeps an LG entry --
+  // which has no PSK at all -- from being rejected as misconfigured.
+  const missingPsk = displays.filter(
+    (d) => !d.dryRun && (driverById(d.driver)?.requiresPsk ?? true) && d.psk.trim() === "",
+  );
   if (missingPsk.length > 0) {
     throw new Error(
       `Missing a PSK for: ${missingPsk.map((d) => `"${d.hostname}"`).join(", ")}. Set each one from the display's IP control settings, or mark the entry dry-run.`,

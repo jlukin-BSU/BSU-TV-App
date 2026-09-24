@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { appSourceFor, appsFor, driverFor, supports, DriverError } from "./index";
-import type { Display } from "../lib/config";
+import { makeDisplay } from "../testing/make-display";
 
 /**
  * What a panel *can* do and what an installation *uses it for* are separate.
@@ -13,24 +13,7 @@ import type { Display } from "../lib/config";
  * pairing case below is what fails.
  */
 
-function display(over: Partial<Display> = {}): Display {
-  return {
-    hostname: "tv-rsu008-l",
-    label: "RSU 008 Left",
-    psk: "psk",
-    dryRun: true,
-    autoSignage: true,
-    appSource: null,
-    inputs: [],
-    apps: [],
-    commands: [],
-    ipOverride: null,
-    controlIpOverride: null,
-    resolvedIps: ["10.0.0.5"],
-    targetIp: "10.0.0.5",
-    ...over,
-  };
-}
+const display = makeDisplay;
 
 describe("capability declaration", () => {
   test("the driver declares what the model can do", () => {

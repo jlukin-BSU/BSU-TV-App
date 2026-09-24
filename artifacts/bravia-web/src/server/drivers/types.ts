@@ -85,6 +85,13 @@ export interface DisplayDriver {
   readonly id: string;
 
   /**
+   * Whether the protocol authenticates with a pre-shared key. Sony does; LG's
+   * command set has no auth at all. Config validation asks the driver rather
+   * than assuming every panel needs a PSK.
+   */
+  readonly requiresPsk: boolean;
+
+  /**
    * What this model can do. Declared, never inferred from the make elsewhere in
    * the codebase -- nothing above this layer should contain "if Sony".
    */

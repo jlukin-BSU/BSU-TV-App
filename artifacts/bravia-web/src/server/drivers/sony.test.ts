@@ -2,7 +2,7 @@ import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { DriverError } from "./types";
 import { sonyDriver } from "./sony";
-import type { Display } from "../lib/config";
+import { makeDisplay } from "../testing/make-display";
 
 /**
  * Characterisation tests for the Sony BRAVIA driver.
@@ -14,24 +14,8 @@ import type { Display } from "../lib/config";
  * a refactor and hard to notice afterwards, which is exactly why it is tested.
  */
 
-function display(over: Partial<Display> = {}): Display {
-  return {
-    hostname: "tv-rsu008-l",
-    label: "RSU 008 Left",
-    psk: "secret-psk",
-    dryRun: false,
-    autoSignage: true,
-    appSource: null,
-    inputs: [],
-    apps: [],
-    commands: [],
-    ipOverride: null,
-    controlIpOverride: null,
-    resolvedIps: ["10.0.0.5"],
-    targetIp: "10.0.0.5",
-    ...over,
-  };
-}
+const display = (over: Parameters<typeof makeDisplay>[0] = {}) =>
+  makeDisplay({ psk: "secret-psk", dryRun: false, ...over });
 
 interface Captured {
   url: string;

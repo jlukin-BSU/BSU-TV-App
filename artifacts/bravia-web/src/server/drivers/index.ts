@@ -2,6 +2,7 @@ import type { Display } from "../lib/config";
 import type { AppControl, Capability, DisplayDriver } from "./types";
 import { DriverError as DriverErrorClass } from "./types";
 import { sonyDriver } from "./sony";
+import { lgDriver } from "./lg";
 
 export { DriverError } from "./types";
 export type {
@@ -16,18 +17,21 @@ export type {
 
 const DRIVERS: Record<string, DisplayDriver> = {
   [sonyDriver.id]: sonyDriver,
+  [lgDriver.id]: lgDriver,
 };
+
+/** Used when an entry names no driver -- i.e. everything registered so far. */
+const DEFAULT_DRIVER = sonyDriver;
 
 /**
  * The driver for a display.
  *
- * Every registered display is a Sony today, and the device config has no
- * `driver` field yet -- that arrives with the systems/roles schema. Until then
- * this resolves to Sony for everything, which keeps existing installs behaving
- * exactly as before while giving callers the seam to dispatch through.
+ * Config validation rejects an unknown driver id, so the fallback here is for
+ * entries that name none -- every display registered before multi-vendor
+ * support, which are all Sony.
  */
-export function driverFor(_display: Display): DisplayDriver {
-  return sonyDriver;
+export function driverFor(display: Display): DisplayDriver {
+  return DRIVERS[display.driver] ?? DEFAULT_DRIVER;
 }
 
 /**

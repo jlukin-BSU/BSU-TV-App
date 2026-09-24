@@ -377,6 +377,7 @@ async function getPlayingContent(display: Display): Promise<PlayingContent | nul
  */
 export const sonyDriver: DisplayDriver = {
   id: "sony-bravia",
+  requiresPsk: true,
   supports: new Set<Capability>(["power", "input", "volume", "mute", "screen", "apps"]),
 
   getPowerStatus,
