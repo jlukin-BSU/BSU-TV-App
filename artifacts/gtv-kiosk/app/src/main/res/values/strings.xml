@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BSU TV Hub</string>
+    <string name="app_name">BSU TV</string>
     <string name="setup_title">Hub server</string>
     <string name="setup_hint">http://host/</string>
     <string name="setup_save">Save and reload</string>

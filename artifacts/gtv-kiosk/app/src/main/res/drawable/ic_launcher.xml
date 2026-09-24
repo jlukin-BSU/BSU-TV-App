@@ -1,25 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Google TV launcher tile. Matches the hub's surface: the same radial
-     gradient as src/web/index.css, with the wordmark tinted white the way
-     TopBar renders it (brightness-0 invert). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item>
         <shape android:shape="rectangle">
-            <size android:width="320dp" android:height="180dp" />
+            <size android:width="108dp" android:height="108dp" />
             <gradient
                 android:type="radial"
                 android:centerX="0.5"
                 android:centerY="0.0"
-                android:gradientRadius="260dp"
+                android:gradientRadius="88dp"
                 android:startColor="#303030"
                 android:endColor="#222222" />
         </shape>
     </item>
 
     <item
-        android:width="240dp"
-        android:height="89dp"
+        android:width="84dp"
+        android:height="31dp"
         android:gravity="center">
         <bitmap
             android:src="@drawable/bsu_logo"
