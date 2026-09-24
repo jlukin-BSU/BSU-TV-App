@@ -1,7 +1,12 @@
 .gradle/
 build/
 local.properties
-*.apk
-*.keystore
-
 .idea/
+*.apk
+*.aab
+
+# Signing material. The keystore belongs outside the repo entirely; this is a
+# backstop in case one is ever copied in by mistake.
+keystore.properties
+*.jks
+*.keystore
