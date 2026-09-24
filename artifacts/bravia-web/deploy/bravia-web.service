@@ -1,0 +1,48 @@
+[Unit]
+Description=BSU BRAVIA display control (bravia-web)
+Documentation=https://github.com/jlukin-BSU/BSU-TV-App
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=its
+Group=its
+
+WorkingDirectory=/home/its/BSU-TV-App/artifacts/bravia-web
+# PORT, HOST, DEVICES_CONFIG, ADMIN_OVERRIDES, LOG_LEVEL, NODE_ENV live here.
+EnvironmentFile=/etc/bravia-web/bravia-web.env
+ExecStart=/home/its/.local/node20/bin/node --enable-source-maps /home/its/BSU-TV-App/artifacts/bravia-web/dist/index.mjs
+
+# Bind port 80 without running as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+Restart=always
+RestartSec=3
+# Don't give up if the network is slow to come back after a power event.
+StartLimitBurst=0
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bravia-web
+
+# --- Hardening ---------------------------------------------------------------
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+SystemCallArchitectures=native
+
+# The app only reads its config and writes overrides.json under /etc/bravia-web.
+ReadOnlyPaths=/home/its/BSU-TV-App
+ReadWritePaths=/etc/bravia-web
+
+[Install]
+WantedBy=multi-user.target

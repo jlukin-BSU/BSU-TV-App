@@ -1,0 +1,29 @@
+{
+  "//": "Copy to devices.json (gitignored) OR manage it from the registration page.",
+  "//dryRun": "Global default. true = log Sony calls instead of sending them.",
+  "dryRun": false,
+  "displays": [
+    {
+      "//": "Normal entry: identity + command target are resolved from hostname via DNS, so it survives a DHCP address change (needs dynamic DNS or a reservation).",
+      "hostname": "bsu-av-tv-lib-101",
+      "label": "Library 101",
+      "//psk": "From the display: Settings > Network & Internet > Local network setup > IP control.",
+      "psk": "REPLACE_WITH_DISPLAY_PSK"
+    },
+    {
+      "//": "Fixed-IP entry: set ip only when the display should NOT be resolved from DNS (no DNS record). ip is then used directly.",
+      "hostname": "bsu-av-tv-lib-102",
+      "label": "Library 102",
+      "ip": "10.28.147.42",
+      "psk": "REPLACE_WITH_DISPLAY_PSK"
+    },
+    {
+      "//": "Local dry-run test: loopback, no PSK, nothing sent.",
+      "hostname": "nuc-local",
+      "label": "NUC (local test)",
+      "ip": "127.0.0.1",
+      "psk": "",
+      "dryRun": true
+    }
+  ]
+}

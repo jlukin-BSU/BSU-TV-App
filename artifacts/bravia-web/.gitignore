@@ -1,0 +1,16 @@
+# Real device config: contains per-display Pre-Shared Keys. Never commit.
+devices.json
+.env
+
+# Admin-written per-display settings (runtime state)
+overrides.json
+
+# App launch-target overrides (runtime state)
+app-overrides.json
+
+# Custom apps + uploaded icons (runtime state)
+custom-apps.json
+icons/
+
+# Dashboard PINs (runtime state)
+dash-pins.json
