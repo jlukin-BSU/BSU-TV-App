@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-border: hsl(var(--border));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+}
+
+:root {
+  --background: 0 0% 14%;
+  --tile-bg: rgba(12,12,12,0.58);
+  --tile-bg-focused: rgba(28,28,28,0.72);
+  --foreground: 0 0% 96%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 96%;
+
+  --border: 0 0% 100%;
+
+  --primary: 351 83% 42%;
+  --primary-foreground: 0 0% 100%;
+
+  --muted: 224 15% 14%;
+  --muted-foreground: 220 10% 58%;
+}
+
+@layer base {
+  html {
+    /* 1.25vw base: at 1920px → 24px/rem  |  at 3840px (4K) → 48px/rem
+       Every Tailwind rem utility scales proportionally with no other changes. */
+    font-size: 1.25vw;
+  }
+
+  body {
+    @apply antialiased font-sans overflow-hidden select-none;
+    background: radial-gradient(ellipse at 50% 0%, #303030 0%, #222222 70%);
+    color: hsl(var(--foreground));
+    min-height: 100vh;
+  }
+}
