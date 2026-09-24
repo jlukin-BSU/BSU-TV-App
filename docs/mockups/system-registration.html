@@ -4,378 +4,335 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BSU AV — System Registration &amp; Remote (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* Tokens lifted from src/server/manage/page.ts and src/web/index.css */
   :root{
-    --bg:#f6f7f9; --panel:#fff; --ink:#1a1d21; --muted:#5f6772; --line:#e2e5ea;
-    --accent:#c8102e; --accent-soft:#fdeaed;
-    --ok:#0f7b41; --ok-soft:#e6f4ec; --warn:#8a5a00; --warn-soft:#fdf2dc;
-    --off:#7a828c; --off-soft:#eef0f3;
-    --display:#1668c4; --display-soft:#e7f0fb;
-    --streamer:#6d3bbf; --streamer-soft:#f0eafc;
-    --controller:#0f7b6c; --controller-soft:#e4f4f1;
-    --radius:10px;
-    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --red:#c41230; --bg:#141414; --panel:#1f1f1f; --line:rgba(255,255,255,.14);
+    --text:#f5f5f5; --muted:#a0a0a0;
+    --gold-bg:#5a4b00; --gold:#ffd94a;
+    --ok-bg:rgba(30,125,60,.18); --ok-line:rgba(30,125,60,.5); --ok:#8ff0ad;
+    --err-bg:rgba(196,18,48,.16); --err-line:rgba(196,18,48,.5); --err:#ff9aa8;
   }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
-  header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-  header h1{font-size:15px;margin:0;font-weight:640;letter-spacing:.2px}
-  .mock-flag{font-size:11px;background:var(--warn-soft);color:var(--warn);border:1px solid #f0dcae;padding:2px 8px;border-radius:99px;font-weight:600}
-  nav{margin-left:auto;display:flex;gap:4px;background:var(--off-soft);padding:3px;border-radius:9px}
-  nav button{font:inherit;font-size:13px;font-weight:560;border:0;background:transparent;color:var(--muted);padding:6px 14px;border-radius:7px;cursor:pointer}
-  nav button[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 
-  main{padding:22px;max-width:1240px;margin:0 auto}
-  .cols{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}
-  @media (max-width:900px){.cols{grid-template-columns:1fr}}
+  header{padding:1.1rem 1.25rem;border-bottom:1px solid var(--line);display:flex;
+         align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+         position:sticky;top:0;background:var(--bg);z-index:30}
+  header h1{font-size:1.15rem;margin:0;font-weight:700;letter-spacing:.01em}
+  header .sub{color:var(--muted);font-size:.8rem;margin-top:.15rem}
+  .tag{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.05em;
+       padding:.1rem .45rem;border-radius:999px;vertical-align:middle}
+  .tag.dry{background:var(--gold-bg);color:var(--gold)}
 
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
-  .panel-h{padding:12px 14px;border-bottom:1px solid var(--line);font-weight:640;font-size:13px;display:flex;align-items:center;gap:8px}
-  .panel-b{padding:14px}
+  nav{display:flex;gap:.4rem}
+  nav button{font-family:inherit;font-size:.9rem;font-weight:600;border:none;border-radius:10px;
+             padding:.5rem .95rem;cursor:pointer;background:rgba(255,255,255,.08);color:var(--text)}
+  nav button[aria-selected="true"]{background:var(--red);color:#fff}
 
-  .syslist{list-style:none;margin:0;padding:6px}
-  .syslist li{margin:0}
-  .syslist button{width:100%;text-align:left;font:inherit;background:transparent;border:0;padding:10px 11px;border-radius:8px;cursor:pointer;display:block}
-  .syslist button:hover{background:var(--off-soft)}
-  .syslist button[aria-current="true"]{background:var(--accent-soft);box-shadow:inset 0 0 0 1px #f3c6ce}
-  .syslist .nm{font-weight:600;display:block}
-  .syslist .sub{color:var(--muted);font-size:12px;display:block;margin-top:2px}
+  main{max-width:820px;margin:0 auto;padding:1.25rem}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+        padding:1rem 1.1rem;margin-bottom:.9rem}
+  h2{font-size:1.05rem;margin:.2rem 0 0}
+  .muted{color:var(--muted);font-size:.85rem}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:.9rem;gap:.8rem}
 
-  .shape{display:inline-flex;gap:4px;margin-top:6px}
-  .chip{font-size:10px;font-weight:700;letter-spacing:.4px;padding:2px 6px;border-radius:5px;text-transform:uppercase}
-  .c-display{background:var(--display-soft);color:var(--display)}
-  .c-streamer{background:var(--streamer-soft);color:var(--streamer)}
-  .c-controller{background:var(--controller-soft);color:var(--controller)}
+  button{font-family:inherit;font-size:1rem;font-weight:600;border:none;border-radius:10px;
+         padding:.7rem 1.1rem;cursor:pointer}
+  .primary{background:var(--red);color:#fff}
+  .ghost{background:rgba(255,255,255,.08);color:var(--text)}
+  .small{padding:.45rem .8rem;font-size:.85rem}
+  select{font-family:inherit;font-size:.9rem;color:var(--text);background:#141414;
+         border:1px solid var(--line);border-radius:10px;padding:.5rem .6rem;outline:none}
+  select:focus{border-color:var(--red)}
 
-  .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
-  .role{border:1px solid var(--line);border-radius:9px;padding:12px;background:#fcfcfd}
-  .role.display{border-top:3px solid var(--display)}
-  .role.streamer{border-top:3px solid var(--streamer)}
-  .role.controller{border-top:3px solid var(--controller)}
-  .role h4{margin:0 0 8px;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
-  .role .model{font-weight:640;margin-bottom:2px}
-  .kv{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;padding:2px 0}
-  .kv code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--ink)}
-  .none{color:var(--muted);font-style:italic;font-size:12.5px}
+  /* device / system rows — .device from the management page */
+  .device{display:flex;align-items:center;justify-content:space-between;gap:.8rem;
+          width:100%;text-align:left;background:rgba(255,255,255,.05);border:1px solid transparent;
+          border-radius:10px;padding:.6rem .7rem;margin-bottom:.4rem;cursor:pointer;
+          font-family:inherit;font-weight:400;color:var(--text)}
+  .device:hover{background:rgba(255,255,255,.08)}
+  .device[aria-current="true"]{border-color:var(--red);background:rgba(196,18,48,.12)}
+  .device .meta{min-width:0}
+  .device .name{font-weight:600;font-size:1.02rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .device .addr{color:var(--muted);font-size:.85rem;margin-top:.15rem}
+  .device .chips{margin-top:.3rem;display:flex;gap:.3rem;flex-wrap:wrap}
 
-  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:2px 8px;border-radius:99px}
-  .b-ok{background:var(--ok-soft);color:var(--ok)}
-  .b-off{background:var(--off-soft);color:var(--off)}
-  .b-warn{background:var(--warn-soft);color:var(--warn)}
-  .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .chip{font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+        padding:.12rem .45rem;border-radius:999px}
+  .c-tv{background:rgba(255,255,255,.12);color:var(--text)}
+  .c-str{background:var(--gold-bg);color:var(--gold)}
+  .c-ctl{background:var(--ok-bg);color:var(--ok)}
+  .c-na{background:rgba(255,255,255,.06);color:var(--muted)}
 
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{text-align:left;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);font-weight:650;padding:6px 8px;border-bottom:1px solid var(--line)}
-  td{padding:7px 8px;border-bottom:1px solid #f0f2f5;vertical-align:middle}
-  tr:last-child td{border-bottom:0}
-  .route{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px}
-  .route .chip{font-size:10px}
+  /* role blocks */
+  .role{background:rgba(255,255,255,.05);border-radius:10px;padding:.7rem .8rem;margin-bottom:.5rem}
+  .role .rh{display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem}
+  .role .rk{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}
+  .role .rm{font-weight:600;font-size:1rem}
+  .role .kv{display:flex;justify-content:space-between;gap:1rem;font-size:.82rem;color:var(--muted);padding:.1rem 0}
+  .role .kv code{font-family:ui-monospace,Consolas,monospace;font-size:.8rem;color:var(--text)}
+  .role.empty{opacity:.75}
+  .role.empty p{margin:.2rem 0 0;font-size:.85rem;color:var(--muted)}
+  .state{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:700;
+         padding:.1rem .5rem;border-radius:999px}
+  .state.ok{background:var(--ok-bg);color:var(--ok)}
+  .state.warn{background:var(--gold-bg);color:var(--gold)}
+  .dot{width:.4rem;height:.4rem;border-radius:50%;background:currentColor}
 
-  .opts{display:grid;gap:10px}
-  .opt{display:flex;gap:12px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fcfcfd}
-  .opt .txt{flex:1}
-  .opt .t{font-weight:600}
-  .opt .d{font-size:12px;color:var(--muted);margin-top:2px}
-  .sw{position:relative;width:40px;height:23px;flex:0 0 auto;border:0;border-radius:99px;background:#ccd2da;cursor:pointer;transition:background .15s}
-  .sw[aria-checked="true"]{background:var(--ok)}
-  .sw::after{content:"";position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s}
-  .sw[aria-checked="true"]::after{transform:translateX(17px)}
+  /* routing rows — .titem from the management page */
+  .titem{display:flex;align-items:center;gap:.5rem;padding:.5rem .6rem;border-radius:10px;
+         background:rgba(255,255,255,.05);margin-bottom:.4rem}
+  .titem .tname{flex:1;font-size:.95rem}
+  .titem .how{color:var(--muted);font-size:.75rem;font-family:ui-monospace,Consolas,monospace}
+  .titem.na .tname{color:var(--muted)}
 
-  .discover{margin-top:20px}
-  .found{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:#fcfcfd}
-  .found .ic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
-  .found .meta{flex:1;min-width:0}
-  .found .meta .m1{font-weight:620}
-  .found .meta .m2{font-size:12px;color:var(--muted)}
-  select,.btn{font:inherit;font-size:13px;border:1px solid #ccd2da;background:#fff;border-radius:7px;padding:6px 10px;cursor:pointer}
-  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-  .hint{font-size:12px;color:var(--muted);margin-top:10px;padding-left:10px;border-left:2px solid var(--line)}
+  /* options — .chk from the management page */
+  .chk{display:flex;align-items:flex-start;gap:.6rem;margin-top:.9rem;font-size:.95rem}
+  .chk:first-child{margin-top:.2rem}
+  .chk input{width:1.2rem;height:1.2rem;accent-color:var(--red);margin-top:.15rem;flex:0 0 auto}
+  .chk .d{color:var(--muted);font-size:.8rem;margin-top:.15rem}
+  .chk.disabled{opacity:.45}
+  .optrow{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:.9rem}
 
-  /* ---------- remote ---------- */
-  .remote-wrap{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:start}
-  @media (max-width:820px){.remote-wrap{grid-template-columns:1fr}}
-  .remote{width:232px;background:#1b1e23;border-radius:30px;padding:20px 18px 24px;box-shadow:0 10px 30px rgba(0,0,0,.28);display:grid;gap:15px;justify-items:center}
-  .rrow{display:flex;gap:14px;justify-content:center;width:100%}
-  .rbtn{width:46px;height:46px;border-radius:50%;border:0;background:#2b3038;color:#e8eaed;display:grid;place-items:center;cursor:pointer;transition:background .12s}
-  .rbtn:hover{background:#3a414b}
-  .rbtn:active{background:#4a525e}
-  .rbtn.power{background:#3a2226;color:#ff8a95}
-  .rbtn.power:hover{background:#4d2b30}
-  .rbtn svg{width:22px;height:22px;fill:currentColor}
-  .rlabel{font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:#79818d;text-align:center;margin-top:3px}
-  .rbtn-wrap{display:grid;justify-items:center;gap:0}
+  .msg{padding:.7rem .9rem;border-radius:10px;font-size:.9rem;margin-bottom:.9rem}
+  .msg.ok{background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok)}
+  .msg.note{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted)}
+  .hidden{display:none!important}
 
-  .dpad{position:relative;width:162px;height:162px;border-radius:50%;background:#2b3038;display:grid;place-items:center}
-  .dpad button{position:absolute;border:0;background:transparent;color:#e8eaed;cursor:pointer;width:46px;height:46px;display:grid;place-items:center;border-radius:12px}
-  .dpad button:hover{background:#3a414b}
-  .dpad button svg{width:24px;height:24px;fill:currentColor}
-  .dpad .up{top:4px}.dpad .down{bottom:4px}.dpad .left{left:4px}.dpad .right{right:4px}
-  .dpad .ok{position:relative;width:66px;height:66px;border-radius:50%;background:#e8eaed;color:#1b1e23;font-weight:700;font-size:13px;letter-spacing:.5px}
-  .dpad .ok:hover{background:#fff}
+  /* ---------- remote: hub surface (src/web/index.css) ---------- */
+  #view-rem main{max-width:820px}
+  .stage{background:radial-gradient(ellipse at 50% 0%, #303030 0%, #222222 70%);
+         border:1px solid var(--line);border-radius:14px;padding:1.6rem;
+         display:flex;gap:1.6rem;flex-wrap:wrap;justify-content:center;align-items:flex-start;
+         font-family:'Inter',"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .remote{width:15rem;display:grid;gap:.95rem;justify-items:center}
+  .rrow{display:flex;gap:.9rem;justify-content:center;align-items:flex-start}
+  .gbtn{border:none;cursor:pointer;color:#fff;background:rgba(255,255,255,.07);
+        box-shadow:0 .4rem 1.2rem rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.09);
+        backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+        display:grid;place-items:center;transition:background .15s, box-shadow .15s, transform .15s}
+  .gbtn:hover{background:rgba(255,255,255,.12);transform:translateY(-2px);
+              box-shadow:0 .8rem 1.8rem rgba(0,0,0,.45), 0 0 1.6rem .3rem rgba(220,40,65,.18)}
+  .gbtn:active{transform:translateY(0)}
+  .gbtn svg{width:1.25rem;height:1.25rem;fill:currentColor}
+  .circ{width:2.9rem;height:2.9rem;border-radius:50%}
+  .btnwrap{display:grid;justify-items:center;gap:.25rem}
+  .blab{font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+  .pwr{color:#ff8a95}
 
-  .vol{display:grid;gap:0;background:#2b3038;border-radius:99px;overflow:hidden}
-  .vol button{width:46px;height:44px;border:0;background:transparent;color:#e8eaed;cursor:pointer;display:grid;place-items:center}
-  .vol button:hover{background:#3a414b}
-  .vol button svg{width:22px;height:22px;fill:currentColor}
-  .vol .sep{height:1px;background:#3a414b}
+  .dpad{position:relative;width:11rem;height:11rem;border-radius:50%;
+        background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);
+        display:grid;place-items:center}
+  .dpad button{position:absolute;border:none;background:transparent;color:#fff;cursor:pointer;
+               width:2.9rem;height:2.9rem;display:grid;place-items:center;border-radius:.8rem}
+  .dpad button:hover{background:rgba(255,255,255,.10)}
+  .dpad button svg{width:1.5rem;height:1.5rem;fill:currentColor}
+  .dpad .up{top:.25rem}.dpad .down{bottom:.25rem}.dpad .left{left:.25rem}.dpad .right{right:.25rem}
+  .dpad .ok{position:relative;width:4.4rem;height:4.4rem;border-radius:50%;
+            background:rgba(255,255,255,.12);box-shadow:0 0 0 1px rgba(255,255,255,.14);
+            font-family:inherit;font-weight:600;font-size:.82rem;letter-spacing:.08em;color:#fff}
+  .dpad .ok:hover{background:rgba(255,255,255,.2);box-shadow:0 0 1.6rem .3rem rgba(220,40,65,.18)}
 
-  .legend{font-size:12px;color:var(--muted)}
-  .legend li{margin-bottom:5px}
-  .note{background:#fcfcfd;border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:13px}
-  .note b{font-weight:640}
+  .volstack{display:grid;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden;
+            box-shadow:0 0 0 1px rgba(255,255,255,.09)}
+  .volstack button{width:2.9rem;height:2.7rem;border:none;background:transparent;color:#fff;cursor:pointer;
+                   display:grid;place-items:center}
+  .volstack button:hover{background:rgba(255,255,255,.12)}
+  .volstack svg{width:1.25rem;height:1.25rem;fill:currentColor}
+  .volsep{height:1px;background:rgba(255,255,255,.12)}
+
+  .sidenote{flex:1;min-width:17rem;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .sidenote ul{margin:.4rem 0 0;padding-left:1.05rem;color:var(--muted);font-size:.85rem}
+  .sidenote li{margin-bottom:.4rem}
+  .sidenote code{font-family:ui-monospace,Consolas,monospace;color:var(--text);font-size:.8rem}
   [hidden]{display:none!important}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>BSU AV — System Registration</h1>
-  <span class="mock-flag">MOCKUP · sample data</span>
+  <div>
+    <h1>BSU AV — System Registration <span class="tag dry">MOCKUP</span></h1>
+    <div class="sub">Sample data only — no live devices</div>
+  </div>
   <nav role="tablist">
-    <button role="tab" id="tab-reg" aria-selected="true" onclick="showTab('reg')">Registration</button>
+    <button role="tab" id="tab-reg" aria-selected="true" onclick="showTab('reg')">Systems</button>
     <button role="tab" id="tab-rem" aria-selected="false" onclick="showTab('rem')">Remote</button>
   </nav>
 </header>
 
+<!-- ================= REGISTRATION ================= -->
+<div id="view-reg">
 <main>
-  <!-- ============ REGISTRATION ============ -->
-  <section id="view-reg">
-    <div class="cols">
-      <div class="panel">
-        <div class="panel-h">Systems</div>
-        <ul class="syslist" id="syslist"></ul>
-      </div>
+  <div class="card">
+    <div class="toolbar"><h2>Registered systems</h2><button class="ghost small">Add system</button></div>
+    <div id="syslist"></div>
+  </div>
 
-      <div>
-        <div class="panel">
-          <div class="panel-h" id="detail-title">—</div>
-          <div class="panel-b">
-            <div class="roles" id="roles"></div>
-          </div>
-        </div>
+  <div class="card">
+    <div class="toolbar"><h2 id="detail-title">—</h2></div>
+    <div id="roles"></div>
+  </div>
 
-        <div class="panel" style="margin-top:18px">
-          <div class="panel-h">Command routing <span style="font-weight:400;color:var(--muted)">— derived from what's registered</span></div>
-          <div class="panel-b" style="padding-top:4px">
-            <table id="routing"></table>
-          </div>
-        </div>
+  <div class="card">
+    <div class="toolbar"><h2>Command routing</h2><span class="muted">derived</span></div>
+    <div id="routing"></div>
+  </div>
 
-        <div class="panel" style="margin-top:18px">
-          <div class="panel-h">Per-system options <span style="font-weight:400;color:var(--muted)">— can't be inferred</span></div>
-          <div class="panel-b">
-            <div class="opts" id="opts"></div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="card">
+    <div class="toolbar"><h2>Per-system options</h2><span class="muted">can't be inferred</span></div>
+    <div id="opts"></div>
+  </div>
 
-    <div class="panel discover">
-      <div class="panel-h">Add a system — discovery</div>
-      <div class="panel-b">
-        <div id="found"></div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn">Rescan</button>
-          <button class="btn btn-primary">Create system from selected</button>
-        </div>
-        <p class="hint">Probe results are <b>pre-filled, not auto-applied</b>. A wrong guess sends power to the wrong box or drops an app launch, and that is painful to diagnose — so the role stays a confirm step.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ REMOTE ============ -->
-  <section id="view-rem" hidden>
-    <div class="panel">
-      <div class="panel-h">
-        Controller remote &nbsp;
-        <select id="remote-sys" onchange="renderRemote()" style="font-weight:400"></select>
-      </div>
-      <div class="panel-b">
-        <div class="remote-wrap">
-          <div class="remote" id="remote"></div>
-          <div>
-            <div class="note" style="margin-bottom:14px">
-              <b>What the controller is.</b> A remote analog, not a second UI. The hub tile grid lives on the
-              big screen — on an all-in-one that's the display's kiosk browser, on a split system it's the
-              sideloaded shell app on the streamer. The controller just sends key events.
-            </div>
-            <ul class="legend">
-              <li><b>Home</b> — foregrounds the hub. On a split system that is <code>am start</code> on the streamer's shell app, not the Google TV launcher.</li>
-              <li><b>Volume / Mute</b> — routed to the <b>display</b>, not the streamer.</li>
-              <li><b>Inputs</b> — optional per system. Same action as the TV Inputs tile on the hub. Hidden when the system has nothing worth switching to.</li>
-              <li><b>Omitted on purpose</b> — Assistant mic, app hotkeys, channel up/down, number pad, settings gear.</li>
-            </ul>
-            <div class="note" style="margin-top:14px">
-              <b>Icons.</b> Drawn here to match Google's Material Symbols set. For the real build we should
-              self-host the actual Material Symbols files rather than hotlink Google Fonts, so a controller
-              still renders if campus DNS or the CDN is having a day.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+  <div class="card">
+    <div class="toolbar"><h2>Add a system — discovery</h2><button class="ghost small">Rescan</button></div>
+    <div id="found"></div>
+    <p class="muted" style="margin:.8rem 0">Roles are pre-filled from the probe and require confirmation.</p>
+    <button class="primary">Create system from selected</button>
+  </div>
 </main>
+</div>
+
+<!-- ================= REMOTE ================= -->
+<div id="view-rem" hidden>
+<main>
+  <div class="card">
+    <div class="toolbar">
+      <h2>Controller remote</h2>
+      <select id="remote-sys" onchange="renderRemote()"></select>
+    </div>
+    <div class="stage">
+      <div class="remote" id="remote"></div>
+      <div class="sidenote">
+        <h2 style="font-size:.95rem;margin-bottom:.5rem">Key map</h2>
+        <div id="keymap"></div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
 
 <script>
-/* ---------------- icons (Material Symbols style) ---------------- */
 const I = {
-  up:   '<svg viewBox="0 0 24 24"><path d="M12 8.4 5.7 14.7l1.4 1.4L12 11.2l4.9 4.9 1.4-1.4z"/></svg>',
-  down: '<svg viewBox="0 0 24 24"><path d="M12 15.6 5.7 9.3l1.4-1.4L12 12.8l4.9-4.9 1.4 1.4z"/></svg>',
-  left: '<svg viewBox="0 0 24 24"><path d="M15.6 12 9.3 5.7 7.9 7.1l4.9 4.9-4.9 4.9 1.4 1.4z" transform="rotate(180 12 12)"/></svg>',
-  right:'<svg viewBox="0 0 24 24"><path d="M15.6 12 9.3 5.7 7.9 7.1l4.9 4.9-4.9 4.9 1.4 1.4z"/></svg>',
-  back: '<svg viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg>',
-  home: '<svg viewBox="0 0 24 24"><path d="M10 19v-5h4v5h5v-7h3L12 3 2 12h3v7z"/></svg>',
+  up:'<svg viewBox="0 0 24 24"><path d="M12 8.4 5.7 14.7l1.4 1.4L12 11.2l4.9 4.9 1.4-1.4z"/></svg>',
+  down:'<svg viewBox="0 0 24 24"><path d="M12 15.6 5.7 9.3l1.4-1.4L12 12.8l4.9-4.9 1.4 1.4z"/></svg>',
+  left:'<svg viewBox="0 0 24 24"><path d="M14.7 18.3 8.4 12l6.3-6.3 1.4 1.4L11.2 12l4.9 4.9z"/></svg>',
+  right:'<svg viewBox="0 0 24 24"><path d="M9.3 5.7 15.6 12l-6.3 6.3-1.4-1.4L12.8 12 7.9 7.1z"/></svg>',
+  back:'<svg viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg>',
+  home:'<svg viewBox="0 0 24 24"><path d="M10 19v-5h4v5h5v-7h3L12 3 2 12h3v7z"/></svg>',
   volUp:'<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.47 4.47 0 0 0 16.5 12M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4-.91 7-4.49 7-8.77s-3-7.86-7-8.77"/></svg>',
   volDn:'<svg viewBox="0 0 24 24"><path d="M18.5 12A4.5 4.5 0 0 0 16 7.97v8.05A4.47 4.47 0 0 0 18.5 12M5 9v6h4l5 5V4L9 9z"/></svg>',
-  mute: '<svg viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63m2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12c0-4.28-3-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9zM12 4 9.91 6.09 12 8.18z"/></svg>',
-  play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
-  pause:'<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>',
+  mute:'<svg viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63m2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12c0-4.28-3-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9zM12 4 9.91 6.09 12 8.18z"/></svg>',
+  play:'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
   power:'<svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2zm4.8 2.2-1.4 1.4A6.99 6.99 0 0 1 19 12a7 7 0 1 1-11.4-5.4L6.2 5.2A9 9 0 1 0 21 12a8.96 8.96 0 0 0-3.2-6.8"/></svg>',
-  hdmi: '<svg viewBox="0 0 24 24"><path d="M20 7.5H4c-.55 0-1 .45-1 1v4c0 .3.13.57.35.76l3 2.5c.18.15.41.24.65.24h10c.24 0 .47-.09.65-.24l3-2.5c.22-.19.35-.46.35-.76v-4c0-.55-.45-1-1-1M19 12l-2.36 2H7.36L5 12V9.5h14z"/></svg>',
-  tv:   '<svg viewBox="0 0 24 24"><path d="M21 3H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5v2h8v-2h5a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m0 14H3V5h18z"/></svg>',
-  cast: '<svg viewBox="0 0 24 24"><path d="M1 18v3h3c0-1.66-1.34-3-3-3m0-4v2a5 5 0 0 1 5 5h2c0-3.87-3.13-7-7-7m0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11m20-7H3a2 2 0 0 0-2 2v3h2V5h18v14h-7v2h7a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2"/></svg>',
-  box:  '<svg viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 14H4V6h16zM6 8h6v2H6zm10 1.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/></svg>',
-  pad:  '<svg viewBox="0 0 24 24"><path d="M17 1H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2m0 18H7V5h10z"/></svg>'
+  input:'<svg viewBox="0 0 24 24"><path d="M21 3.01H3c-1.1 0-2 .9-2 2V9h2V4.99h18v14.03H3V15H1v4.01c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98v-14c0-1.11-.9-2-2-2M11 16l4-4-4-4v3H1v2h10z"/></svg>'
 };
-const ic = (n)=>I[n]||'';
+const ic = n => I[n] || '';
 
-/* ---------------- sample systems ---------------- */
 const SYSTEMS = [
-  {
-    id:'rsu008l', name:'RSU 008 — Left', shape:'All-in-one',
-    note:'Existing install. Unchanged by the new model — it simply registers as a single-device system.',
-    display:{model:'Sony BRAVIA FW-55BZ30L', driver:'sony-bravia', addr:'tv-rsu008-l', detail:'REST + X-Auth-PSK', status:'ok'},
-    streamer:null,
-    controllers:[],
-    opts:{cast:true, inputsBtn:true},
-    castAvailable:true
-  },
-  {
-    id:'rsu012', name:'RSU 012 — Lecture Hall', shape:'TV + streamer',
-    note:'New install. LG panel takes IP control but is not Google-compatible, so the streamer is broken out.',
-    display:{model:'LG 86UR340C9UD', driver:'lg-commercial', addr:'tv-rsu012', detail:'ASCII command set over IP', status:'ok'},
-    streamer:{model:'Google TV Streamer 4K', driver:'google-tv-adb', addr:'gtv-rsu012', detail:'ADB · HDMI 1', status:'ok'},
-    controllers:[],
-    opts:{cast:false, inputsBtn:true},
-    castAvailable:false
-  },
-  {
-    id:'max210', name:'MAX 210 — Studio', shape:'TV + streamer + controllers',
+  { id:'rsu008l', name:'RSU 008 — Left', shape:'All-in-one',
+    note:'Existing install. Unchanged by the new model — it registers as a single-device system.',
+    display:{model:'Sony BRAVIA FW-55BZ30L',driver:'sony-bravia',addr:'tv-rsu008-l',detail:'REST + X-Auth-PSK',status:'ok'},
+    streamer:null, controllers:[], opts:{cast:true,inputsBtn:true}, castAvailable:true },
+  { id:'rsu012', name:'RSU 012 — Lecture Hall', shape:'TV + streamer',
+    note:'New install. The LG panel takes IP control but is not Google-compatible, so the streamer is broken out.',
+    display:{model:'LG 86UR340C9UD',driver:'lg-commercial',addr:'tv-rsu012',detail:'ASCII command set over IP',status:'ok'},
+    streamer:{model:'Google TV Streamer 4K',driver:'google-tv-adb',addr:'gtv-rsu012',detail:'ADB · HDMI 1',status:'ok'},
+    controllers:[], opts:{cast:false,inputsBtn:true}, castAvailable:false },
+  { id:'max210', name:'MAX 210 — Studio', shape:'TV + streamer + controllers',
     note:'Full shape. Two wall controllers, each mapped to this system by source IP.',
-    display:{model:'Sony BRAVIA FW-65BZ30L', driver:'sony-bravia', addr:'tv-max210', detail:'REST + X-Auth-PSK', status:'ok'},
-    streamer:{model:'Google TV Streamer 4K', driver:'google-tv-adb', addr:'gtv-max210', detail:'ADB · HDMI 2', status:'ok'},
-    controllers:[
-      {model:'Wall panel — entry', addr:'ctl-max210-a', detail:'paired', status:'ok'},
-      {model:'Wall panel — booth', addr:'ctl-max210-b', detail:'awaiting pairing code', status:'warn'}
-    ],
-    opts:{cast:true, inputsBtn:false},
-    castAvailable:true
-  }
+    display:{model:'Sony BRAVIA FW-65BZ30L',driver:'sony-bravia',addr:'tv-max210',detail:'REST + X-Auth-PSK',status:'ok'},
+    streamer:{model:'Google TV Streamer 4K',driver:'google-tv-adb',addr:'gtv-max210',detail:'ADB · HDMI 2',status:'ok'},
+    controllers:[{model:'Wall panel — entry',addr:'ctl-max210-a',detail:'paired',status:'ok'},
+                 {model:'Wall panel — booth',addr:'ctl-max210-b',detail:'awaiting pairing code',status:'warn'}],
+    opts:{cast:true,inputsBtn:false}, castAvailable:true }
 ];
-
 let current = SYSTEMS[0].id;
-const sysById = (id)=>SYSTEMS.find(s=>s.id===id);
+const sysById = id => SYSTEMS.find(s => s.id === id);
 
-/* ---------------- routing derivation ---------------- */
 function routingFor(s){
-  const hasStreamer = !!s.streamer;
-  const D = {who:'display', label:'Display', cls:'c-display'};
-  const S = {who:'streamer', label:'Streamer', cls:'c-streamer'};
-  const NA= {who:'none', label:'Not available', cls:''};
+  const sony = s.display.driver === 'sony-bravia';
+  const hasS = !!s.streamer;
+  const TV={l:'TV',c:'c-tv'}, ST={l:'Streamer',c:'c-str'}, NA={l:'n/a',c:'c-na'};
   return [
-    {cap:'Power',              to:D, how:s.display.driver==='sony-bravia'?'setPowerStatus':'ka command'},
-    {cap:'Input / source',     to:D, how:s.display.driver==='sony-bravia'?'setPlayContent':'xb command'},
-    {cap:'Volume / mute',      to:D, how:s.display.driver==='sony-bravia'?'setAudioVolume':'kf / ke command'},
-    {cap:'Screen off',         to:D, how:s.display.driver==='sony-bravia'?'pictureOff':'kd screen mute'},
-    {cap:'Cast / AirPlay',     to:s.opts.cast?D:NA, how:s.opts.cast?'switch to cast input':'turned off for this system'},
-    {cap:'App launch',         to:hasStreamer?S:D, how:hasStreamer?'am start / monkey':'setActiveApp'},
-    {cap:'Wipe app credentials',to:hasStreamer?S:NA, how:hasStreamer?'pm clear <pkg>':'no equivalent on the panel'},
-    {cap:'Foreground app read',to:hasStreamer?S:NA, how:hasStreamer?'dumpsys activity':'REST errors on apps'},
-    {cap:'Home / hub',         to:hasStreamer?S:D, how:hasStreamer?'am start — kiosk shell':'reload kiosk URL'}
+    {cap:'Power',                to:TV, how:sony?'setPowerStatus':'ka'},
+    {cap:'Input / source',       to:TV, how:sony?'setPlayContent':'xb'},
+    {cap:'Volume / mute',        to:TV, how:sony?'setAudioVolume':'kf / ke'},
+    {cap:'Screen off',           to:TV, how:sony?'pictureOff':'kd'},
+    {cap:'Cast / AirPlay',       to:s.opts.cast?TV:NA, how:s.opts.cast?'switch to cast input':'off for this system'},
+    {cap:'App launch',           to:hasS?ST:TV, how:hasS?'am start':'setActiveApp'},
+    {cap:'Wipe app credentials', to:hasS?ST:NA, how:hasS?'pm clear <pkg>':'no equivalent on the panel'},
+    {cap:'Foreground app',       to:hasS?ST:NA, how:hasS?'dumpsys activity':'REST errors on apps'},
+    {cap:'Home / hub',           to:hasS?ST:TV, how:hasS?'am start — shell':'reload kiosk URL'}
   ];
 }
 
-/* ---------------- render: registration ---------------- */
 function renderList(){
   document.getElementById('syslist').innerHTML = SYSTEMS.map(s=>{
-    const chips = [`<span class="chip c-display">TV</span>`]
-      .concat(s.streamer?[`<span class="chip c-streamer">Streamer</span>`]:[])
-      .concat(s.controllers.length?[`<span class="chip c-controller">${s.controllers.length} ctl</span>`]:[])
-      .join('');
-    return `<li><button aria-current="${s.id===current}" onclick="select('${s.id}')">
-      <span class="nm">${s.name}</span>
-      <span class="sub">${s.shape}</span>
-      <span class="shape">${chips}</span>
-    </button></li>`;
+    const chips = '<span class="chip c-tv">TV</span>'
+      + (s.streamer ? '<span class="chip c-str">Streamer</span>' : '')
+      + (s.controllers.length ? `<span class="chip c-ctl">${s.controllers.length} controller${s.controllers.length>1?'s':''}</span>` : '');
+    return `<button class="device" aria-current="${s.id===current}" onclick="select('${s.id}')">
+      <span class="meta">
+        <span class="name">${s.name}</span>
+        <span class="addr">${s.shape}</span>
+        <span class="chips">${chips}</span>
+      </span>
+    </button>`;
   }).join('');
 }
 
-function statusBadge(st){
-  if(st==='ok')   return `<span class="badge b-ok"><span class="dot"></span>Reachable</span>`;
-  if(st==='warn') return `<span class="badge b-warn"><span class="dot"></span>Pending</span>`;
-  return `<span class="badge b-off"><span class="dot"></span>Unknown</span>`;
-}
+const stateTag = st => st==='ok'
+  ? '<span class="state ok"><span class="dot"></span>Reachable</span>'
+  : '<span class="state warn"><span class="dot"></span>Pending</span>';
 
 function renderDetail(){
   const s = sysById(current);
-  document.getElementById('detail-title').textContent = s.name + ' — ' + s.shape;
+  document.getElementById('detail-title').textContent = s.name;
 
-  const roleCard = (cls,title,iconName,d)=>`
-    <div class="role ${cls}">
-      <h4>${title}</h4>
-      <div class="model">${d.model}</div>
+  const role = (kind,d) => `<div class="role">
+      <div class="rh"><span class="rk">${kind}</span>${stateTag(d.status)}</div>
+      <div class="rm">${d.model}</div>
       <div class="kv"><span>Address</span><code>${d.addr}</code></div>
       ${d.driver?`<div class="kv"><span>Driver</span><code>${d.driver}</code></div>`:''}
       <div class="kv"><span>Control</span><span>${d.detail}</span></div>
-      <div style="margin-top:8px">${statusBadge(d.status)}</div>
     </div>`;
 
-  let html = roleCard('display','Display / TV','tv',s.display);
-  html += s.streamer
-    ? roleCard('streamer','Streaming device','box',s.streamer)
-    : `<div class="role streamer"><h4>Streaming device</h4><p class="none">None — the panel runs the apps itself. App launch stays on the display, and credential wipe is unavailable.</p></div>`;
-  html += s.controllers.length
-    ? s.controllers.map(c=>roleCard('controller','Controller','pad',c)).join('')
-    : `<div class="role controller"><h4>Controller</h4><p class="none">None registered. The hub on the big screen is the only control surface.</p></div>`;
-  document.getElementById('roles').innerHTML = html;
+  let h = role('Display / TV', s.display);
+  h += s.streamer ? role('Streaming device', s.streamer)
+    : `<div class="role empty"><div class="rh"><span class="rk">Streaming device</span></div>
+       <p>None — apps run on the panel.</p></div>`;
+  h += s.controllers.length ? s.controllers.map(c=>role('Controller', c)).join('')
+    : `<div class="role empty"><div class="rh"><span class="rk">Controller</span></div>
+       <p>None registered.</p></div>`;
+  document.getElementById('roles').innerHTML = h;
 
-  // routing table
-  const rows = routingFor(s).map(r=>{
-    const badge = r.to.who==='none'
-      ? `<span class="badge b-off">Not available</span>`
-      : `<span class="route"><span class="chip ${r.to.cls}">${r.to.label}</span></span>`;
-    return `<tr><td style="font-weight:560">${r.cap}</td><td>${badge}</td>
-            <td style="color:var(--muted);font-size:12.5px">${r.how}</td></tr>`;
-  }).join('');
-  document.getElementById('routing').innerHTML =
-    `<thead><tr><th>Capability</th><th style="width:150px">Routed to</th><th>Call</th></tr></thead><tbody>${rows}</tbody>`;
+  document.getElementById('routing').innerHTML = routingFor(s).map(r=>`
+    <div class="titem ${r.to.c==='c-na'?'na':''}">
+      <span class="tname">${r.cap}</span>
+      <span class="chip ${r.to.c}">${r.to.l}</span>
+      <span class="how">${r.how}</span>
+    </div>`).join('');
 
-  // options
-  const castDisabled = !s.castAvailable;
+  const noCast = !s.castAvailable;
   document.getElementById('opts').innerHTML = `
-    <div class="opt">
-      <div class="txt">
-        <div class="t">Cast / AirPlay is an input on this display</div>
-        <div class="d">${castDisabled
-          ? 'This panel reports no cast input, so the option is unavailable.'
-          : 'Treated as a TV input, switched like any other source. Cannot be detected reliably — set it from what you see on the panel.'}</div>
-      </div>
-      <button class="sw" role="switch" aria-checked="${s.opts.cast}" ${castDisabled?'disabled style="opacity:.4;cursor:not-allowed"':''}
-        onclick="toggle('cast')"></button>
-    </div>
-    <div class="opt">
-      <div class="txt">
-        <div class="t">Show the Inputs button on the remote</div>
-        <div class="d">Same action as the TV Inputs tile on the hub. Turn it off where there is nothing to switch to.</div>
-      </div>
-      <button class="sw" role="switch" aria-checked="${s.opts.inputsBtn}" onclick="toggle('inputsBtn')"></button>
-    </div>
-    <div class="opt">
-      <div class="txt">
-        <div class="t">Hub host</div>
-        <div class="d">Where the tile grid renders. Derived from the shape; override only if an install is unusual.</div>
-      </div>
+    <label class="chk ${noCast?'disabled':''}">
+      <input type="checkbox" ${s.opts.cast?'checked':''} ${noCast?'disabled':''} onchange="toggle('cast')">
+      <span>Cast / AirPlay available as an input
+        ${noCast?'<span class="d">Not reported by this panel.</span>':''}
+      </span>
+    </label>
+    <label class="chk">
+      <input type="checkbox" ${s.opts.inputsBtn?'checked':''} onchange="toggle('inputsBtn')">
+      <span>Show Inputs button on the remote</span>
+    </label>
+    <div class="optrow">
+      <span>Hub host</span>
       <select>
         <option ${!s.streamer?'selected':''}>Display kiosk browser</option>
         <option ${s.streamer?'selected':''}>Streamer shell app</option>
@@ -383,52 +340,37 @@ function renderDetail(){
     </div>`;
 }
 
-function toggle(key){
-  const s = sysById(current);
-  s.opts[key] = !s.opts[key];
-  renderDetail();
-  renderRemoteOptions();
-}
+function toggle(k){ const s=sysById(current); s.opts[k]=!s.opts[k]; renderDetail(); renderRemote(); }
+function select(id){ current=id; renderList(); renderDetail(); syncRemoteSelect(); }
 
-function select(id){ current = id; renderList(); renderDetail(); }
-
-/* ---------------- discovery ---------------- */
 const FOUND = [
-  {m1:'Google TV Streamer 4K', m2:'gtv-bur104 · 10.30.14.62 · mDNS _googlecast._tcp · ADB port found', role:'Streaming device', color:'streamer'},
-  {m1:'Sony BRAVIA FW-75BZ30L', m2:'tv-bur104 · 10.30.14.61 · SSDP device description', role:'Display / TV', color:'display'},
-  {m1:'Unidentified device', m2:'10.30.14.77 · responds on :80, no SSDP, no mDNS', role:'— choose —', color:'off'}
+  {m1:'Google TV Streamer 4K', m2:'gtv-bur104 · 10.30.14.62 · mDNS _googlecast._tcp · ADB port found', role:'Streaming device'},
+  {m1:'Sony BRAVIA FW-75BZ30L', m2:'tv-bur104 · 10.30.14.61 · SSDP device description', role:'Display / TV'},
+  {m1:'Unidentified device', m2:'10.30.14.77 · responds on :80, no SSDP, no mDNS', role:'— choose —'}
 ];
 function renderFound(){
   document.getElementById('found').innerHTML = FOUND.map(f=>`
-    <div class="found">
-      <div class="ic" style="background:var(--${f.color==='off'?'off':f.color}-soft,#eef0f3);color:var(--${f.color==='off'?'off':f.color},#7a828c)">
-        ${ic(f.color==='streamer'?'box':f.color==='display'?'tv':'pad')}
-      </div>
-      <div class="meta"><div class="m1">${f.m1}</div><div class="m2">${f.m2}</div></div>
-      <select><option>${f.role}</option><option>Display / TV</option><option>Streaming device</option><option>Controller</option><option>Ignore</option></select>
+    <div class="device" style="cursor:default">
+      <span class="meta"><span class="name">${f.m1}</span><span class="addr">${f.m2}</span></span>
+      <select><option>${f.role}</option><option>Display / TV</option><option>Streaming device</option>
+              <option>Controller</option><option>Ignore</option></select>
     </div>`).join('');
 }
 
-/* ---------------- render: remote ---------------- */
-function renderRemoteOptions(){
+function syncRemoteSelect(){
   const sel = document.getElementById('remote-sys');
-  const keep = sel.value;
-  sel.innerHTML = SYSTEMS.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-  if(keep) sel.value = keep;
+  sel.innerHTML = SYSTEMS.map(s=>`<option value="${s.id}" ${s.id===current?'selected':''}>${s.name}</option>`).join('');
   renderRemote();
 }
 
 function renderRemote(){
-  const s = sysById(document.getElementById('remote-sys').value || current);
-  const btn = (icon,label,cls='')=>`<div class="rbtn-wrap"><button class="rbtn ${cls}">${ic(icon)}</button><span class="rlabel">${label}</span></div>`;
+  const sel = document.getElementById('remote-sys');
+  const s = sysById(sel.value || current);
+  const b = (icon,label,cls='') =>
+    `<span class="btnwrap"><button class="gbtn circ ${cls}">${ic(icon)}</button><span class="blab">${label}</span></span>`;
 
   document.getElementById('remote').innerHTML = `
-    <div class="rrow">
-      ${btn('power','Power','power')}
-      ${btn('home','Home')}
-      ${btn('back','Back')}
-    </div>
-
+    <div class="rrow">${b('power','Power','pwr')}${b('home','Home')}${b('back','Back')}</div>
     <div class="dpad">
       <button class="up">${ic('up')}</button>
       <button class="left">${ic('left')}</button>
@@ -436,34 +378,45 @@ function renderRemote(){
       <button class="right">${ic('right')}</button>
       <button class="down">${ic('down')}</button>
     </div>
-
-    <div class="rrow" style="align-items:flex-start">
-      <div class="vol">
-        <button title="Volume up">${ic('volUp')}</button>
-        <div class="sep"></div>
-        <button title="Volume down">${ic('volDn')}</button>
-      </div>
-      <div style="display:grid;gap:14px">
-        ${btn('mute','Mute')}
-        ${btn('play','Play/Pause')}
-      </div>
+    <div class="rrow">
+      <span class="btnwrap">
+        <span class="volstack">
+          <button title="Volume up">${ic('volUp')}</button>
+          <span class="volsep"></span>
+          <button title="Volume down">${ic('volDn')}</button>
+        </span>
+        <span class="blab">Volume</span>
+      </span>
+      <span style="display:grid;gap:.6rem">${b('mute','Mute')}${b('play','Play')}</span>
     </div>
+    ${s.opts.inputsBtn ? `<div class="rrow">${b('input','Inputs')}</div>`
+      : `<div class="blab" style="opacity:.5">Inputs button off for this system</div>`}`;
 
-    ${s.opts.inputsBtn ? `<div class="rrow">${btn('hdmi','Inputs')}</div>`
-                       : `<div class="rlabel" style="opacity:.6">Inputs button off for this system</div>`}
-  `;
+  const hasS = !!s.streamer;
+  const TV = '<span class="chip c-tv">TV</span>', ST = '<span class="chip c-str">Streamer</span>';
+  const keys = [
+    ['Power',      TV,          s.display.driver==='sony-bravia'?'setPowerStatus':'ka'],
+    ['Home',       hasS?ST:TV,  hasS?'am start — shell':'reload kiosk URL'],
+    ['Back',       hasS?ST:TV,  'keyevent BACK'],
+    ['D-pad / OK', hasS?ST:TV,  'keyevent DPAD_*'],
+    ['Volume',     TV,          s.display.driver==='sony-bravia'?'setAudioVolume':'kf'],
+    ['Mute',       TV,          s.display.driver==='sony-bravia'?'setAudioMute':'ke'],
+    ['Play',       hasS?ST:TV,  'keyevent MEDIA_PLAY_PAUSE'],
+    ['Inputs',     TV,          s.opts.inputsBtn ? (s.display.driver==='sony-bravia'?'setPlayContent':'xb') : 'hidden']
+  ];
+  document.getElementById('keymap').innerHTML = keys.map(([k,t,c])=>`
+    <div class="titem"><span class="tname">${k}</span>${t}<span class="how">${c}</span></div>`).join('');
 }
 
-/* ---------------- tabs ---------------- */
-function showTab(which){
-  const reg = which==='reg';
+function showTab(w){
+  const reg = w==='reg';
   document.getElementById('view-reg').hidden = !reg;
   document.getElementById('view-rem').hidden = reg;
   document.getElementById('tab-reg').setAttribute('aria-selected', reg);
   document.getElementById('tab-rem').setAttribute('aria-selected', !reg);
 }
 
-renderList(); renderDetail(); renderFound(); renderRemoteOptions();
+renderList(); renderDetail(); renderFound(); syncRemoteSelect();
 </script>
 </body>
 </html>
