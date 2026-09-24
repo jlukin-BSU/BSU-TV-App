@@ -6,6 +6,8 @@ import { SettingsStore, resolveOverridesPath } from "./lib/settings";
 import { AppOverridesStore, resolveAppOverridesPath } from "./lib/app-overrides";
 import { CustomAppsStore, resolveCustomAppsPath, resolveIconsDir } from "./lib/custom-apps";
 import { DashPinStore, resolveDashPinsPath } from "./lib/dash-auth";
+import { ApkStore, resolveApksDir } from "./lib/apk-store";
+import { StreamerRegistry, resolveStreamersPath } from "./lib/streamer-registry";
 import { startBackgroundPoll } from "./lib/dash-state";
 import { mgmtEnabled, mgmtPort } from "./lib/mgmt";
 import { logger } from "./lib/logger";
@@ -78,6 +80,8 @@ const appOverridesPath = resolveAppOverridesPath();
 const appOverrides = new AppOverridesStore(appOverridesPath);
 const customApps = new CustomAppsStore(resolveCustomAppsPath(), resolveIconsDir());
 const dashPins = new DashPinStore(resolveDashPinsPath());
+const apks = new ApkStore(resolveApksDir());
+const streamers = new StreamerRegistry(resolveStreamersPath());
 logger.info(
   { overridesPath, appOverridesPath, customApps: customApps.list().length, iconsDir: resolveIconsDir() },
   "Stores ready",
@@ -87,7 +91,7 @@ logger.info(
 const DASH_POLL_MS = envMs("DASH_POLL_INTERVAL_MS", 5 * 60 * 1000);
 startBackgroundPoll(() => config.displays, DASH_POLL_MS);
 
-const app = createApp(config, store, appOverrides);
+const app = createApp(config, store, appOverrides, apks, streamers);
 
 const server = app.listen(port, host, () => {
   logger.info({ port, host }, "bravia-web listening");
@@ -102,7 +106,7 @@ const server = app.listen(port, host, () => {
 let manageServer: ReturnType<typeof app.listen> | null = null;
 if (mgmtEnabled()) {
   const mport = mgmtPort();
-  const manageApp = createManageApp(config, store, appOverrides, customApps, dashPins);
+  const manageApp = createManageApp(config, store, appOverrides, customApps, dashPins, apks, streamers);
   manageServer = manageApp.listen(mport, "0.0.0.0", () => {
     logger.info({ port: mport }, "management server listening (device registration)");
   });

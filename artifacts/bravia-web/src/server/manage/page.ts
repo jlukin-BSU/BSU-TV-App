@@ -50,6 +50,10 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
   .device .addr { color:var(--muted); font-size:.85rem; margin-top:.15rem; }
   .tag { display:inline-block; font-size:.7rem; font-weight:700; letter-spacing:.05em; padding:.1rem .45rem; border-radius:999px; margin-left:.4rem; vertical-align:middle; }
   .tag.dry { background:#5a4b00; color:#ffd94a; }
+  .tag.ok { background:rgba(30,125,60,.28); color:#8ff0ad; }
+  .tag.warn { background:#5a4b00; color:#ffd94a; }
+  .tag.bad { background:rgba(196,18,48,.28); color:#ff9aa8; }
+  .tag.dim { background:rgba(255,255,255,.1); color:var(--muted); }
   .actions { display:flex; gap:.5rem; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
   .msg { padding:.7rem .9rem; border-radius:10px; font-size:.9rem; margin-bottom:.9rem; }
   .msg.err { background:rgba(196,18,48,.16); border:1px solid rgba(196,18,48,.5); color:#ff9aa8; }
@@ -101,6 +105,7 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
       <h2>Displays (<span id="count">0</span>)</h2>
       <div style="display:flex; gap:.5rem; flex-wrap:wrap; justify-content:flex-end;">
         <button id="dashCfgBtn" class="ghost small">Dashboard PINs</button>
+        <button id="stCfgBtn" class="ghost small">Streamer apps</button>
         <button id="appsCfgBtn" class="ghost small">App URIs</button>
         <button id="addBtn" class="primary small">+ Add display</button>
       </div>
@@ -220,6 +225,20 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
     <div class="row" style="margin-top:1.1rem;"><button id="dp_doneBtn" class="ghost">Done</button></div>
   </section>
 
+  <!-- Streamer apps -->
+  <section id="stCfg" class="card hidden">
+    <h2>Streamer apps</h2>
+    <p class="muted" style="margin:.4rem 0 .8rem;">Streamers install these and report back what they have. Installing without anyone at the TV needs Device Owner on the streamer.</p>
+    <div class="row" style="flex-wrap:wrap;">
+      <input id="st_file" type="file" accept=".apk,application/vnd.android.package-archive" style="flex:1; min-width:12rem; color:var(--muted);" />
+      <button id="st_uploadBtn" class="primary small">Upload APK</button>
+    </div>
+    <div id="st_apks" style="margin-top:.9rem;"></div>
+    <h2 style="margin-top:1.4rem;">Streamers (<span id="st_count">0</span>)</h2>
+    <div id="st_streamers" style="margin-top:.6rem;"></div>
+    <div class="row" style="margin-top:1.1rem;"><button id="st_refreshBtn" class="ghost">Refresh</button><button id="st_doneBtn" class="ghost">Done</button></div>
+  </section>
+
   <footer style="margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.72rem; line-height:1.7;">
     <div style="font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:.2rem;">URLs</div>
     <div>Displays load &middot; <span id="u_display"></span></div>
@@ -273,7 +292,7 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
     $("login").classList.toggle("hidden", on);
     $("app").classList.toggle("hidden", !on);
     $("logout").classList.toggle("hidden", !on);
-    if (!on) { $("editor").classList.add("hidden"); $("settings").classList.add("hidden"); $("appsCfg").classList.add("hidden"); $("dashCfg").classList.add("hidden"); }
+    if (!on) { $("editor").classList.add("hidden"); $("settings").classList.add("hidden"); $("appsCfg").classList.add("hidden"); $("dashCfg").classList.add("hidden"); $("stCfg").classList.add("hidden"); }
   }
 
   async function login() {
@@ -623,6 +642,106 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
   $("na_cancelBtn").onclick = function () { $("ac_addForm").classList.add("hidden"); };
   $("dashCfgBtn").onclick = openDashCfg;
   $("dp_doneBtn").onclick = closeDashCfg;
+  // ---- Streamer apps ----
+  var ST_STATE = { current: ["ok", "current"], outdated: ["warn", "outdated"], missing: ["bad", "missing"], ahead: ["dim", "newer"] };
+
+  function mb(bytes) { return (bytes / 1048576).toFixed(1) + " MB"; }
+  function ago(iso) {
+    var s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
+    if (s < 90) return s + "s ago";
+    if (s < 5400) return Math.round(s / 60) + "m ago";
+    if (s < 129600) return Math.round(s / 3600) + "h ago";
+    return Math.round(s / 86400) + "d ago";
+  }
+
+  async function openStCfg() {
+    try {
+      var apks = (await api("GET", "/apks")).apks || [];
+      var streamers = (await api("GET", "/streamers")).streamers || [];
+
+      $("st_apks").innerHTML = apks.length
+        ? apks.map(function (a) {
+            return '<div class="acrow"><div class="acname">' + esc(a.label) +
+              ' <span class="muted">' + esc(a.versionName || "") + " (" + a.versionCode + ") &middot; " + mb(a.size) +
+              " &middot; " + esc(a.sha256.slice(0, 12)) + "</span></div>" +
+              '<button class="danger" data-strm="' + esc(a.packageName) + '">Remove</button></div>';
+          }).join("")
+        : '<p class="muted">No APKs uploaded yet.</p>';
+      Array.prototype.forEach.call($("st_apks").querySelectorAll("[data-strm]"), function (b) {
+        b.onclick = function () { removeApk(b.getAttribute("data-strm")); };
+      });
+
+      $("st_count").textContent = streamers.length;
+      $("st_streamers").innerHTML = streamers.length
+        ? streamers.map(function (s) {
+            var chips = (s.apps || []).map(function (a) {
+              var st = ST_STATE[a.state] || ["dim", a.state];
+              var have = a.installed ? (a.installed.versionName || a.installed.versionCode) : "";
+              return '<span class="tag ' + st[0] + '" title="' + esc(have ? "installed " + have : "not installed") + '">' +
+                esc(a.label) + ": " + st[1] + "</span>";
+            }).join(" ");
+            var last = s.lastInstall
+              ? '<div class="muted" style="margin-top:.3rem;">Last install: ' + esc(s.lastInstall.packageName) + " " +
+                (s.lastInstall.ok ? "ok" : "failed" + (s.lastInstall.message ? " (" + esc(s.lastInstall.message) + ")" : "")) + "</div>"
+              : "";
+            return '<div class="card" style="padding:.75rem .9rem; margin-bottom:.6rem;">' +
+              '<div class="device"><div class="meta">' +
+                '<div class="name">' + esc(s.model || "Streamer") +
+                  ' <span class="tag ' + (s.online ? "ok" : "dim") + '">' + (s.online ? "online" : "offline") + "</span>" +
+                  ' <span class="tag ' + (s.deviceOwner ? "ok" : "warn") + '">' + (s.deviceOwner ? "can self-install" : "no Device Owner") + "</span></div>" +
+                '<div class="addr">' + esc(s.ip) + " &middot; Android " + esc(s.androidRelease) + " &middot; BSU TV " + esc(s.appVersion) + " &middot; seen " + ago(s.lastSeen) + "</div>" +
+              '</div><div class="actions"><button class="danger" data-stforget="' + esc(s.deviceId) + '">Forget</button></div></div>' +
+              (chips ? '<div style="margin-top:.5rem; display:flex; gap:.35rem; flex-wrap:wrap;">' + chips + "</div>" : "") +
+              last + "</div>";
+          }).join("")
+        : '<p class="muted">No streamer has reported in yet. They report on boot and every 30 minutes.</p>';
+      Array.prototype.forEach.call($("st_streamers").querySelectorAll("[data-stforget]"), function (b) {
+        b.onclick = function () { forgetStreamer(b.getAttribute("data-stforget")); };
+      });
+
+      $("stCfg").classList.remove("hidden");
+      $("app").classList.add("hidden");
+    } catch (e) { msg(e.message, "err"); }
+  }
+
+  async function uploadApk() {
+    var f = $("st_file").files && $("st_file").files[0];
+    if (!f) { msg("Choose an APK file first.", "err"); return; }
+    $("st_uploadBtn").disabled = true;
+    msg("Uploading " + esc(f.name) + " (" + mb(f.size) + ")...", "ok");
+    try {
+      var res = await fetch("/api/apks", {
+        method: "POST",
+        headers: { "Content-Type": "application/vnd.android.package-archive", "X-Manage-Pin": pw() },
+        body: f,
+      });
+      var data = {};
+      try { data = JSON.parse(await res.text()); } catch (e) {}
+      if (!res.ok) throw new Error(data.message || ("HTTP " + res.status));
+      $("st_file").value = "";
+      msg("Stored " + esc(data.apk.label) + " " + esc(data.apk.versionName || data.apk.versionCode) + ".", "ok");
+      await openStCfg();
+    } catch (e) { msg(e.message, "err"); }
+    finally { $("st_uploadBtn").disabled = false; }
+  }
+
+  async function removeApk(pkg) {
+    if (!confirm("Remove " + pkg + " from the store? Streamers keep what they already have installed.")) return;
+    try { await api("DELETE", "/apks/" + encodeURIComponent(pkg)); await openStCfg(); } catch (e) { msg(e.message, "err"); }
+  }
+
+  async function forgetStreamer(id) {
+    if (!confirm("Forget this streamer? It will reappear the next time it reports in.")) return;
+    try { await api("DELETE", "/streamers/" + encodeURIComponent(id)); await openStCfg(); } catch (e) { msg(e.message, "err"); }
+  }
+
+  function closeStCfg() { $("stCfg").classList.add("hidden"); $("app").classList.remove("hidden"); }
+
+  $("stCfgBtn").onclick = openStCfg;
+  $("st_uploadBtn").onclick = uploadApk;
+  $("st_refreshBtn").onclick = openStCfg;
+  $("st_doneBtn").onclick = closeStCfg;
+
   $("dp_master_save").onclick = async function () { try { await api("PUT", "/dash-pins/master", { pin: $("dp_master").value }); $("dp_master").value = ""; msg("Master PIN saved.", "ok"); await openDashCfg(); } catch (e) { msg(e.message, "err"); } };
 
   // Fill the URL reference from whatever host this page was opened on.

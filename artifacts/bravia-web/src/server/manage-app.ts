@@ -6,6 +6,9 @@ import type { AppOverridesStore } from "./lib/app-overrides";
 import { CustomAppsStore, resolveIconsDir } from "./lib/custom-apps";
 import type { DashPinStore } from "./lib/dash-auth";
 import { createManageRouter } from "./routes/manage";
+import { createManageApksRouter } from "./routes/manage-apks";
+import type { ApkStore } from "./lib/apk-store";
+import type { StreamerRegistry } from "./lib/streamer-registry";
 import { managePage } from "./manage/page";
 import { logger } from "./lib/logger";
 
@@ -20,6 +23,8 @@ export function createManageApp(
   appOverrides: AppOverridesStore,
   customApps: CustomAppsStore,
   dashPins: DashPinStore,
+  apks: ApkStore,
+  streamers: StreamerRegistry,
 ): Express {
   const app: Express = express();
 
@@ -47,6 +52,8 @@ export function createManageApp(
   // Serve uploaded icons here too, so the manager can preview them.
   app.use("/icons", express.static(resolveIconsDir(), { maxAge: "1h" }));
 
+  // APK uploads are raw binary streams; the JSON parser above skips them by content type.
+  app.use("/api", createManageApksRouter(apks, streamers));
   app.use("/api", createManageRouter(config, store, appOverrides, customApps, dashPins));
 
   app.get("/", (_req, res) => {

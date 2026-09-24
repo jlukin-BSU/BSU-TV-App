@@ -41,8 +41,10 @@ android {
         // Android TV back to Lollipop; the Google TV Streamer is API 34.
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        // Must increase for every build pushed to the fleet: Android only installs
+        // an update over a higher versionCode, and the server refuses equal ones.
+        versionCode = 2
+        versionName = "0.2.0"
 
         // Baked default. Overridable at runtime from the setup screen.
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://its-avctrl-bsu-av/\"")

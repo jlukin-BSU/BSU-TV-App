@@ -9,6 +9,8 @@ import type { AppConfig } from "./lib/config";
 import type { SettingsStore } from "./lib/settings";
 import type { AppOverridesStore } from "./lib/app-overrides";
 import { resolveIconsDir } from "./lib/custom-apps";
+import type { ApkStore } from "./lib/apk-store";
+import type { StreamerRegistry } from "./lib/streamer-registry";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,7 +21,13 @@ function publicDir(): string {
   return path.resolve(here, "public");
 }
 
-export function createApp(config: AppConfig, store: SettingsStore, appOverrides: AppOverridesStore): Express {
+export function createApp(
+  config: AppConfig,
+  store: SettingsStore,
+  appOverrides: AppOverridesStore,
+  apks: ApkStore,
+  streamers: StreamerRegistry,
+): Express {
   const app: Express = express();
 
   /**
@@ -64,7 +72,7 @@ export function createApp(config: AppConfig, store: SettingsStore, appOverrides:
    * every request is authorised by its source IP -- opening the API up to
    * cross-origin callers would only widen what can reach the displays.
    */
-  app.use("/api", createRouter(config, store, appOverrides));
+  app.use("/api", createRouter(config, store, appOverrides, apks, streamers));
 
   // User-uploaded app icons (custom apps). Cached by the browser like any asset.
   app.use("/icons", express.static(resolveIconsDir(), { immutable: true, maxAge: "7d" }));

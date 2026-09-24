@@ -261,6 +261,47 @@ wrong PSK, an unreachable display, and a Sony-level rejection are distinguished,
 because Sony returns HTTP 200 with an `error` tuple in the body and that is easy
 to mistake for success.
 
+## Streamer apps
+
+The server keeps the APKs the streaming devices should have installed — the BSU
+TV shell (`artifacts/gtv-kiosk`) and OptiSigns — and shows whether each streamer
+actually has them.
+
+**Store.** Upload from the management page (Streamer apps). The server reads the
+package name and version from the APK itself (`lib/apk-info.ts`, no Android
+tools needed) and stores it under its SHA-256 in `APKS_DIR`, default `apks/` next
+to `devices.json` — `/etc/bravia-web/apks` on the NUC. Runtime data, never in
+git. One build per package; a newer upload replaces the old one.
+
+The store refuses:
+
+- an **older** versionCode than the stored one — Android will not downgrade an
+  installed app, so it would leave every streamer permanently outdated;
+- the **same** versionCode with different contents — streamers already on that
+  build would report current and never receive it. Bump the versionCode.
+
+**Verification.** Streamers report the installed version of each managed app
+(see the gtv-kiosk README). The management page compares that with the store:
+*current*, *outdated*, *missing*, or *newer*. Nothing is assumed to have
+installed until the device says so. Reports persist in `STREAMERS_STATE`,
+default `streamers.json` next to `devices.json`.
+
+**Installing** is done by the streamer itself, and only silently if it holds
+Device Owner. Units without it still report, and show "no Device Owner".
+
+Streamer endpoints, on the control port and open because streamers are not
+registered displays yet:
+
+| | |
+|---|---|
+| `GET /api/streamer/manifest` | what should be installed, with checksums |
+| `GET /api/streamer/apk/:sha256` | the file, only for hashes the store holds |
+| `POST /api/streamer/register` | a device's report of what it has |
+
+None of these can command a display. Once the systems schema ties a streamer to
+a known hostname, `register` should only accept reports from registered
+streamers.
+
 ## Deploy (Ubuntu, no nginx, no cert)
 
 The service runs directly as the `its` user from the repo clone, binding port 80

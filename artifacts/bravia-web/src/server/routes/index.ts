@@ -9,13 +9,22 @@ import type { AppOverridesStore } from "../lib/app-overrides";
 import healthRouter from "./health";
 import { createControlRouter } from "./control";
 import { createAdminRouter } from "./admin";
+import { createStreamerRouter } from "./streamer";
+import type { ApkStore } from "../lib/apk-store";
+import type { StreamerRegistry } from "../lib/streamer-registry";
 
 /**
  * `/healthz`, `/whoami` and `/weather` are open. Everything else must be
  * attributable to a known display, so it sits behind `resolveDevice`. The admin
  * routes add their own password check on top.
  */
-export function createRouter(config: AppConfig, store: SettingsStore, appOverrides: AppOverridesStore): IRouter {
+export function createRouter(
+  config: AppConfig,
+  store: SettingsStore,
+  appOverrides: AppOverridesStore,
+  apks: ApkStore,
+  streamers: StreamerRegistry,
+): IRouter {
   const router: IRouter = Router();
 
   router.use(healthRouter);
@@ -41,6 +50,9 @@ export function createRouter(config: AppConfig, store: SettingsStore, appOverrid
       res.status(503).json({ error: "weather_unavailable" });
     }
   });
+
+  // Streaming devices are not registered displays, so their endpoints sit here.
+  router.use(createStreamerRouter(apks, streamers));
 
   // Everything below requires a known display.
   router.use(resolveDevice(config));

@@ -4,6 +4,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Read installed versions of the managed apps, to report them to the server.
+         Package visibility is otherwise filtered on Android 11+. Sideloaded, not
+         Play-distributed, so this is appropriate here. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- Install/update the managed apps. Silent only when this app is Device Owner. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Android TV: no touchscreen, appears in the leanback launcher. -->
     <uses-feature android:name="android.software.leanback" android:required="true" />
@@ -44,8 +50,14 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- Receives PackageInstaller results; targeted explicitly, never exported. -->
+        <receiver
+            android:name=".InstallResultReceiver"
+            android:exported="false" />
 
         <!-- Target for: adb shell dpm set-device-owner
              edu.bridgew.tvkiosk/.KioskDeviceAdminReceiver

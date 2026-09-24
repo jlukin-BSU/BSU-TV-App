@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         web.setBackgroundColor(android.graphics.Color.BLACK)
 
         load()
-        Registration.announce(applicationContext)
+        Sync.start(applicationContext)
     }
 
     private fun load() = web.loadUrl(Config.serverUrl(this))
