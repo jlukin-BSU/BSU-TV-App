@@ -222,11 +222,22 @@ management page (Configure):
 | Grid with window (`grid`) | Signage window inside the tile grid, how-to ticker. |
 | Signage backdrop (`backdrop`) | Signage fills the screen; how-to and apps over it. |
 
-In the windowed layouts, the signage window shows the display's **signage URL**
-(https only, e.g. an OptiSigns Virtual Screen link) in a sandboxed iframe.
-Selecting it, or the idle timeout when "return to signage" is on, grows it to
-full screen; Back shrinks it. With no URL set, the window is a placeholder and
-selecting it opens the signage app as before.
+A display's **signage URL** (https only: the OptiSigns web player, or a
+Virtual Screen link) replaces the OptiSigns Android app on that display. It
+plays in a sandboxed iframe:
+
+- Tile grid: News & Announcements, and the idle timeout when "return to
+  signage" is on, open it full screen inside the hub. Back returns to the grid.
+- Windowed layouts: it plays in the signage window. Selecting the window, or
+  the idle timeout, grows it to full screen; Back shrinks it.
+
+With no URL set, nothing changes: News & Announcements and the idle timeout
+launch the OptiSigns app, and the windowed layouts show a placeholder that
+launches it.
+
+The web player pairs once per display (the pairing code shows in the signage
+area) and keeps its pairing in the display browser's storage. It has no offline
+cache, so it needs the network to play.
 
 The windowed layouts also show an optional help card ("Problem with this TV?"
 by default, message "Scan to contact IT Support") with a QR image uploaded on

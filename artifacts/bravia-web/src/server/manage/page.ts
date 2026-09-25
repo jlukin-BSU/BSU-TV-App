@@ -139,7 +139,7 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
     <label for="s_layout">Layout</label>
     <select id="s_layout"></select>
     <div class="muted" id="s_layoutDesc" style="margin-top:.35rem;"></div>
-    <label for="s_signage">Signage URL <span class="muted">(shown in the signage window; https only; blank opens the signage app instead)</span></label>
+    <label for="s_signage">Signage URL <span class="muted">(web signage for News &amp; Announcements and the signage window, instead of the OptiSigns app; https only; blank uses the app)</span></label>
     <input id="s_signage" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://virtualscreen.optisigns.com/#..." />
 
     <div class="sec">

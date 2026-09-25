@@ -10,6 +10,7 @@ import { BrandLogo, hasBrandLogo } from "./components/BrandLogos";
 import { HdmiPicker } from "./components/HdmiPicker";
 import { SessionWarningModal } from "./components/SessionWarningModal";
 import { AdminPanel } from "./components/AdminPanel";
+import { WebSignage } from "./components/WebSignage";
 import { useDPad } from "./hooks/use-dpad";
 import { useSpatialNav } from "./hooks/use-spatial-nav";
 import { LoungeView, SIGNAGE_KEY, type LoungeLayout } from "./lounge/LoungeView";
@@ -292,13 +293,19 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
   const onTileActivate = useCallback(
     (tile: TileDef) => {
       if (!hubIsIdle) return;
+      // With web signage set, News & Announcements plays it in the hub; the
+      // OptiSigns app is only the fallback for displays without a URL.
+      if (tile.key === "signage" && config.signageUrl) {
+        setSignageFull(true);
+        return;
+      }
       if (tile.kind === "app" && tile.serverId && !NO_WARNING_APP_IDS.has(tile.serverId)) {
         setSessionWarning({ tile, appName: tile.label });
         return;
       }
       void activateTile(tile);
     },
-    [hubIsIdle, activateTile],
+    [hubIsIdle, activateTile, config.signageUrl],
   );
 
   const wakeScreen = useCallback(() => {
@@ -308,16 +315,16 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
     });
   }, []);
 
-  /** Signage window selected: grow it if there is web signage, else open the signage app. */
+  /** Signage selected or idle: web signage full screen if set, else the signage app. */
   const openSignage = useCallback(() => {
     if (!hubIsIdle) return;
-    if (lounge && config.signageUrl) {
+    if (config.signageUrl) {
       setSignageFull(true);
       return;
     }
     const signage = tiles.find((t) => t.key === "signage");
     if (signage) onTileActivate(signage);
-  }, [hubIsIdle, lounge, config.signageUrl, tiles, onTileActivate]);
+  }, [hubIsIdle, config.signageUrl, tiles, onTileActivate]);
 
   const activateLounge = useCallback(
     (key: string) => {
@@ -334,7 +341,7 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
   useTvIdle(
     config.idleMs,
     openSignage,
-    hubIsIdle && config.autoSignage && (signagePresent || (lounge && config.signageUrl !== null)),
+    hubIsIdle && config.autoSignage && (signagePresent || config.signageUrl !== null),
   );
 
   useSpatialNav({
@@ -450,6 +457,7 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
 
       <HdmiPicker open={hdmiPickerOpen} onClose={() => setHdmiPickerOpen(false)} inputs={config.inputs} />
       <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} onSaved={reload} />
+      {!lounge && <WebSignage url={config.signageUrl} open={signageFull} onClose={() => setSignageFull(false)} />}
       <TransitionOverlay appId={transitioningTo} />
       <ActiveAppScreen appId={activeApp} onExit={wakeScreen} />
     </div>
