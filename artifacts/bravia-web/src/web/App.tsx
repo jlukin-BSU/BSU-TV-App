@@ -27,6 +27,25 @@ import cupolaWatermark from "@assets/BSU_watermark_red_1774490194557.png";
 
 const queryClient = new QueryClient();
 
+const SIGNAGE_FLAG = "bsu_signage_full";
+
+function readSignageFlag(): boolean {
+  try {
+    return window.sessionStorage.getItem(SIGNAGE_FLAG) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeSignageFlag(on: boolean): void {
+  try {
+    if (on) window.sessionStorage.setItem(SIGNAGE_FLAG, "1");
+    else window.sessionStorage.removeItem(SIGNAGE_FLAG);
+  } catch {
+    /* storage unavailable: a reload just returns to the home screen */
+  }
+}
+
 const iconClass = (focused: boolean) =>
   `w-20 h-20 object-contain transition-all duration-300 ${focused ? "brightness-0 invert opacity-100" : "brightness-0 invert opacity-70"}`;
 
@@ -163,7 +182,9 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
   const lounge = config.layout !== "hub";
   const loungeTiles = useMemo(() => tiles.filter((t) => t.key !== "signage"), [tiles]);
   const [loungeFocus, setLoungeFocus] = useState<string | null>(null);
-  const [signageFull, setSignageFull] = useState(false);
+  // Survives the hub's own reloads (config/build change): a TV that was showing
+  // signage when the page reloaded comes back on signage, not the grid.
+  const [signageFull, setSignageFull] = useState(() => readSignageFlag() && config.signageUrl !== null);
   const loungeRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -172,7 +193,14 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
     setLoungeFocus(loungeTiles[0]?.key ?? SIGNAGE_KEY);
   }, [lounge, loungeTiles, loungeFocus]);
 
-  useEffect(() => setSignageFull(false), [config.layout]);
+  useEffect(() => writeSignageFlag(signageFull), [signageFull]);
+
+  const shownLayout = useRef(config.layout);
+  useEffect(() => {
+    if (shownLayout.current === config.layout) return;
+    shownLayout.current = config.layout;
+    setSignageFull(false);
+  }, [config.layout]);
 
   // Back (or OK) shrinks the full-screen signage window.
   useEffect(() => {
