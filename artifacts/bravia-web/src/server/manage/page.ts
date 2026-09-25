@@ -7,6 +7,7 @@
  * X-Manage-Pin header on each API call.
  */
 import { LAYOUTS } from "../../shared/catalog";
+import { dashPort, pageNavCss, pageNavHtml } from "../page-nav";
 
 const LAYOUTS_JSON = JSON.stringify(LAYOUTS.map((l) => ({ id: l.id, label: l.label, description: l.description })));
 
@@ -23,7 +24,7 @@ export const managePage = /* html */ `<!doctype html>
   header { padding:1.1rem 1.25rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:var(--bg); }
   header h1 { font-size:1.15rem; margin:0; font-weight:700; letter-spacing:.01em; }
   header .sub { color:var(--muted); font-size:.8rem; margin-top:.15rem; }
-  main { max-width:720px; margin:0 auto; padding:1.25rem; }
+${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; margin-bottom:.9rem; }
   label { display:block; font-size:.82rem; color:var(--muted); margin:.7rem 0 .3rem; }
   input[type=text], input[type=password] { width:100%; padding:.7rem .8rem; font-size:1rem; color:var(--text); background:#141414; border:1px solid var(--line); border-radius:10px; outline:none; }
@@ -78,6 +79,8 @@ export const managePage = /* html */ `<!doctype html>
     <h1>Display Registry</h1>
     <div class="sub">Bridgewater State University &middot; AV</div>
   </div>
+  ${pageNavHtml("registry")}
+  <span class="spacer"></span>
   <button id="logout" class="ghost small hidden">Sign out</button>
 </header>
 <main>
@@ -627,8 +630,8 @@ export const managePage = /* html */ `<!doctype html>
     var host = location.hostname;
     $("u_display").textContent = "http://" + host + "/";
     $("u_reg").textContent = location.origin + "/";
-    $("u_dash").textContent = "http://" + host + ":8082/";
-    $("u_dashb").textContent = "http://" + host + ":8082/b/<BUILDING>";
+    $("u_dash").textContent = "http://" + host + ":${dashPort()}/";
+    $("u_dashb").textContent = "http://" + host + ":${dashPort()}/b/<BUILDING>";
   })();
 
   // Auto-resume if a password is already stored for this tab.

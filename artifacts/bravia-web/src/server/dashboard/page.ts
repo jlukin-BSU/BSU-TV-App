@@ -3,6 +3,8 @@
  * "/" is the master view (all buildings, master PIN); "/b/CODE" is one building
  * (that building's PIN). Plain HTML/CSS/JS, mobile- and desktop-friendly.
  */
+import { pageNavCss, pageNavHtml } from "../page-nav";
+
 export const dashboardPage = /* html */ `<!doctype html>
 <html lang="en">
 <head>
@@ -16,7 +18,7 @@ export const dashboardPage = /* html */ `<!doctype html>
   header { padding:1rem 1.25rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:1rem; position:sticky; top:0; background:var(--bg); z-index:5; }
   header h1 { font-size:1.2rem; margin:0; }
   header .sub { color:var(--muted); font-size:.8rem; margin-top:.15rem; }
-  main { max-width:1200px; margin:0 auto; padding:1.25rem; }
+${pageNavCss}  main { max-width:1200px; margin:0 auto; padding:1.25rem; }
   button { font-family:inherit; font-weight:600; border:none; border-radius:9px; padding:.55rem .9rem; cursor:pointer; font-size:.92rem; }
   .primary { background:var(--red); color:#fff; }
   .ghost { background:rgba(255,255,255,.08); color:var(--text); }
@@ -52,6 +54,8 @@ export const dashboardPage = /* html */ `<!doctype html>
 <body>
 <header>
   <div><h1 id="title">Display Dashboard</h1><div class="sub">Bridgewater State University &middot; AV</div></div>
+  ${pageNavHtml("dashboard")}
+  <span class="spacer"></span>
   <div class="row">
     <span id="tick" class="updated"></span>
     <button id="refreshBtn" class="ghost small hidden">Refresh</button>
