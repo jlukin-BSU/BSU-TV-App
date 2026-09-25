@@ -106,7 +106,7 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
       <div style="display:flex; gap:.5rem; flex-wrap:wrap; justify-content:flex-end;">
         <button id="dashCfgBtn" class="ghost small">Dashboard PINs</button>
         <button id="stCfgBtn" class="ghost small">Streamer apps</button>
-        <button id="appsCfgBtn" class="ghost small">App URIs</button>
+        <button id="appsCfgBtn" class="ghost small">Apps</button>
         <button id="addBtn" class="primary small">+ Add display</button>
       </div>
     </div>

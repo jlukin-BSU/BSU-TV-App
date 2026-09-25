@@ -193,6 +193,11 @@ export interface ClientConfig {
   help: HelpCard;
   /** Web signage shown in the layouts' signage window; null = none set. */
   signageUrl: string | null;
+  /**
+   * Fingerprint of everything above plus the deployed build. The hub polls
+   * /api/config/version and reloads when it no longer matches.
+   */
+  version: string;
 }
 
 /**

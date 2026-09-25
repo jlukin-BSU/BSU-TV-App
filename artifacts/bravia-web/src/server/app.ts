@@ -1,7 +1,6 @@
 import express, { type Express } from "express";
 import path from "node:path";
 import fs from "node:fs";
-import { fileURLToPath } from "node:url";
 import pinoHttp from "pino-http";
 import { createRouter } from "./routes";
 import { logger } from "./lib/logger";
@@ -11,15 +10,8 @@ import type { AppOverridesStore } from "./lib/app-overrides";
 import { resolveIconsDir } from "./lib/custom-apps";
 import type { ApkStore } from "./lib/apk-store";
 import type { StreamerRegistry } from "./lib/streamer-registry";
+import { publicDir } from "./lib/public-dir";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-
-function publicDir(): string {
-  const fromEnv = process.env["PUBLIC_DIR"];
-  if (fromEnv && fromEnv.trim() !== "") return path.resolve(fromEnv.trim());
-  // In the bundled output this file is dist/index.mjs, so the UI is dist/public.
-  return path.resolve(here, "public");
-}
 
 export function createApp(
   config: AppConfig,

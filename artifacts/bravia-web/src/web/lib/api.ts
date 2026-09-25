@@ -36,6 +36,22 @@ async function post(path: string, body: unknown): Promise<void> {
   }
 }
 
+/**
+ * The server's current config version for this display, or null if it can't be
+ * read right now (offline, restarting, not registered). Never throws: a failed
+ * poll must not disturb the page.
+ */
+export async function getConfigVersion(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/config/version", { cache: "no-store", headers: { Accept: "application/json" } });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { version?: unknown };
+    return typeof body.version === "string" ? body.version : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getConfig(): Promise<ClientConfig> {
   const res = await fetch("/api/config", { headers: { Accept: "application/json" } });
   const text = await res.text();

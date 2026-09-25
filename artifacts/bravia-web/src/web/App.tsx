@@ -16,6 +16,7 @@ import { useSpatialNav } from "./hooks/use-spatial-nav";
 import { LoungeView, SIGNAGE_KEY, type LoungeLayout } from "./lounge/LoungeView";
 import { useTvIdle } from "./hooks/use-idle";
 import { useConfig } from "./hooks/use-config";
+import { useConfigWatch, hubBusy } from "./hooks/use-config-watch";
 import { launchApp as apiLaunchApp, sendCommand as apiSendCommand } from "./lib/api";
 import type { ClientConfig, ClientTile } from "../shared/catalog";
 
@@ -222,6 +223,15 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
     !adminOpen &&
     sessionWarning === null &&
     !signageFull;
+
+  // Someone is mid-task: a config change on the server waits until they're done
+  // before the page reloads. Idle signage does not count -- that's exactly when
+  // an unattended lounge TV should pick changes up.
+  const busy =
+    activeApp !== null || transitioningTo !== null || hdmiPickerOpen || adminOpen || sessionWarning !== null;
+  useEffect(() => {
+    hubBusy.current = busy;
+  }, [busy]);
 
   const openAdmin = useCallback(() => setAdminOpen(true), []);
 
@@ -466,6 +476,11 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
 
 function Gate() {
   const { state, reload } = useConfig();
+
+  // Reload when this display's config changes on the server. Also runs on the
+  // error screen, so an unregistered display comes up by itself once registered.
+  const loadedVersion = state.status === "ready" && typeof state.config.version === "string" ? state.config.version : null;
+  useConfigWatch(loadedVersion, state.status === "error" || loadedVersion !== null);
 
   if (state.status === "loading") {
     return (

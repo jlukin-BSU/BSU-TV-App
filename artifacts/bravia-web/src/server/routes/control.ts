@@ -12,6 +12,7 @@ import { requireDisplay } from "../middlewares/device";
 import { effectiveConfig, type SettingsStore } from "../lib/settings";
 import type { AppOverridesStore } from "../lib/app-overrides";
 import { presentationStore } from "../lib/presentation";
+import { configVersion } from "../lib/config-version";
 import { logger } from "../lib/logger";
 
 const InputRequest = z.object({ inputId: z.string().min(1) }).strict();
@@ -30,11 +31,11 @@ export function createControlRouter(store: SettingsStore, appOverrides: AppOverr
   const router: IRouter = Router();
 
   /** Who am I, and which tiles should I show? Derived from source IP + admin edits. */
-  router.get("/config", (req, res) => {
+  /** Everything the hub renders from. The same builder feeds /config and /config/version. */
+  const buildConfig = (req: Parameters<typeof requireDisplay>[0]): ClientConfig => {
     const display = requireDisplay(req);
     const eff = effectiveConfig(display, store.get(display.hostname));
-
-    const payload: ClientConfig = {
+    const payload: Omit<ClientConfig, "version"> = {
       device: {
         hostname: display.hostname,
         label: display.label,
@@ -47,8 +48,22 @@ export function createControlRouter(store: SettingsStore, appOverrides: AppOverr
       idleMs: eff.settings.idleSeconds * 1000,
       ...presentationStore().get(display.hostname),
     };
+    return { ...payload, version: configVersion(payload) };
+  };
 
-    res.json(payload);
+  router.get("/config", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(buildConfig(req));
+  });
+
+  /**
+   * Just the version, polled by the hub every few seconds. When it differs from
+   * the version the page loaded with, the hub reloads -- so a change saved on
+   * the management page, or a redeploy, reaches the screen on its own.
+   */
+  router.get("/config/version", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ version: buildConfig(req).version });
   });
 
   /** Switch HDMI input. */
