@@ -12,6 +12,8 @@
   --red: rgb(196, 18, 48);
   --dim: rgba(245, 245, 245, 0.62);
   --spring: cubic-bezier(0.34, 1.35, 0.64, 1);
+  /* Ticker height; the tile areas above it end where it starts. */
+  --ticker-h: 3.333rem;
   position: relative;
   width: 100%;
   height: 100vh;
@@ -147,7 +149,7 @@
 .lx-tip .ct { color: var(--dim); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 
 /* ---- menu ---- */
-.lx-menu-list { left: 1.667rem; top: 7.167rem; width: 19.833rem; bottom: 4.167rem; padding: 1rem 1.333rem; gap: 0.5rem; --fade: 1.667rem; }
+.lx-menu-list { left: 1.667rem; top: 7.167rem; width: 19.833rem; bottom: var(--ticker-h); padding: 1rem 1.333rem; gap: 0.5rem; --fade: 1.667rem; }
 .lx-menu-list .lx-tile { flex-direction: row; justify-content: flex-start; height: 3.167rem; padding: 0 1.083rem; gap: 0.917rem; border-radius: 0.583rem; font-size: 1rem; }
 .lx-menu-list .ico { width: 5rem; flex: none; zoom: 1; }
 .lx-menu-list .ico > * { zoom: 0.34; }
@@ -155,18 +157,32 @@
 .lx-menu .lx-slot { left: 22.5rem; top: 8.167rem; width: 54.5rem; height: 30.667rem; }
 
 /* ---- grid ---- */
+/*
+ * The signage window spans 2 columns x 2 rows and must be exactly 16:9: the
+ * player is drawn at full-screen size and scaled to the window's width, so any
+ * extra height shows as a black bar under the picture. Row height is therefore
+ * derived from the column width rather than fixed, so that two rows plus the
+ * gap come out at 16:9 of two columns plus the gap and tile edges stay aligned.
+ * The screen is always 80rem wide (1rem = 1.25vw); 6rem is the box's left/right
+ * offsets plus its horizontal padding.
+ */
 .lx-grid-tiles {
-  left: 1.667rem; right: 1.667rem; top: 7.167rem; bottom: 4.167rem; padding: 1rem 1.333rem;
-  display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 9.833rem; gap: 1.333rem; --fade: 2rem;
+  --gap: 1.333rem;
+  --col: calc((100vw - 6rem - 3 * var(--gap)) / 4);
+  left: 1.667rem; right: 1.667rem; top: 7.167rem; bottom: var(--ticker-h); padding: 1rem 1.333rem;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: calc(((2 * var(--col) + var(--gap)) * 9 / 16 - var(--gap)) / 2);
+  gap: var(--gap); --fade: 2rem;
 }
-.lx-grid-tiles > .lx-slot { position: relative; grid-column: span 2; grid-row: span 2; }
+/* aspect-ratio is the guarantee; the row maths above only keeps the edges aligned. */
+.lx-grid-tiles > .lx-slot { position: relative; grid-column: span 2; grid-row: span 2; aspect-ratio: 16 / 9; align-self: start; }
 .lx-grid-tiles .lx-tile { border-radius: 0.917rem; }
 .lx-grid-tiles .ico { zoom: 0.72; }
 .lx-grid-tiles .lbl { font-size: 1.083rem; }
 
 /* ---- ticker (menu, grid) ---- */
 .lx-ticker {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 4.167rem; background: rgba(0, 0, 0, 0.55); border-top: 2px solid var(--red);
+  position: absolute; left: 0; right: 0; bottom: 0; height: var(--ticker-h); background: rgba(0, 0, 0, 0.55); border-top: 2px solid var(--red);
   display: flex; align-items: center; overflow: hidden; z-index: 26;
 }
 .lx-ticker .tag {
