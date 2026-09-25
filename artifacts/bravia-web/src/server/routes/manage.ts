@@ -56,6 +56,7 @@ const AppTargetSchema = z
   .strict();
 
 const QrUploadSchema = z.object({ dataUrl: z.string().min(1) }).strict();
+const QrLinkSchema = z.object({ link: z.string() }).strict();
 
 const NewAppSchema = z
   .object({
@@ -186,6 +187,26 @@ export function createManageRouter(
     try {
       const p = presentationStore().setQr(display.hostname, parsed.data.dataUrl);
       res.json({ ok: true, helpQrUrl: p.help.qrUrl });
+    } catch (err) {
+      respondError(res, err);
+    }
+  });
+
+  /** Generate the help QR from a link instead of uploading an image. */
+  router.put("/devices/:hostname/help-qr-link", async (req, res) => {
+    const display = findDisplay(req.params.hostname);
+    if (!display) {
+      res.status(404).json({ error: "not_found", message: `No display registered with hostname "${req.params.hostname}".` });
+      return;
+    }
+    const parsed = QrLinkSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "bad_request", message: "Expected { link }." });
+      return;
+    }
+    try {
+      const p = await presentationStore().setQrFromLink(display.hostname, parsed.data.link);
+      res.json({ ok: true, helpQrUrl: p.help.qrUrl, helpQrLink: presentationStore().qrLink(display.hostname) });
     } catch (err) {
       respondError(res, err);
     }

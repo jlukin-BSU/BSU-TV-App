@@ -16,6 +16,7 @@ import {
 import { resolveConfigPath } from "./config";
 import { resolveIconsDir } from "./custom-apps";
 import { logger } from "./logger";
+import { makeQrSvg, normalizeQrLink, QrLinkError } from "./qr";
 
 /**
  * How each display's home screen looks: layout, help card, signage URL.
@@ -43,6 +44,8 @@ interface Entry {
   helpMessage?: string;
   /** QR image filename in the icons directory. */
   helpQr?: string | null;
+  /** The link the QR encodes, when it was generated here rather than uploaded. */
+  helpQrLink?: string;
   signageUrl?: string;
 }
 
@@ -53,6 +56,7 @@ const EntrySchema = z
     helpTitle: z.string().optional(),
     helpMessage: z.string().optional(),
     helpQr: z.string().nullable().optional(),
+    helpQrLink: z.string().optional(),
     signageUrl: z.string().optional(),
   })
   .catch({});
@@ -203,17 +207,44 @@ export class PresentationStore {
     fs.mkdirSync(this.iconsDir, { recursive: true });
     fs.writeFileSync(path.join(this.iconsDir, file), bytes);
     const previous = this.entries[hostname]?.helpQr ?? null;
-    this.entries[hostname] = { ...(this.entries[hostname] ?? {}), helpQr: file };
+    const { helpQrLink: _staleLink, ...rest } = this.entries[hostname] ?? {};
+    this.entries[hostname] = { ...rest, helpQr: file };
     this.persist();
     this.removeIfUnused(previous);
     logger.info({ hostname, file }, "stored help QR image");
     return this.get(hostname);
   }
 
+  /**
+   * Generate the QR from a link and store it like an uploaded image, recording
+   * the link so the management page can show what the code points to.
+   */
+  async setQrFromLink(hostname: string, link: string): Promise<Presentation> {
+    let svg: string;
+    try {
+      svg = await makeQrSvg(link);
+    } catch (err) {
+      if (err instanceof QrLinkError) throw new PresentationError(err.message);
+      throw err;
+    }
+    this.setQr(hostname, `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`);
+    this.entries[hostname] = { ...(this.entries[hostname] ?? {}), helpQrLink: normalizeQrLink(link) };
+    this.persist();
+    logger.info({ hostname }, "generated help QR from link");
+    return this.get(hostname);
+  }
+
+  /** The link behind a generated QR, or "" if it was uploaded or there is none. */
+  qrLink(hostname: string): string {
+    const e = this.entries[hostname];
+    return e?.helpQr && e.helpQrLink ? e.helpQrLink : "";
+  }
+
   clearQr(hostname: string): Presentation {
     const previous = this.entries[hostname]?.helpQr ?? null;
     if (this.entries[hostname]) {
       delete this.entries[hostname]!.helpQr;
+      delete this.entries[hostname]!.helpQrLink;
       this.persist();
     }
     this.removeIfUnused(previous);
@@ -248,6 +279,8 @@ export interface PresentationView {
   helpTitle: string;
   helpMessage: string;
   helpQrUrl: string | null;
+  /** Link a generated QR encodes; "" if the QR was uploaded or there is none. */
+  helpQrLink: string;
   signageUrl: string;
 }
 
@@ -259,6 +292,7 @@ export function presentationViewFor(store: PresentationStore, hostname: string):
     helpTitle: p.help.title,
     helpMessage: p.help.message,
     helpQrUrl: p.help.qrUrl,
+    helpQrLink: store.qrLink(hostname),
     signageUrl: p.signageUrl ?? "",
   };
 }

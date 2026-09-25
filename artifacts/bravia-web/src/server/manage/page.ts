@@ -153,12 +153,14 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
         <label>QR code</label>
         <div class="row" style="gap:.8rem;">
           <div id="s_qrPrev" class="qrprev"></div>
-          <div style="display:flex; flex-direction:column; gap:.45rem;">
+          <div style="display:flex; flex-direction:column; gap:.45rem; flex:1; min-width:12rem;">
+            <input id="s_qrLink" type="text" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="500" placeholder="https:// link the QR code opens" />
             <div class="row" style="gap:.5rem; flex-wrap:wrap;">
-              <button id="s_qrPick" class="ghost small" type="button">Upload new QR code</button>
+              <button id="s_qrMake" class="primary small" type="button">Make QR code</button>
+              <button id="s_qrPick" class="ghost small" type="button">Upload image instead</button>
               <button id="s_qrRemove" class="ghost small" type="button">Remove</button>
             </div>
-            <span class="muted">PNG, JPEG, WebP or SVG, up to 1 MB. Saved as soon as it uploads.</span>
+            <span class="muted">Type a link and press Make QR code, or upload your own PNG, JPEG, WebP or SVG (up to 1 MB). Saved right away.</span>
           </div>
         </div>
         <input id="s_qrFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden" />
@@ -399,6 +401,7 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
       $("s_helpTitle").value = s.helpTitle || "";
       $("s_helpMsg").value = s.helpMessage || "";
       renderQr(s.helpQrUrl || null);
+      $("s_qrLink").value = s.helpQrLink || "";
       showHelpBox();
       renderSettingsTiles();
       $("settings").classList.remove("hidden");
@@ -622,6 +625,7 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
       var dataUrl = await readFileAsDataUrl(f);
       var r = await api("PUT", "/devices/" + encodeURIComponent(settingsHost) + "/help-qr", { dataUrl: dataUrl });
       renderQr(r.helpQrUrl);
+      $("s_qrLink").value = "";
       msg("QR code uploaded.", "ok");
     } catch (e) { msg(e.message, "err"); }
   };
@@ -630,9 +634,25 @@ ${pageNavCss}  main { max-width:720px; margin:0 auto; padding:1.25rem; }
     try {
       await api("DELETE", "/devices/" + encodeURIComponent(settingsHost) + "/help-qr");
       renderQr(null);
+      $("s_qrLink").value = "";
       msg("QR code removed.", "ok");
     } catch (e) { msg(e.message, "err"); }
   };
+  async function makeQrFromLink() {
+    if (!settingsHost) return;
+    var link = $("s_qrLink").value.trim();
+    if (!link) { msg("Type the link the QR code should open.", "err"); return; }
+    $("s_qrMake").disabled = true;
+    try {
+      var r = await api("PUT", "/devices/" + encodeURIComponent(settingsHost) + "/help-qr-link", { link: link });
+      renderQr(r.helpQrUrl);
+      $("s_qrLink").value = r.helpQrLink || link;
+      msg("QR code made. Scan it with your phone to check it.", "ok");
+    } catch (e) { msg(e.message, "err"); }
+    finally { $("s_qrMake").disabled = false; }
+  }
+  $("s_qrMake").onclick = makeQrFromLink;
+  $("s_qrLink").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); makeQrFromLink(); } });
   $("s_cancelBtn").onclick = closeSettings;
   $("appsCfgBtn").onclick = openAppsCfg;
   $("ac_lookupBtn").onclick = lookupInstalled;
