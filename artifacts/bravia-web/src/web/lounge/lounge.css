@@ -80,7 +80,18 @@
   overflow: hidden;
   cursor: pointer;
 }
-.lx-sig.anim { transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1), clip-path 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); }
+/*
+ * Grow/shrink animates transform ONLY. The layer is a live full-screen web page;
+ * animating clip-path as well made the browser repaint that whole page on every
+ * frame, which on the TVs' processors looked like the transition had frozen.
+ * Transform alone is composited on the GPU. So clipping (rounded corners, and
+ * clipping to the scrolled grid) is switched off for the move and returns the
+ * moment it settles -- this rule beats the inline clip-path SignageLayer sets.
+ */
+.lx-sig.anim {
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  clip-path: none !important;
+}
 .lx-sig iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; background: #000; }
 .lx-sig .ph {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem;

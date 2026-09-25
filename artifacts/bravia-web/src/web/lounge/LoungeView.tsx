@@ -299,7 +299,8 @@ function SignageLayer({
       return;
     }
     setAnim(true);
-    const t = window.setTimeout(() => setAnim(false), 600);
+    // Slightly longer than the 0.45s transition, so clipping returns only once it has settled.
+    const t = window.setTimeout(() => setAnim(false), 500);
     let h: number | undefined;
     if (full) {
       setHint(true);
