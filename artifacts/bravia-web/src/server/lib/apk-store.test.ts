@@ -107,6 +107,7 @@ describe("remove", () => {
 
 test("known packages get friendly labels", () => {
   assert.equal(labelFor("com.optisigns.playe1"), "OptiSigns");
+  assert.equal(labelFor("com.Swank.SwankMediaPlayer"), "ResNet Cinema");
   assert.equal(labelFor(SHELL_PACKAGE), "BSU TV");
   assert.equal(labelFor("com.other.app"), "com.other.app");
 });

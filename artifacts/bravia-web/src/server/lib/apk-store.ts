@@ -22,6 +22,7 @@ export const SHELL_PACKAGE = "edu.bridgew.tvkiosk";
 const KNOWN_LABELS: Record<string, string> = {
   [SHELL_PACKAGE]: "BSU TV",
   "com.optisigns.playe1": "OptiSigns",
+  "com.Swank.SwankMediaPlayer": "ResNet Cinema",
 };
 
 export function labelFor(packageName: string): string {
