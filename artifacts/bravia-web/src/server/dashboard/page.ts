@@ -69,6 +69,8 @@ export const dashboardPage = /* html */ `<!doctype html>
   </section>
 
   <section id="dash" class="hidden"><div id="content"></div></section>
+
+  <footer style="margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.72rem;">Jon Lukin &middot; Integrated Technology Solutions &middot; Bridgewater State University &middot; 2026</footer>
 </main>
 <script>
 (function () {

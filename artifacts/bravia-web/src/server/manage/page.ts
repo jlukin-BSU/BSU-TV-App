@@ -223,6 +223,7 @@ export const managePage = /* html */ `<!doctype html>
     <div>Registration (this page) &middot; <span id="u_reg"></span></div>
     <div>Dashboard, all buildings &middot; <span id="u_dash"></span></div>
     <div>Dashboard, one building &middot; <span id="u_dashb"></span></div>
+    <div style="margin-top:1rem;">Jon Lukin &middot; Integrated Technology Solutions &middot; Bridgewater State University &middot; 2026</div>
   </footer>
 </main>
 <script>
