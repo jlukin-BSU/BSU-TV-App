@@ -6,6 +6,12 @@ import {
   settingsViewFor,
   type SettingsStore,
 } from "../lib/settings";
+import {
+  PresentationError,
+  pickPresentationPatch,
+  presentationStore,
+  presentationViewFor,
+} from "../lib/presentation";
 import { logger } from "../lib/logger";
 
 /**
@@ -27,6 +33,7 @@ export function createAdminRouter(store: SettingsStore): IRouter {
     res.json({
       device: { hostname: display.hostname, label: display.label },
       ...settingsViewFor(display, store),
+      ...presentationViewFor(presentationStore(), display.hostname),
     });
   });
 
@@ -35,12 +42,24 @@ export function createAdminRouter(store: SettingsStore): IRouter {
     const display = requireDisplay(req);
     const parsed = SettingsSaveSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "bad_request", message: "Expected { enabled, order, autoSignage, idleSeconds }." });
+      res.status(400).json({ error: "bad_request", message: "Expected { enabled, order, autoSignage, idleSeconds, layout? }." });
       return;
+    }
+    const presentation = presentationStore();
+    try {
+      // Presentation first: it is the part that can still be rejected (bad URL),
+      // and a rejection must not leave the tile settings half-saved.
+      presentation.update(display.hostname, pickPresentationPatch(parsed.data));
+    } catch (err) {
+      if (err instanceof PresentationError) {
+        res.status(400).json({ error: "bad_request", message: err.message });
+        return;
+      }
+      throw err;
     }
     const view = saveSettingsFor(display, store, parsed.data);
     logger.info({ display: display.hostname }, "admin saved display settings");
-    res.json({ ok: true, ...view });
+    res.json({ ok: true, ...view, ...presentationViewFor(presentation, display.hostname) });
   });
 
   return router;

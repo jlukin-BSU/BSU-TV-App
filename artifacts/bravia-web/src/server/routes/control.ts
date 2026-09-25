@@ -11,6 +11,7 @@ import { appsFor, driverFor, DriverError } from "../drivers";
 import { requireDisplay } from "../middlewares/device";
 import { effectiveConfig, type SettingsStore } from "../lib/settings";
 import type { AppOverridesStore } from "../lib/app-overrides";
+import { presentationStore } from "../lib/presentation";
 import { logger } from "../lib/logger";
 
 const InputRequest = z.object({ inputId: z.string().min(1) }).strict();
@@ -44,6 +45,7 @@ export function createControlRouter(store: SettingsStore, appOverrides: AppOverr
       inputs: INPUTS.filter((i) => eff.inputIds.includes(i.id)).map((i) => ({ ...i })),
       autoSignage: eff.settings.autoSignage,
       idleMs: eff.settings.idleSeconds * 1000,
+      ...presentationStore().get(display.hostname),
     };
 
     res.json(payload);

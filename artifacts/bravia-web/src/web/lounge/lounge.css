@@ -1,0 +1,205 @@
+/*
+ * Windowed-signage layouts (guide / menu / grid / backdrop).
+ *
+ * Sized in rem like the rest of the hub: html font-size is 1.25vw, so 1rem is
+ * 24px on a 1920-wide screen and every measurement scales with the display.
+ * The layouts assume a 16:9 screen.
+ */
+
+.lx {
+  --tile: rgba(58, 58, 58, 0.82);
+  --tile-focus: rgba(84, 84, 84, 0.9);
+  --red: rgb(196, 18, 48);
+  --dim: rgba(245, 245, 245, 0.62);
+  --spring: cubic-bezier(0.34, 1.35, 0.64, 1);
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  color: #f5f5f5;
+}
+
+.lx-wm {
+  position: absolute;
+  right: -1.667rem;
+  bottom: -2.5rem;
+  height: 44.17rem;
+  width: auto;
+  max-width: none;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ---- Top bar ---- */
+.lx-top {
+  position: absolute;
+  left: 3rem;
+  right: 3rem;
+  top: 1.833rem;
+  height: 4.583rem;
+  display: flex;
+  align-items: center;
+  gap: 1.667rem;
+  z-index: 30;
+  transition: opacity 0.4s;
+}
+.lx-brand { display: flex; align-items: center; gap: 1.167rem; margin-right: auto; min-width: 0; }
+.lx-brand img { height: 3.5rem; width: auto; filter: brightness(0) invert(1); cursor: default; }
+.lx-brand i { width: 2px; height: 2.667rem; background: rgba(255, 255, 255, 0.25); flex: none; }
+.lx-brand b { font-size: 1.417rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lx-help {
+  display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.917rem 0.5rem 0.5rem; border-radius: 0.583rem;
+  background: var(--tile); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.lx-help.noqr { padding-left: 0.917rem; }
+.lx-help img { width: 3.167rem; height: 3.167rem; object-fit: contain; background: #fff; border-radius: 0.25rem; padding: 0.167rem; flex: none; }
+.lx-help b { display: block; font-size: 0.875rem; font-weight: 700; }
+.lx-help span { display: block; font-size: 0.75rem; color: var(--dim); margin-top: 0.125rem; }
+.lx-clock { text-align: right; }
+.lx-clock .t { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.lx-clock .d { margin-top: 0.417rem; font-size: 1rem; color: rgba(245, 245, 245, 0.8); font-weight: 500; display: flex; gap: 0.667rem; justify-content: flex-end; align-items: center; }
+.lx-clock .d i { width: 2px; height: 0.917rem; background: rgba(255, 255, 255, 0.3); }
+.lx-clock .d em { font-style: normal; color: #f5f5f5; display: flex; align-items: center; gap: 0.25rem; }
+.lx-clock .d svg { width: 1.167rem; height: 1.167rem; color: var(--red); }
+
+/* ---- Signage slot (the window's place in the layout) ---- */
+.lx-slot { position: absolute; border-radius: 0.75rem; background: #0b0b0b; transition: box-shadow 0.25s; }
+.lx-slot.focus { box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.5), 0 0 2.5rem 0.6rem rgba(220, 40, 65, 0.22); }
+
+/* ---- Signage layer: one full-screen element, scaled into the slot ---- */
+.lx-sig {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  transform-origin: 0 0;
+  background: #0b0b0b;
+  overflow: hidden;
+  cursor: pointer;
+}
+.lx-sig.anim { transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1), clip-path 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.lx-sig iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; background: #000; }
+.lx-sig .ph {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem;
+  background: radial-gradient(ellipse at 50% 30%, #3a0a14 0%, #160307 70%);
+}
+.lx-sig .ph img { width: 12rem; height: 12rem; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.85; }
+.lx-sig .ph b { font-size: 3rem; font-weight: 700; }
+.lx-sig .ring { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; }
+.lx-sig .chip {
+  position: absolute; right: 3%; top: 4.5%; padding: 0.6em 1em; border-radius: 0.5em; background: rgba(0, 0, 0, 0.45);
+  font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #fff; opacity: 0; transition: opacity 0.25s;
+  pointer-events: none;
+}
+.lx-sig.focus .chip { opacity: 1; }
+.lx-sig .back {
+  position: absolute; left: 50%; bottom: 1.833rem; transform: translateX(-50%); padding: 0.583rem 1.083rem; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6); font-size: 1rem; font-weight: 500; opacity: 0; transition: opacity 0.4s; pointer-events: none; white-space: nowrap;
+}
+.lx-sig.full.hint .back { opacity: 1; }
+
+/* ---- Tiles ---- */
+.lx-tile {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.417rem;
+  background: var(--tile); border-radius: 0.75rem; cursor: pointer; color: rgba(255, 255, 255, 0.75); font-weight: 500;
+  box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.09);
+  transition: transform 0.38s var(--spring), background-color 0.2s, box-shadow 0.2s, color 0.2s;
+}
+.lx-tile.focus {
+  background: var(--tile-focus); color: #fff; transform: translateY(-6px) scale(1.06); z-index: 1;
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.45), 0 0 2.5rem 0.6rem rgba(220, 40, 65, 0.18);
+}
+.lx-tile .ico { display: flex; align-items: center; justify-content: center; opacity: 0.9; transition: opacity 0.2s, transform 0.2s; }
+.lx-tile.focus .ico { opacity: 1; transform: scale(1.05); }
+.lx-tile .lbl { font-size: 0.79rem; text-align: center; line-height: 1.2; padding: 0 0.4rem; }
+
+/* Scrolling containers: tiles fade out at an edge only when more lies beyond it. */
+.lx-scroll {
+  position: absolute; display: flex; overflow: auto; scrollbar-width: none; overscroll-behavior: contain; z-index: 25;
+  pointer-events: none; box-sizing: border-box; --fade: 2.333rem;
+  -webkit-mask-image: var(--mask); mask-image: var(--mask); --mask: none;
+}
+.lx-scroll::-webkit-scrollbar { display: none; }
+.lx-scroll > * { flex: none; pointer-events: auto; }
+.lx-scroll.x { --mask: linear-gradient(to right, var(--ms, #000) 0, #000 var(--fade), #000 calc(100% - var(--fade)), var(--me, #000) 100%); }
+.lx-scroll.y { flex-direction: column; --mask: linear-gradient(to bottom, var(--ms, #000) 0, #000 var(--fade), #000 calc(100% - var(--fade)), var(--me, #000) 100%); }
+.lx-scroll.fs { --ms: transparent; }
+.lx-scroll.fe { --me: transparent; }
+
+/* App row (guide, backdrop) */
+.lx-row { left: 1.5rem; right: 1.5rem; top: 34.333rem; height: 10.667rem; padding: 2rem 1.5rem; gap: 0.917rem; }
+.lx-row .lx-tile { width: 7.333rem; }
+.lx-row .ico { zoom: 0.42; }
+
+/* ---- guide ---- */
+.lx-guide .lx-slot { left: 3rem; top: 8.167rem; width: 48rem; height: 27rem; }
+.lx-col { position: absolute; left: 53rem; top: 8.167rem; width: 24rem; height: 27rem; display: flex; flex-direction: column; gap: 0.917rem; z-index: 2; }
+.lx-panel { background: var(--tile); border-radius: 0.75rem; padding: 1.167rem 1.333rem; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1); }
+.lx-panel h3 { margin: 0 0 0.917rem; font-size: 0.79rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+.lx-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.833rem; }
+.lx-steps li { display: grid; grid-template-columns: 2rem 1fr; gap: 0.75rem; align-items: start; font-size: 1rem; line-height: 1.3; font-weight: 500; }
+.lx-steps li > span { width: 2rem; height: 2rem; border-radius: 50%; background: var(--red); display: grid; place-items: center; font-weight: 800; font-size: 0.917rem; }
+.lx-steps li small { display: block; color: var(--dim); font-size: 0.833rem; font-weight: 400; margin-top: 0.167rem; }
+.lx kbd { font: 700 0.85em/1 inherit; border: 2px solid rgba(255, 255, 255, 0.55); border-radius: 0.333rem; padding: 0.083rem 0.375rem; }
+.lx-tip { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.lx-tip .tx { font-size: 1.083rem; line-height: 1.38; font-weight: 500; flex: 1; }
+.lx-tip .ct { color: var(--dim); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+
+/* ---- menu ---- */
+.lx-menu-list { left: 1.667rem; top: 7.167rem; width: 19.833rem; bottom: 4.167rem; padding: 1rem 1.333rem; gap: 0.5rem; --fade: 1.667rem; }
+.lx-menu-list .lx-tile { flex-direction: row; justify-content: flex-start; height: 3.167rem; padding: 0 1.083rem; gap: 0.917rem; border-radius: 0.583rem; font-size: 1rem; }
+.lx-menu-list .ico { width: 5rem; flex: none; zoom: 1; }
+.lx-menu-list .ico > * { zoom: 0.34; }
+.lx-menu-list .lbl { font-size: 1rem; padding: 0; text-align: left; }
+.lx-menu .lx-slot { left: 22.5rem; top: 8.167rem; width: 54.5rem; height: 30.667rem; }
+
+/* ---- grid ---- */
+.lx-grid-tiles {
+  left: 1.667rem; right: 1.667rem; top: 7.167rem; bottom: 4.167rem; padding: 1rem 1.333rem;
+  display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 9.833rem; gap: 1.333rem; --fade: 2rem;
+}
+.lx-grid-tiles > .lx-slot { position: relative; grid-column: span 2; grid-row: span 2; }
+.lx-grid-tiles .lx-tile { border-radius: 0.917rem; }
+.lx-grid-tiles .ico { zoom: 0.72; }
+.lx-grid-tiles .lbl { font-size: 1.083rem; }
+
+/* ---- ticker (menu, grid) ---- */
+.lx-ticker {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 4.167rem; background: rgba(0, 0, 0, 0.55); border-top: 2px solid var(--red);
+  display: flex; align-items: center; overflow: hidden; z-index: 26;
+}
+.lx-ticker .tag {
+  flex: none; height: 100%; display: flex; align-items: center; padding: 0 1.5rem 0 3rem; background: var(--red);
+  font-weight: 800; font-size: 0.917rem; letter-spacing: 0.14em; text-transform: uppercase; z-index: 1;
+}
+.lx-ticker .run { white-space: nowrap; font-size: 1.167rem; font-weight: 500; padding-left: 1.667rem; animation: lx-crawl 60s linear infinite; }
+.lx-ticker .run span { margin-right: 3.333rem; }
+.lx-ticker .run span::before { content: "\2022"; color: var(--red); margin-right: 1rem; }
+@keyframes lx-crawl { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ---- backdrop ---- */
+.lx-backdrop .lx-top { z-index: 30; }
+.lx-scrim {
+  position: absolute; inset: 0; z-index: 22; pointer-events: none; transition: opacity 0.4s;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.88) 78%, rgba(0, 0, 0, 0.92) 100%);
+}
+.lx-dsteps { position: absolute; left: 3rem; right: 3rem; top: 32rem; z-index: 24; display: flex; gap: 2.333rem; font-size: 1.083rem; font-weight: 500; pointer-events: none; transition: opacity 0.4s; }
+.lx-dsteps span { display: flex; align-items: center; gap: 0.583rem; }
+.lx-dsteps b { width: 1.667rem; height: 1.667rem; border-radius: 50%; background: var(--red); display: grid; place-items: center; font-size: 0.833rem; font-weight: 800; }
+/* The signage fills the screen; this box over the upper area is what the
+   arrow keys land on to select it. */
+.lx-backdrop .lx-slot { left: 3rem; right: 3rem; top: 8.167rem; height: 22.5rem; background: transparent; z-index: 23; pointer-events: none; }
+.lx-backdrop .lx-slot.focus { box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55); }
+.lx-backdrop .lx-sig .chip { top: auto; bottom: 34%; right: 3rem; font-size: 0.625rem !important; }
+.lx-backdrop .lx-row { transition: opacity 0.4s; }
+.lx-backdrop.clean .lx-top,
+.lx-backdrop.clean .lx-scrim,
+.lx-backdrop.clean .lx-dsteps,
+.lx-backdrop.clean .lx-row { opacity: 0; pointer-events: none; }
+.lx-backdrop.clean .lx-row > * { pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lx-ticker .run { animation: none; }
+  .lx-sig.anim { transition: none; }
+}

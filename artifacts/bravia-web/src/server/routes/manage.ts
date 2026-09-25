@@ -23,6 +23,12 @@ import { buildingsIn } from "../lib/building";
 import type { Display } from "../lib/config";
 import { APPS } from "../../shared/catalog";
 import { appsFor, DriverError } from "../drivers";
+import {
+  PresentationError,
+  pickPresentationPatch,
+  presentationStore,
+  presentationViewFor,
+} from "../lib/presentation";
 import { logger } from "../lib/logger";
 
 /**
@@ -48,6 +54,8 @@ const AppTargetSchema = z
     iconDataUrl: z.string().optional(),
   })
   .strict();
+
+const QrUploadSchema = z.object({ dataUrl: z.string().min(1) }).strict();
 
 const NewAppSchema = z
   .object({
@@ -116,6 +124,7 @@ export function createManageRouter(
   router.delete("/devices/:hostname", async (req, res) => {
     try {
       await removeDevice(config, req.params.hostname);
+      presentationStore().remove(req.params.hostname);
       res.json({ ok: true });
     } catch (err) {
       respondError(res, err);
@@ -129,7 +138,11 @@ export function createManageRouter(
       res.status(404).json({ error: "not_found", message: `No display registered with hostname "${req.params.hostname}".` });
       return;
     }
-    res.json({ device: { hostname: display.hostname, label: display.label }, ...settingsViewFor(display, store) });
+    res.json({
+      device: { hostname: display.hostname, label: display.label },
+      ...settingsViewFor(display, store),
+      ...presentationViewFor(presentationStore(), display.hostname),
+    });
   });
 
   /** Save per-display settings by hostname. */
@@ -141,12 +154,52 @@ export function createManageRouter(
     }
     const parsed = SettingsSaveSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "bad_request", message: "Expected { enabled, order, autoSignage, idleSeconds }." });
+      res.status(400).json({ error: "bad_request", message: "Expected { enabled, order, autoSignage, idleSeconds, layout?, help..., signageUrl? }." });
+      return;
+    }
+    const presentation = presentationStore();
+    try {
+      // Presentation first: it can still be rejected (bad URL), and a rejection
+      // must not leave the tile settings half-saved.
+      presentation.update(display.hostname, pickPresentationPatch(parsed.data));
+    } catch (err) {
+      respondError(res, err);
       return;
     }
     const view = saveSettingsFor(display, store, parsed.data);
     logger.info({ display: display.hostname }, "settings saved via management page");
-    res.json({ ok: true, ...view });
+    res.json({ ok: true, ...view, ...presentationViewFor(presentation, display.hostname) });
+  });
+
+  /** Upload the help card's QR image for a display (data URL). */
+  router.put("/devices/:hostname/help-qr", (req, res) => {
+    const display = findDisplay(req.params.hostname);
+    if (!display) {
+      res.status(404).json({ error: "not_found", message: `No display registered with hostname "${req.params.hostname}".` });
+      return;
+    }
+    const parsed = QrUploadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "bad_request", message: "Expected { dataUrl }." });
+      return;
+    }
+    try {
+      const p = presentationStore().setQr(display.hostname, parsed.data.dataUrl);
+      res.json({ ok: true, helpQrUrl: p.help.qrUrl });
+    } catch (err) {
+      respondError(res, err);
+    }
+  });
+
+  /** Remove a display's help QR image. */
+  router.delete("/devices/:hostname/help-qr", (req, res) => {
+    const display = findDisplay(req.params.hostname);
+    if (!display) {
+      res.status(404).json({ error: "not_found", message: `No display registered with hostname "${req.params.hostname}".` });
+      return;
+    }
+    presentationStore().clearQr(display.hostname);
+    res.json({ ok: true, helpQrUrl: null });
   });
 
   /** Every app -- built-in and custom -- with its launch target and icon. */
@@ -280,7 +333,7 @@ export function createManageRouter(
 }
 
 function respondError(res: Response, err: unknown): void {
-  if (err instanceof RegistryError || err instanceof CustomAppsError) {
+  if (err instanceof RegistryError || err instanceof CustomAppsError || err instanceof PresentationError) {
     res.status(400).json({ error: "invalid", message: err.message });
     return;
   }

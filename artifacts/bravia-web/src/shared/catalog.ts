@@ -187,4 +187,44 @@ export interface ClientConfig {
   autoSignage: boolean;
   /** Idle timeout in milliseconds, for the client's idle watcher. */
   idleMs: number;
+  /** Home-screen layout for this display. */
+  layout: LayoutId;
+  /** "Problem with this TV?" card shown by the windowed layouts. */
+  help: HelpCard;
+  /** Web signage shown in the layouts' signage window; null = none set. */
+  signageUrl: string | null;
+}
+
+/**
+ * Home-screen layouts. "hub" is the original tile grid and the default, so a
+ * display nobody has configured renders exactly as before. The others put
+ * signage in a window on the home screen alongside the apps.
+ */
+export const LAYOUTS = [
+  { id: "hub", label: "Tile grid", description: "Tile grid. Signage opens full screen." },
+  { id: "guide", label: "Guide column", description: "Signage window, how-to column, scrolling app row." },
+  { id: "menu", label: "Menu and ticker", description: "App list, large signage window, how-to ticker." },
+  { id: "grid", label: "Grid with window", description: "Signage window inside the tile grid, how-to ticker." },
+  { id: "backdrop", label: "Signage backdrop", description: "Signage fills the screen; how-to and apps over it." },
+] as const;
+
+export type LayoutId = (typeof LAYOUTS)[number]["id"];
+export const LAYOUT_DEFAULT: LayoutId = "hub";
+
+export function isLayoutId(v: unknown): v is LayoutId {
+  return typeof v === "string" && LAYOUTS.some((l) => l.id === v);
+}
+
+export const HELP_TITLE_DEFAULT = "Problem with this TV?";
+export const HELP_MESSAGE_DEFAULT = "Scan to contact IT Support";
+export const HELP_TITLE_MAX = 40;
+export const HELP_MESSAGE_MAX = 60;
+export const SIGNAGE_URL_MAX = 2048;
+
+export interface HelpCard {
+  show: boolean;
+  title: string;
+  message: string;
+  /** Uploaded QR image, or null to show the card without one. */
+  qrUrl: string | null;
 }

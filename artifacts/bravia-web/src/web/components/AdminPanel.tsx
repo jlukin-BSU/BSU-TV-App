@@ -2,7 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronUp, ChevronDown, Eye, EyeOff, Loader2 } from "lucide-react";
 import { adminGetSettings, adminSaveSettings, type AdminTile } from "../lib/api";
-import { IDLE_SECONDS_DEFAULT, IDLE_SECONDS_MAX, IDLE_SECONDS_MIN } from "../../shared/catalog";
+import {
+  IDLE_SECONDS_DEFAULT,
+  IDLE_SECONDS_MAX,
+  IDLE_SECONDS_MIN,
+  LAYOUTS,
+  LAYOUT_DEFAULT,
+  type LayoutId,
+} from "../../shared/catalog";
 
 /**
  * Server-side admin panel for the calling display. Opened by the hidden gesture
@@ -26,6 +33,7 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
   const [tiles, setTiles] = useState<AdminTile[]>([]);
   const [autoSignage, setAutoSignage] = useState(true);
   const [idleSeconds, setIdleSeconds] = useState<number>(IDLE_SECONDS_DEFAULT);
+  const [layout, setLayout] = useState<LayoutId>(LAYOUT_DEFAULT);
 
   const autoSignageRef = useRef<HTMLInputElement>(null);
   const tileListRef = useRef<HTMLDivElement>(null);
@@ -42,6 +50,7 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
         setTiles(s.tiles);
         setAutoSignage(s.autoSignage);
         setIdleSeconds(s.idleSeconds);
+        setLayout(s.layout ?? LAYOUT_DEFAULT);
         setPhase("editing");
       })
       .catch((err: unknown) => {
@@ -80,6 +89,7 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
         order: tiles.map((t) => t.key),
         autoSignage,
         idleSeconds: clampedIdle,
+        layout,
       });
       onSaved();
       onClose();
@@ -135,8 +145,35 @@ export function AdminPanel({ open, onClose, onSaved }: Props) {
                 <div>
                   <h2 className="text-3xl font-bold text-foreground">Admin — {deviceLabel}</h2>
                   <p className="text-base text-muted-foreground mt-1">
-                    Show/hide tiles and set their order for this display.
+                    Layout, tiles and idle behavior for this display.
                   </p>
+                </div>
+
+                <div className="flex flex-col gap-3 rounded-xl px-5 py-4" style={{ background: "rgba(255,255,255,0.05)" }}>
+                  <span className="text-xl text-foreground">Layout</span>
+                  <div role="radiogroup" aria-label="Layout" className="grid grid-cols-2 gap-2">
+                    {LAYOUTS.map((l) => (
+                      <button
+                        key={l.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={layout === l.id}
+                        onClick={() => setLayout(l.id)}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        style={{ background: layout === l.id ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)" }}
+                      >
+                        <span
+                          className="w-5 h-5 shrink-0 rounded-full"
+                          style={{
+                            border: `3px solid ${layout === l.id ? "rgb(196,18,48)" : "rgba(255,255,255,0.5)"}`,
+                            background: layout === l.id ? "radial-gradient(circle, rgb(196,18,48) 40%, transparent 45%)" : "transparent",
+                          }}
+                        />
+                        <span className="text-lg text-foreground">{l.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-base text-muted-foreground">{LAYOUTS.find((l) => l.id === layout)?.description}</p>
                 </div>
 
                 <div className="flex flex-col gap-3 rounded-xl px-5 py-4" style={{ background: "rgba(255,255,255,0.05)" }}>

@@ -11,6 +11,8 @@ import { HdmiPicker } from "./components/HdmiPicker";
 import { SessionWarningModal } from "./components/SessionWarningModal";
 import { AdminPanel } from "./components/AdminPanel";
 import { useDPad } from "./hooks/use-dpad";
+import { useSpatialNav } from "./hooks/use-spatial-nav";
+import { LoungeView, SIGNAGE_KEY, type LoungeLayout } from "./lounge/LoungeView";
 import { useTvIdle } from "./hooks/use-idle";
 import { useConfig } from "./hooks/use-config";
 import { launchApp as apiLaunchApp, sendCommand as apiSendCommand } from "./lib/api";
@@ -155,6 +157,34 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
 
   const signagePresent = tiles.some((t) => t.key === "signage");
 
+  // Windowed-signage layouts. "hub" keeps the original grid untouched.
+  const lounge = config.layout !== "hub";
+  const loungeTiles = useMemo(() => tiles.filter((t) => t.key !== "signage"), [tiles]);
+  const [loungeFocus, setLoungeFocus] = useState<string | null>(null);
+  const [signageFull, setSignageFull] = useState(false);
+  const loungeRootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!lounge) return;
+    if (loungeFocus === SIGNAGE_KEY || loungeTiles.some((t) => t.key === loungeFocus)) return;
+    setLoungeFocus(loungeTiles[0]?.key ?? SIGNAGE_KEY);
+  }, [lounge, loungeTiles, loungeFocus]);
+
+  useEffect(() => setSignageFull(false), [config.layout]);
+
+  // Back (or OK) shrinks the full-screen signage window.
+  useEffect(() => {
+    if (!signageFull) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.key === "Backspace" || e.key === "Enter") {
+        e.preventDefault();
+        setSignageFull(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [signageFull]);
+
   const showToast = useCallback((msg: string, ms = 5000) => {
     setToast(msg);
     window.setTimeout(() => setToast((cur) => (cur === msg ? null : cur)), ms);
@@ -185,7 +215,12 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
   }, [focusIndex]);
 
   const hubIsIdle =
-    activeApp === null && transitioningTo === null && !hdmiPickerOpen && !adminOpen && sessionWarning === null;
+    activeApp === null &&
+    transitioningTo === null &&
+    !hdmiPickerOpen &&
+    !adminOpen &&
+    sessionWarning === null &&
+    !signageFull;
 
   const openAdmin = useCallback(() => setAdminOpen(true), []);
 
@@ -273,17 +308,48 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
     });
   }, []);
 
-  useTvIdle(
-    config.idleMs,
-    () => {
-      const signage = tiles.find((t) => t.key === "signage");
-      if (signage) onTileActivate(signage);
+  /** Signage window selected: grow it if there is web signage, else open the signage app. */
+  const openSignage = useCallback(() => {
+    if (!hubIsIdle) return;
+    if (lounge && config.signageUrl) {
+      setSignageFull(true);
+      return;
+    }
+    const signage = tiles.find((t) => t.key === "signage");
+    if (signage) onTileActivate(signage);
+  }, [hubIsIdle, lounge, config.signageUrl, tiles, onTileActivate]);
+
+  const activateLounge = useCallback(
+    (key: string) => {
+      if (key === SIGNAGE_KEY) {
+        openSignage();
+        return;
+      }
+      const tile = tiles.find((t) => t.key === key);
+      if (tile) onTileActivate(tile);
     },
-    hubIsIdle && signagePresent && config.autoSignage,
+    [openSignage, tiles, onTileActivate],
   );
 
+  useTvIdle(
+    config.idleMs,
+    openSignage,
+    hubIsIdle && config.autoSignage && (signagePresent || (lounge && config.signageUrl !== null)),
+  );
+
+  useSpatialNav({
+    isActive: hubIsIdle && lounge,
+    rootRef: loungeRootRef,
+    focusKey: loungeFocus,
+    onNavigate: setLoungeFocus,
+    onEnter: () => {
+      if (loungeFocus) activateLounge(loungeFocus);
+    },
+    onBounceUp: recordAdminPress,
+  });
+
   useDPad({
-    isActive: hubIsIdle,
+    isActive: hubIsIdle && !lounge,
     currentIndex: focusIndex,
     maxIndex: tiles.length - 1,
     columns: COLUMNS,
@@ -298,47 +364,68 @@ function HubScreen({ config, reload }: { config: ClientConfig; reload: () => voi
 
   return (
     <div className="relative h-screen w-full flex flex-col overflow-hidden">
-      <img
-        src={cupolaWatermark}
-        alt=""
-        aria-hidden="true"
-        className="absolute pointer-events-none select-none"
-        style={{ right: "-4%", bottom: "-5%", height: "80%", width: "auto", opacity: 0.35 }}
-      />
+      {lounge ? (
+        <LoungeView
+          layout={config.layout as LoungeLayout}
+          rootRef={loungeRootRef}
+          deviceLabel={config.device.label}
+          help={config.help}
+          signageUrl={config.signageUrl}
+          tiles={loungeTiles}
+          focusKey={loungeFocus}
+          onFocus={(key) => {
+            if (hubIsIdle) setLoungeFocus(key);
+          }}
+          onActivate={activateLounge}
+          signageFull={signageFull}
+          onCollapse={() => setSignageFull(false)}
+          onLogoClick={recordAdminPress}
+        />
+      ) : (
+        <>
+          <img
+            src={cupolaWatermark}
+            alt=""
+            aria-hidden="true"
+            className="absolute pointer-events-none select-none"
+            style={{ right: "-4%", bottom: "-5%", height: "80%", width: "auto", opacity: 0.35 }}
+          />
 
-      <TopBar onLogoClick={recordAdminPress} opacity={topBarOpacity} />
+          <TopBar onLogoClick={recordAdminPress} opacity={topBarOpacity} />
 
-      <div
-        ref={scrollerRef}
-        className="flex-1 overflow-y-auto z-10"
-        style={{ paddingTop: "12rem", paddingBottom: "2rem" }}
-        onScroll={(e) => {
-          const y = (e.currentTarget as HTMLDivElement).scrollTop;
-          setTopBarOpacity(Math.max(0, 1 - y / 80));
-        }}
-      >
-        <div className="w-full max-w-7xl mx-auto px-16">
-          <div className="grid grid-cols-3 gap-8">
-            {tiles.map((tile, idx) => (
-              <div key={tile.key} ref={(el) => { tileRefs.current[idx] = el; }}>
-                <TvTile
-                  id={tile.key}
-                  label={tile.logoOnly ? undefined : tile.label}
-                  icon={tile.renderIcon(focusIndex === idx)}
-                  isFocused={focusIndex === idx}
-                  onClick={() => {
-                    setFocusIndex(idx);
-                    onTileActivate(tile);
-                  }}
-                  onHover={() => {
-                    if (hubIsIdle) setFocusIndex(idx);
-                  }}
-                />
+          <div
+            ref={scrollerRef}
+            className="flex-1 overflow-y-auto z-10"
+            style={{ paddingTop: "12rem", paddingBottom: "2rem" }}
+            onScroll={(e) => {
+              const y = (e.currentTarget as HTMLDivElement).scrollTop;
+              setTopBarOpacity(Math.max(0, 1 - y / 80));
+            }}
+          >
+            <div className="w-full max-w-7xl mx-auto px-16">
+              <div className="grid grid-cols-3 gap-8">
+                {tiles.map((tile, idx) => (
+                  <div key={tile.key} ref={(el) => { tileRefs.current[idx] = el; }}>
+                    <TvTile
+                      id={tile.key}
+                      label={tile.logoOnly ? undefined : tile.label}
+                      icon={tile.renderIcon(focusIndex === idx)}
+                      isFocused={focusIndex === idx}
+                      onClick={() => {
+                        setFocusIndex(idx);
+                        onTileActivate(tile);
+                      }}
+                      onHover={() => {
+                        if (hubIsIdle) setFocusIndex(idx);
+                      }}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {toast && (
         <div

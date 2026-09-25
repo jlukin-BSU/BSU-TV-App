@@ -69,7 +69,7 @@ export function sendCommand(commandId: string): Promise<void> {
 
 // ---- Admin ----------------------------------------------------------------
 
-import type { TileKind } from "../../shared/catalog";
+import type { LayoutId, TileKind } from "../../shared/catalog";
 
 export interface AdminTile {
   key: string;
@@ -83,6 +83,7 @@ export interface AdminSettings {
   autoSignage: boolean;
   idleSeconds: number;
   tiles: AdminTile[];
+  layout: LayoutId;
 }
 
 export interface AdminSave {
@@ -90,6 +91,7 @@ export interface AdminSave {
   order: string[];
   autoSignage: boolean;
   idleSeconds: number;
+  layout?: LayoutId;
 }
 
 async function adminRequest<T>(method: string, path: string, body?: unknown): Promise<T> {

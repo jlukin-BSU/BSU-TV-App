@@ -20,6 +20,7 @@ import {
 import type { Display } from "./config";
 import { resolveConfigPath } from "./config";
 import { logger } from "./logger";
+import { PresentationPatchSchema } from "./presentation";
 
 /**
  * Admin-editable per-display settings, stored SEPARATELY from devices.json.
@@ -160,6 +161,10 @@ export const SettingsSaveSchema = z
     autoSignage: z.boolean(),
     idleSeconds: z.number(),
   })
+  // Layout / help card / signage URL ride along in the same save; they are
+  // stored separately (see presentation.ts). All optional, so older clients
+  // that send only the fields above keep working.
+  .merge(PresentationPatchSchema)
   .strict();
 
 export interface SettingsView {

@@ -6,6 +6,10 @@
  * Auth: the PIN is held in sessionStorage for the tab and sent as the
  * X-Manage-Pin header on each API call.
  */
+import { LAYOUTS } from "../../shared/catalog";
+
+const LAYOUTS_JSON = JSON.stringify(LAYOUTS.map((l) => ({ id: l.id, label: l.label, description: l.description })));
+
 export const managePage = /* html */ `<!doctype html>
 <html lang="en">
 <head>
@@ -23,6 +27,13 @@ export const managePage = /* html */ `<!doctype html>
   .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; margin-bottom:.9rem; }
   label { display:block; font-size:.82rem; color:var(--muted); margin:.7rem 0 .3rem; }
   input[type=text], input[type=password] { width:100%; padding:.7rem .8rem; font-size:1rem; color:var(--text); background:#141414; border:1px solid var(--line); border-radius:10px; outline:none; }
+  select { width:100%; padding:.7rem .8rem; font-size:1rem; color:var(--text); background:#141414; border:1px solid var(--line); border-radius:10px; outline:none; font-family:inherit; }
+  select:focus { border-color:var(--red); }
+  .sec { margin-top:1.2rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,.08); }
+  .sec > b { font-size:.95rem; }
+  .qrprev { width:88px; height:88px; flex:none; border-radius:8px; background:#fff; display:grid; place-items:center; overflow:hidden; color:#666; font-size:.75rem; text-align:center; }
+  .qrprev img { width:100%; height:100%; object-fit:contain; }
+  .dim-box { opacity:.45; }
   input:focus { border-color:var(--red); }
   .row { display:flex; align-items:center; gap:.6rem; }
   .chk { display:flex; align-items:center; gap:.55rem; margin-top:.9rem; font-size:.95rem; }
@@ -117,6 +128,36 @@ export const managePage = /* html */ `<!doctype html>
   <!-- Per-display settings editor -->
   <section id="settings" class="card hidden">
     <h2 id="settingsTitle">Configure</h2>
+    <label for="s_layout">Layout</label>
+    <select id="s_layout"></select>
+    <div class="muted" id="s_layoutDesc" style="margin-top:.35rem;"></div>
+    <label for="s_signage">Signage URL <span class="muted">(shown in the signage window; https only; blank opens the signage app instead)</span></label>
+    <input id="s_signage" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://virtualscreen.optisigns.com/#..." />
+
+    <div class="sec">
+      <b>Help card</b> <span class="muted">(windowed layouts)</span>
+      <div class="chk"><input id="s_help" type="checkbox" /><label for="s_help" style="margin:0;color:var(--text);">Show the help card on the home screen</label></div>
+      <div id="s_helpBox">
+        <label for="s_helpTitle">Heading</label>
+        <input id="s_helpTitle" type="text" maxlength="40" placeholder="Problem with this TV?" />
+        <label for="s_helpMsg">Message <span class="muted">(default: Scan to contact IT Support)</span></label>
+        <input id="s_helpMsg" type="text" maxlength="60" placeholder="Scan to contact IT Support" />
+        <label>QR code</label>
+        <div class="row" style="gap:.8rem;">
+          <div id="s_qrPrev" class="qrprev"></div>
+          <div style="display:flex; flex-direction:column; gap:.45rem;">
+            <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+              <button id="s_qrPick" class="ghost small" type="button">Upload new QR code</button>
+              <button id="s_qrRemove" class="ghost small" type="button">Remove</button>
+            </div>
+            <span class="muted">PNG, JPEG, WebP or SVG, up to 1 MB. Saved as soon as it uploads.</span>
+          </div>
+        </div>
+        <input id="s_qrFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden" />
+      </div>
+    </div>
+
+    <div class="sec"><b>Idle behavior</b></div>
     <div class="chk" style="margin-top:.8rem;">
       <input id="s_auto" type="checkbox" />
       <label for="s_auto" style="margin:0;color:var(--text);">Return to signage when idle</label>
@@ -189,6 +230,7 @@ export const managePage = /* html */ `<!doctype html>
   var PW_KEY = "bsu_mgmt_pin";
   var editingHost = null;
   var settingsHost = null;
+  var LAYOUTS = ${LAYOUTS_JSON};
   var settingsTiles = [];
   var $ = function (id) { return document.getElementById(id); };
   function pw() { try { return sessionStorage.getItem(PW_KEY) || ""; } catch (e) { return ""; } }
@@ -327,6 +369,14 @@ export const managePage = /* html */ `<!doctype html>
       $("settingsTitle").textContent = "Configure — " + (s.device.label || host);
       $("s_auto").checked = !!s.autoSignage;
       $("s_idle").value = s.idleSeconds;
+      $("s_layout").value = s.layout || "hub";
+      showLayoutDesc();
+      $("s_signage").value = s.signageUrl || "";
+      $("s_help").checked = s.helpShow !== false;
+      $("s_helpTitle").value = s.helpTitle || "";
+      $("s_helpMsg").value = s.helpMessage || "";
+      renderQr(s.helpQrUrl || null);
+      showHelpBox();
       renderSettingsTiles();
       $("settings").classList.remove("hidden");
       $("app").classList.add("hidden");
@@ -363,6 +413,18 @@ export const managePage = /* html */ `<!doctype html>
     renderSettingsTiles();
   }
 
+  function showLayoutDesc() {
+    var l = LAYOUTS.filter(function (x) { return x.id === $("s_layout").value; })[0];
+    $("s_layoutDesc").textContent = l ? l.description : "";
+  }
+
+  function showHelpBox() { $("s_helpBox").classList.toggle("dim-box", !$("s_help").checked); }
+
+  function renderQr(url) {
+    $("s_qrPrev").innerHTML = url ? '<img src="' + esc(url) + '" alt="QR code" />' : "No QR code";
+    $("s_qrRemove").disabled = !url;
+  }
+
   function closeSettings() { $("settings").classList.add("hidden"); $("app").classList.remove("hidden"); settingsHost = null; }
 
   async function saveSettings() {
@@ -373,6 +435,11 @@ export const managePage = /* html */ `<!doctype html>
     try {
       await api("PUT", "/devices/" + encodeURIComponent(settingsHost) + "/settings", {
         enabled: enabled, order: order, autoSignage: $("s_auto").checked, idleSeconds: idle,
+        layout: $("s_layout").value,
+        signageUrl: $("s_signage").value.trim(),
+        helpShow: $("s_help").checked,
+        helpTitle: $("s_helpTitle").value,
+        helpMessage: $("s_helpMsg").value,
       });
       closeSettings();
       msg("Settings saved.", "ok");
@@ -518,6 +585,31 @@ export const managePage = /* html */ `<!doctype html>
   $("saveBtn").onclick = save;
   $("cancelBtn").onclick = closeEditor;
   $("s_saveBtn").onclick = saveSettings;
+  $("s_layout").innerHTML = LAYOUTS.map(function (l) {
+    return '<option value="' + esc(l.id) + '">' + esc(l.label) + '</option>';
+  }).join("");
+  $("s_layout").onchange = showLayoutDesc;
+  $("s_help").onchange = showHelpBox;
+  $("s_qrPick").onclick = function () { $("s_qrFile").click(); };
+  $("s_qrFile").onchange = async function () {
+    var f = $("s_qrFile").files && $("s_qrFile").files[0];
+    $("s_qrFile").value = "";
+    if (!f || !settingsHost) return;
+    try {
+      var dataUrl = await readFileAsDataUrl(f);
+      var r = await api("PUT", "/devices/" + encodeURIComponent(settingsHost) + "/help-qr", { dataUrl: dataUrl });
+      renderQr(r.helpQrUrl);
+      msg("QR code uploaded.", "ok");
+    } catch (e) { msg(e.message, "err"); }
+  };
+  $("s_qrRemove").onclick = async function () {
+    if (!settingsHost) return;
+    try {
+      await api("DELETE", "/devices/" + encodeURIComponent(settingsHost) + "/help-qr");
+      renderQr(null);
+      msg("QR code removed.", "ok");
+    } catch (e) { msg(e.message, "err"); }
+  };
   $("s_cancelBtn").onclick = closeSettings;
   $("appsCfgBtn").onclick = openAppsCfg;
   $("ac_lookupBtn").onclick = lookupInstalled;

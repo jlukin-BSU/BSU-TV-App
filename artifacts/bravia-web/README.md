@@ -209,6 +209,35 @@ beside `devices.json`), keyed by hostname. It holds **no secrets** and is never
 stays the provisioning source; admin edits merge on top per request, and a
 hidden tile also cannot be driven through the control API.
 
+## Layouts
+
+Each display has a home-screen layout, set in the admin panel or on the
+management page (Configure):
+
+| Layout | Home screen |
+|---|---|
+| Tile grid (`hub`, default) | The original grid. Signage opens full screen. |
+| Guide column (`guide`) | Signage window, how-to column, scrolling app row. |
+| Menu and ticker (`menu`) | App list, large signage window, how-to ticker. |
+| Grid with window (`grid`) | Signage window inside the tile grid, how-to ticker. |
+| Signage backdrop (`backdrop`) | Signage fills the screen; how-to and apps over it. |
+
+In the windowed layouts, the signage window shows the display's **signage URL**
+(https only, e.g. an OptiSigns Virtual Screen link) in a sandboxed iframe.
+Selecting it, or the idle timeout when "return to signage" is on, grows it to
+full screen; Back shrinks it. With no URL set, the window is a placeholder and
+selecting it opens the signage app as before.
+
+The windowed layouts also show an optional help card ("Problem with this TV?"
+by default, message "Scan to contact IT Support") with a QR image uploaded on
+the management page.
+
+These settings live in `presentation.json` (path `PRESENTATION_SETTINGS`,
+default beside `devices.json`), separate from `overrides.json` so an older build
+can still read its own file after a rollback. QR images are stored in the icons
+directory and served from `/icons`. The signage URL is effectively a password
+for that signage screen: it stays in `/etc/bravia-web`, never in git.
+
 ## API
 
 All routes except `/api/healthz`, `/api/whoami` and `/api/weather` require the
@@ -219,13 +248,13 @@ caller's IP to be registered — that includes the `/api/admin/*` routes.
 | GET | `/api/healthz` | — | Liveness. Open. |
 | GET | `/api/whoami` | — | Resolved source IP. Open. |
 | GET | `/api/weather` | — | Cached weather for the header. Open. |
-| GET | `/api/config` | — | Which display this is, its ordered tiles, autoSignage. |
+| GET | `/api/config` | — | Which display this is, its ordered tiles, autoSignage, layout, help card, signage URL. |
 | POST | `/api/input` | `{"inputId":"hdmi1"}` | Switch HDMI input. |
 | POST | `/api/app` | `{"appId":"youtube"}` | Launch an app. |
 | POST | `/api/command` | `{"commandId":"screenoff"}` | Screen off / on / power off. |
 | GET | `/api/apps` | — | Raw installed-app list. |
 | GET | `/api/admin/settings` | — | Editable settings for this display. |
-| PUT | `/api/admin/settings` | `{enabled,order,autoSignage}` | Save this display's settings. |
+| PUT | `/api/admin/settings` | `{enabled,order,autoSignage,idleSeconds,layout?}` | Save this display's settings. |
 
 Failures from a display come back as `502` with a human-readable `message` — a
 wrong PSK, an unreachable display, and a Sony-level rejection are distinguished,
@@ -286,12 +315,14 @@ negotiate 1.3.
 src/shared/catalog.ts     inputs, apps, commands + tile model — shared by server and UI
 src/server/lib/config.ts  devices.json loading and validation
 src/server/lib/settings.ts admin overrides store + effective-config merge
+src/server/lib/presentation.ts layout, help card and signage URL per display
 src/server/lib/bravia.ts  Sony REST client, dry-run, package→URI resolution
 src/server/lib/weather.ts server-side weather (cached)
 src/server/lib/ip.ts      source-IP normalisation
 src/server/middlewares/   device resolution from source IP
 src/server/routes/        /api/* (control + admin)
 src/web/                  the page the displays load
+src/web/lounge/           the windowed-signage layouts
 deploy/                   systemd unit
 ```
 
