@@ -59,7 +59,7 @@ export const INPUTS: readonly InputEntry[] = [
 /** Mirrors EXTERNAL_APPS in the Capacitor app's App.tsx. */
 export const APPS: readonly AppEntry[] = [
   { id: "signage", label: "News & Announcements", packageName: "com.optisigns.playe1", enabledByDefault: true },
-  { id: "livetv", label: "Live TV", packageName: "com.plexapp.android", enabledByDefault: true },
+  { id: "livetv", label: "Live TV", packageName: "com.xfinity.cloudtvr.tenfoot", enabledByDefault: true },
   { id: "youtube", label: "YouTube", packageName: "com.google.android.youtube.tv", enabledByDefault: true },
   { id: "hulu", label: "Hulu", packageName: "com.hulu.livingroomplus", enabledByDefault: false },
   { id: "netflix", label: "Netflix", packageName: "com.netflix.ninja", enabledByDefault: false },

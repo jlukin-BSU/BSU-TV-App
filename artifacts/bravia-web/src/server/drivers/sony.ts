@@ -140,7 +140,7 @@ function dryRunResult(rpc: RpcCall): unknown[] {
     return [
       [
         { title: "OptiSigns", uri: "com.optisigns.playe1.MainActivity", icon: "" },
-        { title: "Plex", uri: "com.plexapp.android.SplashActivity", icon: "" },
+        { title: "Xfinity Stream", uri: "com.xfinity.cloudtvr.tenfoot.MainActivity", icon: "" },
         { title: "YouTube", uri: "com.google.android.youtube.tv.MainActivity", icon: "" },
         { title: "Hulu", uri: "com.hulu.livingroomplus.MainActivity", icon: "" },
         { title: "Netflix", uri: "com.netflix.ninja.MainActivity", icon: "" },
